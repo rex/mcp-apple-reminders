@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(chmod:*)",
+      "Bash(tree:*)",
+      "Bash(pip install:*)",
+      "Bash(./venv/bin/pip install:*)",
+      "Bash(./venv/bin/python3:*)",
+      "Bash(timeout 2 ./venv/bin/python3:*)"
+    ]
+  }
+}
