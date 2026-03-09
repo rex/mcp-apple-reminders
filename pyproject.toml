@@ -44,7 +44,7 @@ Repository = "https://github.com/yourusername/mcp-apple-reminders"
 Issues = "https://github.com/yourusername/mcp-apple-reminders/issues"
 
 [project.scripts]
-mcp-apple-reminders = "mcp_apple_reminders:main"
+mcp-apple-reminders = "mcp_apple_reminders:cli_main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

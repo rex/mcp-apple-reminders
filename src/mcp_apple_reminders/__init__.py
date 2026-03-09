@@ -8,6 +8,6 @@ __version__ = "0.1.0"
 __author__ = "Pierce"
 __license__ = "MIT"
 
-from .server import main
+from .server import cli_main, main
 
-__all__ = ["main"]
+__all__ = ["cli_main", "main"]

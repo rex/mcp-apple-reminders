@@ -6,7 +6,7 @@ Get up and running with MCP Apple Reminders in under 5 minutes!
 
 - macOS 10.15 or later
 - Python 3.10 or later
-- Claude Desktop App installed
+- Claude Desktop App or Codex installed
 
 ## Installation Steps
 
@@ -15,7 +15,7 @@ Get up and running with MCP Apple Reminders in under 5 minutes!
 Run the installation script:
 
 ```bash
-cd /Users/pierce/Code/mcp-apple-reminders
+cd /Users/pierce/Code/mcp-servers/mcp-apple-reminders
 ./install.sh
 ```
 
@@ -24,7 +24,37 @@ This will:
 - Install all dependencies
 - Set up the MCP server
 
-### 2. Configure Claude Desktop
+### 2. Configure Your MCP Client
+
+#### Codex
+
+Edit the Codex configuration file:
+
+```bash
+open ~/.codex/config.toml
+```
+
+Add this MCP server configuration:
+
+```toml
+[mcp_servers.mcp-apple-reminders]
+command = "/Users/pierce/Code/mcp-servers/mcp-apple-reminders/venv/bin/python3"
+args = ["-m", "mcp_apple_reminders"]
+cwd = "/Users/pierce/Code/mcp-servers/mcp-apple-reminders"
+enabled = true
+```
+
+If Reminders permissions have not been granted yet and the prompt does not appear, use the shim for the first launch:
+
+```toml
+[mcp_servers.mcp-apple-reminders]
+command = "/Users/pierce/Code/mcp-servers/mcp-apple-reminders/shim_mcp.sh"
+args = []
+cwd = "/Users/pierce/Code/mcp-servers/mcp-apple-reminders"
+enabled = true
+```
+
+#### Claude Desktop
 
 Edit the Claude configuration file:
 
@@ -38,18 +68,21 @@ Add the MCP server configuration:
 {
   "mcpServers": {
     "apple-reminders": {
-      "command": "/Users/pierce/Code/mcp-apple-reminders/venv/bin/python3",
+      "command": "/Users/pierce/Code/mcp-servers/mcp-apple-reminders/venv/bin/python3",
       "args": ["-m", "mcp_apple_reminders"]
     }
   }
 }
 ```
 
-**Important**: Replace `/Users/pierce/Code/mcp-apple-reminders` with the actual path to your installation if different.
+**Important**: Replace `/Users/pierce/Code/mcp-servers/mcp-apple-reminders` with the actual path to your installation if different.
 
 ### 3. Restart Claude Desktop
 
-Completely quit Claude Desktop (⌘Q) and reopen it.
+Restart the client you configured:
+
+- Codex: restart the app after saving `~/.codex/config.toml`
+- Claude Desktop: completely quit the app (⌘Q) and reopen it
 
 ### 4. Grant Permissions
 
@@ -61,7 +94,7 @@ On first use, macOS will prompt for Reminders access:
 
 ### 5. Test It Out!
 
-Try these commands in Claude:
+Try these commands in your MCP client:
 
 - "Show me all my reminder lists"
 - "What reminders do I have due today?"
@@ -70,7 +103,8 @@ Try these commands in Claude:
 
 ## Verification
 
-Look for the hammer icon (🔨) in Claude Desktop. Click it to see available tools from "apple-reminders".
+- Codex: the Reminders tools should appear in the tool list for the session
+- Claude Desktop: look for the hammer icon (🔨) and check for tools from "apple-reminders"
 
 ## Troubleshooting
 
@@ -78,8 +112,9 @@ Look for the hammer icon (🔨) in Claude Desktop. Click it to see available too
 
 1. Check the config file path is correct
 2. Verify the Python path in the config
-3. Check Claude logs: `tail -f ~/Library/Logs/Claude/mcp*.log`
-4. Restart Claude Desktop completely
+3. Avoid bare `python3` if it resolves to macOS system Python 3.9
+4. Check Claude logs: `tail -f ~/Library/Logs/Claude/mcp*.log`
+5. Restart the client completely
 
 ### Permission errors?
 
@@ -89,7 +124,7 @@ Go to System Settings → Privacy & Security → Reminders and ensure Python/Ter
 
 - Read the [full README](README.md) for all features
 - Explore all 17 available tools
-- Create custom workflows with Claude
+- Create custom workflows with your MCP client
 
 ## Need Help?
 

@@ -6,9 +6,17 @@ This script verifies that the MCP server is properly installed and configured.
 Run this after installation to check that everything is working correctly.
 """
 
+from __future__ import annotations
+
+import subprocess
 import sys
-import os
 from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parent
+RUNTIME_PYTHON = REPO_ROOT / "venv" / "bin" / "python3"
+CLAUDE_CONFIG = Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+CODEX_CONFIG = Path.home() / ".codex" / "config.toml"
 
 
 def print_status(check_name: str, passed: bool, message: str = ""):
@@ -23,6 +31,27 @@ def print_status(check_name: str, passed: bool, message: str = ""):
         print(f"  {message}")
 
 
+def run_python(code: str) -> subprocess.CompletedProcess[str]:
+    """Run a Python snippet in the configured MCP runtime."""
+    return subprocess.run(
+        [str(RUNTIME_PYTHON), "-c", code],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def config_contains(path: Path, needle: str) -> bool:
+    """Check whether a config file contains a marker string."""
+    if not path.exists():
+        return False
+
+    try:
+        return needle in path.read_text()
+    except OSError:
+        return False
+
+
 def main():
     """Run verification checks."""
     print("🔍 MCP Apple Reminders - Installation Verification")
@@ -31,17 +60,16 @@ def main():
 
     all_passed = True
 
-    # Check 1: Python version
-    print("📋 Checking Python version...")
-    py_version = sys.version_info
-    py_ok = py_version >= (3, 10)
+    # Check 1: Host Python version (informational)
+    print("📋 Checking current interpreter (informational)...")
+    host_version = sys.version_info
+    host_ok = host_version >= (3, 10)
     print_status(
-        "Python Version",
-        py_ok,
-        f"Found Python {py_version.major}.{py_version.minor}.{py_version.micro}"
-        + ("" if py_ok else " (3.10+ required)")
+        "Current Interpreter",
+        host_ok,
+        f"Found Python {host_version.major}.{host_version.minor}.{host_version.micro}"
+        + ("" if host_ok else " (system python is older than the server requirement)"),
     )
-    all_passed = all_passed and py_ok
     print()
 
     # Check 2: Operating system
@@ -50,96 +78,113 @@ def main():
     print_status(
         "Operating System",
         is_macos,
-        f"Found {sys.platform}" + ("" if is_macos else " (macOS required)")
+        f"Found {sys.platform}" + ("" if is_macos else " (macOS required)"),
     )
     all_passed = all_passed and is_macos
     print()
 
-    # Check 3: Required packages
-    print("📦 Checking required packages...")
+    # Check 3: MCP runtime interpreter
+    print("🐍 Checking MCP runtime...")
+    runtime_exists = RUNTIME_PYTHON.exists()
+    runtime_ok = False
+    runtime_message = f"{RUNTIME_PYTHON} not found"
+    if runtime_exists:
+        version_result = run_python("import sys; print(sys.version)")
+        runtime_ok = version_result.returncode == 0
+        runtime_message = version_result.stdout.strip() if runtime_ok else version_result.stderr.strip()
+    print_status("Runtime Python", runtime_exists and runtime_ok, runtime_message)
+    all_passed = all_passed and runtime_exists and runtime_ok
+    print()
 
-    packages = {
+    # Check 4: Required packages in the runtime
+    print("📦 Checking runtime packages...")
+    package_checks = {
         "mcp": "MCP SDK",
         "objc": "PyObjC Core",
         "EventKit": "PyObjC EventKit Framework",
     }
-
-    for package, description in packages.items():
-        try:
-            if package == "EventKit":
-                __import__("EventKit")
-            else:
-                __import__(package)
-            print_status(description, True, f"Module '{package}' found")
-        except ImportError:
-            print_status(description, False, f"Module '{package}' not found")
-            all_passed = False
+    for package, description in package_checks.items():
+        module = "EventKit" if package == "EventKit" else package
+        result = run_python(f"import {module}")
+        passed = result.returncode == 0
+        print_status(description, passed, f"Module '{module}' {'found' if passed else 'not found'}")
+        all_passed = all_passed and passed
     print()
 
-    # Check 4: MCP Apple Reminders package
+    # Check 5: MCP Apple Reminders package
     print("🍎 Checking MCP Apple Reminders package...")
-    try:
-        sys.path.insert(0, str(Path(__file__).parent / "src"))
-        import mcp_apple_reminders
-        print_status(
-            "MCP Apple Reminders",
-            True,
-            f"Version {mcp_apple_reminders.__version__}"
-        )
-    except ImportError as e:
-        print_status("MCP Apple Reminders", False, f"Import error: {e}")
-        all_passed = False
-    print()
-
-    # Check 5: pyremindkit library
-    print("📚 Checking pyremindkit library...")
-    try:
-        sys.path.insert(0, str(Path(__file__).parent / "libs" / "pyremindkit" / "src"))
-        from pyremindkit import RemindKit, Priority, Reminder
-        print_status("pyremindkit", True, "Library found and importable")
-    except ImportError as e:
-        print_status("pyremindkit", False, f"Import error: {e}")
-        all_passed = False
-    print()
-
-    # Check 6: Configuration file
-    print("⚙️  Checking Claude Desktop configuration...")
-    config_path = Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
-    config_exists = config_path.exists()
-    print_status(
-        "Configuration File",
-        config_exists,
-        f"{'Found' if config_exists else 'Not found'} at {config_path}"
+    package_result = run_python(
+        "import mcp_apple_reminders; print(mcp_apple_reminders.__version__)"
     )
-    if not config_exists:
-        print("  ℹ️  You need to create this file to use the MCP server with Claude Desktop")
-        print(f"  ℹ️  See QUICKSTART.md for configuration instructions")
+    package_ok = package_result.returncode == 0
+    print_status(
+        "MCP Apple Reminders",
+        package_ok,
+        f"Version {package_result.stdout.strip()}" if package_ok else package_result.stderr.strip(),
+    )
+    all_passed = all_passed and package_ok
+    print()
+
+    # Check 6: pyremindkit import path
+    print("📚 Checking pyremindkit library...")
+    pyremindkit_result = run_python(
+        "import sys; "
+        f"sys.path.insert(0, {str(REPO_ROOT / 'libs' / 'pyremindkit' / 'src')!r}); "
+        "import pyremindkit; "
+        "print(pyremindkit.__file__)"
+    )
+    pyremindkit_ok = pyremindkit_result.returncode == 0
+    print_status(
+        "pyremindkit",
+        pyremindkit_ok,
+        pyremindkit_result.stdout.strip() if pyremindkit_ok else pyremindkit_result.stderr.strip(),
+    )
+    all_passed = all_passed and pyremindkit_ok
+    print()
+
+    # Check 7: Claude Desktop configuration
+    print("⚙️  Checking Claude Desktop configuration...")
+    claude_configured = config_contains(CLAUDE_CONFIG, "mcp_apple_reminders")
+    print_status(
+        "Claude Config",
+        claude_configured,
+        f"{'Found apple-reminders entry in' if claude_configured else 'No apple-reminders entry in'} {CLAUDE_CONFIG}",
+    )
+    print()
+
+    # Check 8: Codex configuration
+    print("🤖 Checking Codex configuration...")
+    codex_configured = config_contains(CODEX_CONFIG, "[mcp_servers.mcp-apple-reminders]")
+    print_status(
+        "Codex Config",
+        codex_configured,
+        f"{'Found mcp-apple-reminders entry in' if codex_configured else 'No mcp-apple-reminders entry in'} {CODEX_CONFIG}",
+    )
     print()
 
     # Summary
     print("=" * 60)
-    if all_passed and config_exists:
-        print("✅ All checks passed! Your installation is complete.")
+    if all_passed and (claude_configured or codex_configured):
+        print("✅ Required runtime checks passed and at least one MCP client is configured.")
         print()
         print("🚀 Next steps:")
-        print("   1. Make sure Claude Desktop is configured (see QUICKSTART.md)")
-        print("   2. Restart Claude Desktop")
-        print("   3. Grant Reminders permissions when prompted")
-        print("   4. Start using MCP Apple Reminders with Claude!")
+        print("   1. Restart your MCP client after config changes")
+        print("   2. Grant Reminders permissions when prompted")
+        print("   3. Run a harmless tool like list_calendars to confirm connectivity")
     elif all_passed:
-        print("⚠️  Installation complete but configuration needed.")
+        print("⚠️  Runtime checks passed, but no MCP client configuration was found.")
         print()
         print("📝 Next steps:")
-        print("   1. Configure Claude Desktop (see QUICKSTART.md)")
-        print("   2. Restart Claude Desktop")
-        print("   3. Start using the MCP server!")
+        print("   1. Add the server to Claude Desktop or Codex")
+        print("   2. Restart the client")
+        print("   3. Re-run this verification script")
     else:
         print("❌ Some checks failed. Please review the errors above.")
         print()
         print("💡 Common fixes:")
-        print("   - Run ./install.sh to install dependencies")
-        print("   - Ensure you're on macOS 10.15 or later")
-        print("   - Make sure Python 3.10+ is installed")
+        print("   - Run ./install.sh to create or refresh the venv")
+        print("   - Use the repo venv in your MCP client config instead of bare python3")
+        print("   - Reinstall the editable package with ./venv/bin/python -m pip install -e .")
         print()
         print("📖 See README.md for detailed installation instructions")
 
@@ -148,4 +193,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

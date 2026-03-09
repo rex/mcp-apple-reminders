@@ -948,7 +948,14 @@ async def main():
         )
 
 
+def cli_main() -> int:
+    """Synchronous entry point for console scripts."""
+    import asyncio
+
+    asyncio.run(main())
+    return 0
+
+
 if __name__ == "__main__":
     """Entry point when the module is run directly."""
-    import asyncio
-    asyncio.run(main())
+    raise SystemExit(cli_main())

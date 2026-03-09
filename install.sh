@@ -15,22 +15,35 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
     exit 1
 fi
 
-# Check Python version
-PYTHON_VERSION=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
-REQUIRED_VERSION="3.10"
+find_python() {
+    local candidate
+    for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
+        if command -v "$candidate" >/dev/null 2>&1 && \
+            "$candidate" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
 
 echo "📋 Checking Python version..."
-if ! python3 -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)"; then
-    echo "❌ Error: Python 3.10 or higher is required (found $PYTHON_VERSION)"
+if ! PYTHON_BIN="$(find_python)"; then
+    PYTHON_VERSION="$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))' 2>/dev/null || echo "unknown")"
+    echo "❌ Error: Python 3.10 or higher is required (default python3 is ${PYTHON_VERSION})"
+    echo "   Install Python 3.10+ and re-run this script, or invoke it with a newer interpreter on PATH."
     exit 1
 fi
+PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
 echo "✓ Python $PYTHON_VERSION detected"
+echo "  Using interpreter: $(command -v "$PYTHON_BIN")"
 echo ""
 
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo "📦 Creating virtual environment..."
-    python3 -m venv venv
+    "$PYTHON_BIN" -m venv venv
     echo "✓ Virtual environment created"
 else
     echo "✓ Virtual environment already exists"
@@ -43,17 +56,17 @@ source venv/bin/activate
 
 # Upgrade pip
 echo "📦 Upgrading pip..."
-pip install --upgrade pip --quiet
+python -m pip install --upgrade pip --quiet
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-pip install -r requirements.txt --quiet
+python -m pip install -r requirements.txt --quiet
 echo "✓ Dependencies installed"
 echo ""
 
 # Install the package in development mode
 echo "📦 Installing mcp-apple-reminders..."
-pip install -e . --quiet
+python -m pip install -e . --quiet
 echo "✓ Package installed"
 echo ""
 
@@ -77,5 +90,14 @@ echo "        }"
 echo "      }"
 echo ""
 echo "   4. Restart Claude Desktop"
+echo ""
+echo "   5. Configure Codex by editing:"
+echo "      ~/.codex/config.toml"
+echo ""
+echo "      [mcp_servers.mcp-apple-reminders]"
+echo "      command = \"$(pwd)/venv/bin/python3\""
+echo "      args = [\"-m\", \"mcp_apple_reminders\"]"
+echo "      cwd = \"$(pwd)\""
+echo "      enabled = true"
 echo ""
 echo "   See README.md for detailed usage instructions."

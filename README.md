@@ -18,6 +18,7 @@ A comprehensive Model Context Protocol (MCP) server that enables Claude and othe
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
+  - [Codex](#codex)
   - [Claude Desktop App](#claude-desktop-app)
   - [Other MCP Clients](#other-mcp-clients)
 - [Permissions](#permissions)
@@ -80,10 +81,40 @@ pip install mcp-apple-reminders
 Test that the server can be imported:
 
 ```bash
-python3 -c "from mcp_apple_reminders import main; print('Installation successful!')"
+./venv/bin/python3 -c "from mcp_apple_reminders import main; print('Installation successful!')"
 ```
 
 ## Configuration
+
+### Codex
+
+Codex reads MCP server definitions from:
+
+```toml
+~/.codex/config.toml
+```
+
+Add this block, replacing `/absolute/path/to/mcp-apple-reminders` with your local checkout:
+
+```toml
+[mcp_servers.mcp-apple-reminders]
+command = "/absolute/path/to/mcp-apple-reminders/venv/bin/python3"
+args = ["-m", "mcp_apple_reminders"]
+cwd = "/absolute/path/to/mcp-apple-reminders"
+enabled = true
+```
+
+If Reminders permissions have not been granted yet and the prompt does not appear, point Codex at the repo shim for the first launch:
+
+```toml
+[mcp_servers.mcp-apple-reminders]
+command = "/absolute/path/to/mcp-apple-reminders/shim_mcp.sh"
+args = []
+cwd = "/absolute/path/to/mcp-apple-reminders"
+enabled = true
+```
+
+Do not use bare `python3` unless it is already Python 3.10+ and has this package installed. On many macOS systems, `/usr/bin/python3` is too old for this server.
 
 ### Claude Desktop App
 
@@ -94,13 +125,13 @@ The Claude Desktop App is the primary client for this MCP server. To configure i
    ~/Library/Application Support/Claude/claude_desktop_config.json
    ```
 
-2. **Edit the configuration file** to add the MCP server:
+2. **Edit the configuration file** to add the MCP server. Prefer the repo venv path over bare `python3`:
 
    ```json
    {
      "mcpServers": {
        "apple-reminders": {
-         "command": "python3",
+         "command": "/path/to/your/venv/bin/python3",
          "args": [
            "-m",
            "mcp_apple_reminders"
@@ -111,16 +142,13 @@ The Claude Desktop App is the primary client for this MCP server. To configure i
    }
    ```
 
-   **If you installed in a virtual environment**, use the full path to Python:
+   If the Reminders permission prompt does not appear on first launch, use the repo shim once instead:
    ```json
    {
      "mcpServers": {
        "apple-reminders": {
-         "command": "/path/to/your/venv/bin/python3",
-         "args": [
-           "-m",
-           "mcp_apple_reminders"
-         ],
+         "command": "/path/to/your/mcp-apple-reminders/shim_mcp.sh",
+         "args": [],
          "env": {}
        }
      }
@@ -139,7 +167,7 @@ The Claude Desktop App is the primary client for this MCP server. To configure i
 For other MCP-compatible clients, refer to their documentation for adding MCP servers. The general pattern is:
 
 ```bash
-python3 -m mcp_apple_reminders
+/absolute/path/to/mcp-apple-reminders/venv/bin/python3 -m mcp_apple_reminders
 ```
 
 The server communicates via stdin/stdout using the MCP protocol.
@@ -667,7 +695,7 @@ To debug the MCP server:
 
 2. **Run the server directly**:
    ```bash
-   python3 -m mcp_apple_reminders
+   ./venv/bin/python3 -m mcp_apple_reminders
    ```
 
 3. **Check Claude Desktop logs**:
@@ -804,10 +832,10 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install in development mode
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 
 # Make changes and test
-python3 -m mcp_apple_reminders
+./venv/bin/python3 -m mcp_apple_reminders
 ```
 
 ## License

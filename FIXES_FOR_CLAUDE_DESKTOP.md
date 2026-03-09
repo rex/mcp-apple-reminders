@@ -8,7 +8,7 @@
 ### Issue 1: Module Not Found Error
 **Error:** `No module named mcp_apple_reminders`
 
-**Root Cause:** The package was installed in the system Python (miniconda) but Claude Desktop was configured to use the venv Python at `/Users/pierce/Code/mcp-apple-reminders/venv/bin/python3`.
+**Root Cause:** The package was installed in the system Python (miniconda) but Claude Desktop was configured to use the venv Python at `/Users/pierce/Code/mcp-servers/mcp-apple-reminders/venv/bin/python3`.
 
 **Fix:** Installed the package into the venv:
 ```bash
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-**Location:** `/Users/pierce/Code/mcp-apple-reminders/src/mcp_apple_reminders/__main__.py`
+**Location:** `/Users/pierce/Code/mcp-servers/mcp-apple-reminders/src/mcp_apple_reminders/__main__.py`
 
 ---
 
@@ -66,7 +66,7 @@ echo '{"jsonrpc": "2.0", "id": 1, "method": "initialize", ...}' | ./venv/bin/pyt
 Your Claude Desktop is configured to use:
 ```json
 {
-  "command": "/Users/pierce/Code/mcp-apple-reminders/venv/bin/python3",
+  "command": "/Users/pierce/Code/mcp-servers/mcp-apple-reminders/venv/bin/python3",
   "args": ["-m", "mcp_apple_reminders"]
 }
 ```
