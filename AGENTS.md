@@ -16,20 +16,23 @@ Agents working in this repository must treat it as:
 
 - `src/mcp_apple_reminders/`
   - Main Python package.
-  - `server.py` contains the MCP server implementation and tool handlers.
-  - `__main__.py` and `__init__.py` provide import and CLI entrypoints.
-- `libs/pyremindkit/`
-  - Vendored dependency used to access Apple Reminders through EventKit.
-  - Treat this as an integrated local dependency. Do not assume it is installed globally.
-- `venv/`
-  - Local runtime environment for this repo.
-  - Prefer this interpreter for all validation and local execution.
-- `README.md`, `QUICKSTART.md`, `TOOLS.md`, `PROJECT_SUMMARY.md`, `WORKFLOW_FEATURES.md`
-  - User and contributor documentation.
+  - `server.py` — FastMCP server, tool handlers, lazy pyremindkit connection.
+  - `_helpers.py` — pure parsing utilities (datetime, priority).
+  - `_models.py` — Pydantic input/output models.
+  - `_workflow.py` — kanban list resolution, prefix config.
+  - `resources.py` — `apple-reminders://` URI handlers.
+  - `prompts.py` — ADHD workflow prompts.
+  - `__main__.py` / `__init__.py` — entrypoints.
+- `tests/unit/`
+  - Hermetic, mock pyremindkit. Runs on Linux + macOS.
+- `tests/integration/`
+  - Live macOS Reminders, gated by `MCP_APPLE_REMINDERS_LIVE_TESTS=1`.
+- `docs/tools.md`
+  - User-facing tool reference.
 - `verify_setup.py`, `install.sh`, `shim_mcp.sh`
   - Operational scripts for installation, verification, permissions bootstrap, and local launch.
-- `test_*.py`
-  - Test and validation scripts currently live at the repository root.
+- `pyremindkit` is a real PyPI dependency (declared in `pyproject.toml`),
+  not a vendored library. Do not reintroduce a `libs/` shim.
 
 ## Platform And Runtime Assumptions
 
@@ -126,11 +129,11 @@ Documentation is mandatory. Future agents must treat documentation updates as pa
 
 - Validate the smallest relevant surface first, then broader flows.
 - Prefer the repo interpreter and explicit commands.
-- Because tests currently live at the repo root, do not rely on bare `pytest` discovery without arguments.
-- Use explicit test targets such as:
-  - `./venv/bin/python -m pytest test_mcp_tools.py`
-  - `./venv/bin/python -m pytest test_e2e.py`
-  - `./venv/bin/python -m pytest test_workflow_tools.py`
+- Tests live in `tests/unit/` (hermetic) and `tests/integration/` (live macOS).
+- `pytest tests/unit/` runs everywhere and should always pass.
+- `MCP_APPLE_REMINDERS_LIVE_TESTS=1 pytest tests/integration/` requires
+  macOS and a granted Reminders permission; integration tests are skipped
+  by default.
 - For install/runtime verification, use:
   - `python3 verify_setup.py`
   - `./venv/bin/python3 -m mcp_apple_reminders`
@@ -159,11 +162,11 @@ Documentation is mandatory. Future agents must treat documentation updates as pa
 - Keep Claude Desktop configuration examples accurate.
 - Do not assume Claude Desktop and Codex use identical config formats.
 
-### Vendored pyremindkit
+### pyremindkit
 
-- Treat `libs/pyremindkit` as part of the working system.
-- If server changes depend on vendored library behavior, inspect or update the vendored code deliberately.
-- Document any coupling between server logic and vendored library quirks.
+- `pyremindkit` is a PyPI dependency, not vendored. Bumps live in
+  `pyproject.toml`. If server changes depend on a specific pyremindkit
+  release, pin the lower bound and explain why in CHANGELOG.
 
 ## Change Management Rules
 
