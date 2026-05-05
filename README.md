@@ -48,7 +48,7 @@ A comprehensive Model Context Protocol (MCP) server that enables Claude and othe
 1. **Clone the repository**:
    ```bash
    cd /path/to/your/projects
-   git clone https://github.com/yourusername/mcp-apple-reminders.git
+   git clone https://github.com/rex/mcp-apple-reminders.git
    cd mcp-apple-reminders
    ```
 
@@ -824,15 +824,12 @@ Contributions are welcome! Please follow these guidelines:
 
 ```bash
 # Clone your fork
-git clone https://github.com/yourusername/mcp-apple-reminders.git
+git clone https://github.com/rex/mcp-apple-reminders.git
 cd mcp-apple-reminders
 
-# Create virtual environment
-python3 -m venv venv
+# Create virtual environment and install in editable mode with dev + test extras
+./install.sh
 source venv/bin/activate
-
-# Install in development mode
-python -m pip install -e ".[dev]"
 
 # Make changes and test
 ./venv/bin/python3 -m mcp_apple_reminders

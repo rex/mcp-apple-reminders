@@ -1,56 +1,86 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-apple-reminders"
-version = "0.1.0"
-description = "Model Context Protocol server for Apple Reminders integration"
-authors = [
-    {name = "Pierce", email = "pierce@example.com"}
-]
+version = "0.2.0"
+description = "Conversational ADHD task management for Claude — an MCP server for Apple Reminders."
 readme = "README.md"
-license = {text = "MIT"}
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
-keywords = ["mcp", "model-context-protocol", "apple", "reminders", "eventkit", "claude"]
+authors = [{ name = "rex", email = "rex@users.noreply.github.com" }]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "anthropic",
+    "claude",
+    "apple-reminders",
+    "eventkit",
+    "macos",
+    "productivity",
+    "adhd",
+    "task-management",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Environment :: MacOS X",
     "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS :: MacOS X",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Scheduling",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 
 dependencies = [
-    "mcp>=0.1.0",
-    "pyobjc-core>=10.0",
-    "pyobjc-framework-EventKit>=10.0",
+    "mcp>=1.0,<2",
+    "pydantic>=2.6,<3",
+    "python-dateutil>=2.8,<3",
+    "pyremindkit>=0.1,<1 ; sys_platform == 'darwin'",
+    "pyobjc-core>=10,<12 ; sys_platform == 'darwin'",
+    "pyobjc-framework-EventKit>=10,<12 ; sys_platform == 'darwin'",
+    "pyobjc-framework-Foundation>=10,<12 ; sys_platform == 'darwin'",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
-    "black>=23.0",
-    "ruff>=0.1.0",
+    "pre-commit>=3.6",
+    "ruff>=0.4",
+    "black>=24.0",
+    "mypy>=1.10",
+    "build>=1.2",
+    "twine>=5.0",
+]
+test = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pytest-asyncio>=0.23",
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/mcp-apple-reminders"
-Repository = "https://github.com/yourusername/mcp-apple-reminders"
-Issues = "https://github.com/yourusername/mcp-apple-reminders/issues"
+Homepage = "https://github.com/rex/mcp-apple-reminders"
+Repository = "https://github.com/rex/mcp-apple-reminders"
+Issues = "https://github.com/rex/mcp-apple-reminders/issues"
+Changelog = "https://github.com/rex/mcp-apple-reminders/blob/main/CHANGELOG.md"
 
 [project.scripts]
-mcp-apple-reminders = "mcp_apple_reminders:cli_main"
+mcp-apple-reminders = "mcp_apple_reminders.server:cli_main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+mcp_apple_reminders = ["py.typed"]
 
 [tool.black]
 line-length = 120
@@ -61,11 +91,39 @@ line-length = 120
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "B", "C4", "PT", "SIM", "TCH"]
+select = ["E", "F", "I", "N", "W", "B", "C4", "PT", "SIM", "TCH", "UP", "RUF"]
 ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+warn_unused_ignores = true
+files = ["src/mcp_apple_reminders"]
+
+[[tool.mypy.overrides]]
+module = ["pyremindkit.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "integration: marks tests that require a live macOS Reminders database (deselect with '-m \"not integration\"')",
+]
+addopts = ["-ra", "--strict-markers"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src/mcp_apple_reminders"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]

@@ -1,0 +1,62 @@
+name: Bug report
+description: Something is broken or behaving unexpectedly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more detail you provide,
+        the faster we can fix it.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `pip show mcp-apple-reminders | grep Version`
+      placeholder: "0.2.0"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "14.5"
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP client
+      options:
+        - Claude Desktop
+        - Codex
+        - Cursor
+        - Cline
+        - Continue
+        - Zed
+        - Windsurf
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug. What did you expect, and what did you see?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Configure with `…`
+        2. Ask Claude `…`
+        3. See error `…`
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant lines from `~/Library/Logs/Claude/mcp*.log` or the equivalent for your client.
+      render: shell

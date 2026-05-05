@@ -1,4 +1,8 @@
 #!/bin/bash
+# Pre-flight launcher for first-time use:
+# triggers the macOS Reminders TCC permission prompt before the MCP stdio server starts.
+# Use this only on first launch if your MCP client doesn't surface the prompt;
+# afterwards, point the client at the Python interpreter directly.
 
 set -euo pipefail
 
@@ -11,8 +15,8 @@ if [[ ! -x "${PYTHON_BIN}" ]]; then
     exit 1
 fi
 
-# This attempts to talk to Reminders so macOS can surface the permission prompt
-# before the MCP stdio server starts speaking JSON.
-osascript -e 'tell application "Reminders" to name of default list' > /dev/stderr 2>&1 || true
+# Trigger the Reminders permission prompt without polluting stderr (MCP clients
+# treat stderr noise as errors).
+osascript -e 'tell application "Reminders" to name of default list' >/dev/null 2>&1 || true
 
 exec "${PYTHON_BIN}" -m mcp_apple_reminders

@@ -1,17 +1,15 @@
 #!/bin/bash
+# MCP Apple Reminders — local development installer
+# Sets up a virtual environment and installs the package in editable mode.
+# End users should prefer `uvx mcp-apple-reminders` or `pipx install mcp-apple-reminders`.
 
-# MCP Apple Reminders Installation Script
-# This script sets up a virtual environment and installs all dependencies
+set -euo pipefail
 
-set -e  # Exit on error
-
-echo "🍎 MCP Apple Reminders Installation"
+echo "MCP Apple Reminders — dev installer"
 echo "===================================="
-echo ""
 
-# Check if we're on macOS
 if [[ "$OSTYPE" != "darwin"* ]]; then
-    echo "❌ Error: This MCP server only works on macOS"
+    echo "Error: this MCP server is macOS-only (it depends on EventKit)." >&2
     exit 1
 fi
 
@@ -19,85 +17,43 @@ find_python() {
     local candidate
     for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
         if command -v "$candidate" >/dev/null 2>&1 && \
-            "$candidate" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"; then
+            "$candidate" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
             echo "$candidate"
             return 0
         fi
     done
-
     return 1
 }
 
-echo "📋 Checking Python version..."
+echo "Looking for Python 3.10+..."
 if ! PYTHON_BIN="$(find_python)"; then
-    PYTHON_VERSION="$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))' 2>/dev/null || echo "unknown")"
-    echo "❌ Error: Python 3.10 or higher is required (default python3 is ${PYTHON_VERSION})"
-    echo "   Install Python 3.10+ and re-run this script, or invoke it with a newer interpreter on PATH."
+    echo "Error: Python 3.10 or newer is required." >&2
+    echo "Install via Homebrew: brew install python@3.12" >&2
     exit 1
 fi
 PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
-echo "✓ Python $PYTHON_VERSION detected"
-echo "  Using interpreter: $(command -v "$PYTHON_BIN")"
-echo ""
+echo "Using $(command -v "$PYTHON_BIN") (Python $PYTHON_VERSION)"
 
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
-    echo "📦 Creating virtual environment..."
+if [[ ! -d "venv" ]]; then
+    echo "Creating venv/"
     "$PYTHON_BIN" -m venv venv
-    echo "✓ Virtual environment created"
-else
-    echo "✓ Virtual environment already exists"
 fi
-echo ""
 
-# Activate virtual environment
-echo "🔧 Activating virtual environment..."
+# shellcheck disable=SC1091
 source venv/bin/activate
 
-# Upgrade pip
-echo "📦 Upgrading pip..."
-python -m pip install --upgrade pip --quiet
+echo "Upgrading pip"
+python -m pip install --upgrade pip
 
-# Install dependencies
-echo "📦 Installing dependencies..."
-python -m pip install -r requirements.txt --quiet
-echo "✓ Dependencies installed"
-echo ""
+echo "Installing mcp-apple-reminders (editable, with dev + test extras)"
+python -m pip install -e ".[dev,test]"
 
-# Install the package in development mode
-echo "📦 Installing mcp-apple-reminders..."
-python -m pip install -e . --quiet
-echo "✓ Package installed"
-echo ""
-
-echo "✅ Installation complete!"
-echo ""
-echo "📝 Next steps:"
-echo "   1. Activate the virtual environment:"
-echo "      source venv/bin/activate"
-echo ""
-echo "   2. Configure Claude Desktop by editing:"
-echo "      ~/Library/Application Support/Claude/claude_desktop_config.json"
-echo ""
-echo "   3. Add this configuration:"
-echo "      {"
-echo "        \"mcpServers\": {"
-echo "          \"apple-reminders\": {"
-echo "            \"command\": \"$(pwd)/venv/bin/python3\","
-echo "            \"args\": [\"-m\", \"mcp_apple_reminders\"]"
-echo "          }"
-echo "        }"
-echo "      }"
-echo ""
-echo "   4. Restart Claude Desktop"
-echo ""
-echo "   5. Configure Codex by editing:"
-echo "      ~/.codex/config.toml"
-echo ""
-echo "      [mcp_servers.mcp-apple-reminders]"
-echo "      command = \"$(pwd)/venv/bin/python3\""
-echo "      args = [\"-m\", \"mcp_apple_reminders\"]"
-echo "      cwd = \"$(pwd)\""
-echo "      enabled = true"
-echo ""
-echo "   See README.md for detailed usage instructions."
+echo
+echo "Installation complete."
+echo
+echo "Recommended Claude Desktop / Codex config: use 'uvx mcp-apple-reminders'"
+echo "(install uv via 'brew install uv' or 'curl -LsSf https://astral.sh/uv/install.sh | sh')"
+echo
+echo "For development with this checkout, point your client at:"
+echo "  command: $(pwd)/venv/bin/python3"
+echo "  args:    [\"-m\", \"mcp_apple_reminders\"]"

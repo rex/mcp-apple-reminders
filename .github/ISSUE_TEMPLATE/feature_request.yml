@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest a new tool, prompt, resource, or workflow.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What workflow are you trying to support?
+      description: Start with the user-facing problem, not the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: A new tool? A prompt? A resource type? Sketch the interface.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

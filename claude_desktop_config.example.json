@@ -1,12 +1,8 @@
 {
   "mcpServers": {
     "apple-reminders": {
-      "command": "python3",
-      "args": [
-        "-m",
-        "mcp_apple_reminders"
-      ],
-      "env": {}
+      "command": "uvx",
+      "args": ["mcp-apple-reminders"]
     }
   }
 }
