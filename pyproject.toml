@@ -91,8 +91,17 @@ line-length = 120
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "B", "C4", "PT", "SIM", "TCH", "UP", "RUF"]
+select = ["E", "F", "I", "N", "W", "B", "C4", "PT", "SIM", "TC", "UP", "RUF"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test files: relax some pedantic rules that hurt readability of test code.
+"tests/**" = ["PT011", "PT018", "TC001", "TC003", "N802", "N803"]
+# Legacy integration scripts pre-date the suite migration; they will be
+# rewritten as proper pytest tests in a follow-up. Don't block CI on them.
+"tests/integration/**" = ["E712", "E722", "F401", "F841", "B007", "PT011", "PT018", "TC001", "TC003"]
+# Ad-hoc setup verification script kept for end users.
+"verify_setup.py" = ["F401", "E722"]
 
 [tool.mypy]
 python_version = "3.10"

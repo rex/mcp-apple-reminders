@@ -10,4 +10,4 @@ __license__ = "MIT"
 
 from .server import cli_main, main
 
-__all__ = ["cli_main", "main", "__version__"]
+__all__ = ["__version__", "cli_main", "main"]

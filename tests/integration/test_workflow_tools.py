@@ -10,7 +10,7 @@ Tests the new workflow management features:
 """
 
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -79,10 +79,7 @@ def test_get_workflow_lists(rk, results):
         workflow_lists = list(rk.calendars.search("Claude-"))
 
         if workflow_lists:
-            results.add_pass(
-                "Get workflow lists",
-                f"Found {len(workflow_lists)} Claude-* list(s)"
-            )
+            results.add_pass("Get workflow lists", f"Found {len(workflow_lists)} Claude-* list(s)")
 
             print("\n  📋 Workflow Lists Found:")
             for cal in workflow_lists:
@@ -91,10 +88,7 @@ def test_get_workflow_lists(rk, results):
 
             return workflow_lists
         else:
-            results.add_skip(
-                "Get workflow lists",
-                "No Claude-* lists found in system"
-            )
+            results.add_skip("Get workflow lists", "No Claude-* lists found in system")
             return []
     except Exception as e:
         results.add_fail("Get workflow lists", e)
@@ -108,10 +102,7 @@ def test_move_reminder_functionality(rk, workflow_lists, results):
     print("=" * 70)
 
     if len(workflow_lists) < 2:
-        results.add_skip(
-            "Move reminder tests",
-            f"Need at least 2 workflow lists, found {len(workflow_lists)}"
-        )
+        results.add_skip("Move reminder tests", f"Need at least 2 workflow lists, found {len(workflow_lists)}")
         return None
 
     # Create a test reminder
@@ -122,49 +113,32 @@ def test_move_reminder_functionality(rk, workflow_lists, results):
         # Create in first workflow list
         source_list = workflow_lists[0]
         reminder = rk.create_reminder(
-            title=test_title,
-            notes="Test reminder for workflow movement",
-            calendar_id=source_list.id
+            title=test_title, notes="Test reminder for workflow movement", calendar_id=source_list.id
         )
 
-        results.add_pass(
-            "Create reminder in workflow list",
-            f"Created in '{source_list.name}'"
-        )
+        results.add_pass("Create reminder in workflow list", f"Created in '{source_list.name}'")
 
         # Verify it's in the source list
         assert reminder.list_id == source_list.id
-        results.add_pass(
-            "Verify reminder in source list",
-            f"Confirmed in '{source_list.name}'"
-        )
+        results.add_pass("Verify reminder in source list", f"Confirmed in '{source_list.name}'")
 
         # Move to second workflow list
         target_list = workflow_lists[1]
         moved_reminder = rk.move_reminder(reminder.id, target_list.id)
 
         assert moved_reminder.list_id == target_list.id
-        results.add_pass(
-            "Move reminder to different list",
-            f"Moved from '{source_list.name}' to '{target_list.name}'"
-        )
+        results.add_pass("Move reminder to different list", f"Moved from '{source_list.name}' to '{target_list.name}'")
 
         # Verify the move by retrieving the reminder
         verified = rk.get_reminder_by_id(reminder.id)
         assert verified.list_id == target_list.id
-        results.add_pass(
-            "Verify reminder in target list",
-            f"Confirmed in '{target_list.name}'"
-        )
+        results.add_pass("Verify reminder in target list", f"Confirmed in '{target_list.name}'")
 
         # Move back to original list
         rk.move_reminder(reminder.id, source_list.id)
         verified = rk.get_reminder_by_id(reminder.id)
         assert verified.list_id == source_list.id
-        results.add_pass(
-            "Move reminder back to original list",
-            f"Moved back to '{source_list.name}'"
-        )
+        results.add_pass("Move reminder back to original list", f"Moved back to '{source_list.name}'")
 
         return reminder.id
 
@@ -186,70 +160,40 @@ def test_workflow_convenience_functions(rk, workflow_lists, results):
     waiting_lists = [cal for cal in workflow_lists if "Waiting" in cal.name]
 
     if not on_deck_lists:
-        results.add_skip(
-            "Move to On-Deck tests",
-            "Claude-On-Deck list not found"
-        )
+        results.add_skip("Move to On-Deck tests", "Claude-On-Deck list not found")
         on_deck_list = None
     else:
         on_deck_list = on_deck_lists[0]
-        results.add_pass(
-            "Found Claude-On-Deck list",
-            f"ID: {on_deck_list.id}"
-        )
+        results.add_pass("Found Claude-On-Deck list", f"ID: {on_deck_list.id}")
 
     if not active_lists:
-        results.add_skip(
-            "Move to Active tests",
-            "Claude-Active list not found"
-        )
+        results.add_skip("Move to Active tests", "Claude-Active list not found")
         active_list = None
     else:
         active_list = active_lists[0]
-        results.add_pass(
-            "Found Claude-Active list",
-            f"ID: {active_list.id}"
-        )
+        results.add_pass("Found Claude-Active list", f"ID: {active_list.id}")
 
     if not done_lists:
-        results.add_skip(
-            "Move to Done tests",
-            "Claude-Done list not found"
-        )
+        results.add_skip("Move to Done tests", "Claude-Done list not found")
         done_list = None
     else:
         done_list = done_lists[0]
-        results.add_pass(
-            "Found Claude-Done list",
-            f"ID: {done_list.id}"
-        )
+        results.add_pass("Found Claude-Done list", f"ID: {done_list.id}")
 
     if not waiting_lists:
-        results.add_skip(
-            "Move to Waiting tests",
-            "Claude-Waiting list not found"
-        )
+        results.add_skip("Move to Waiting tests", "Claude-Waiting list not found")
         waiting_list = None
     else:
         waiting_list = waiting_lists[0]
-        results.add_pass(
-            "Found Claude-Waiting list",
-            f"ID: {waiting_list.id}"
-        )
+        results.add_pass("Found Claude-Waiting list", f"ID: {waiting_list.id}")
 
     # Create test reminder in default list
     cst_timestamp = get_current_cst_iso8601()
     test_title = f"MCP WORKFLOW CONVENIENCE TEST: {cst_timestamp}"
 
     try:
-        reminder = rk.create_reminder(
-            title=test_title,
-            notes="Test reminder for workflow convenience functions"
-        )
-        results.add_pass(
-            "Create reminder for convenience tests",
-            f"ID: {reminder.id[:8]}..."
-        )
+        reminder = rk.create_reminder(title=test_title, notes="Test reminder for workflow convenience functions")
+        results.add_pass("Create reminder for convenience tests", f"ID: {reminder.id[:8]}...")
 
         reminder_id = reminder.id
 
@@ -258,10 +202,7 @@ def test_workflow_convenience_functions(rk, workflow_lists, results):
             try:
                 moved = rk.move_reminder(reminder_id, on_deck_list.id)
                 assert moved.list_id == on_deck_list.id
-                results.add_pass(
-                    "Move to Claude-On-Deck",
-                    "Successfully moved to On-Deck list"
-                )
+                results.add_pass("Move to Claude-On-Deck", "Successfully moved to On-Deck list")
             except Exception as e:
                 results.add_fail("Move to Claude-On-Deck", e)
 
@@ -270,10 +211,7 @@ def test_workflow_convenience_functions(rk, workflow_lists, results):
             try:
                 moved = rk.move_reminder(reminder_id, active_list.id)
                 assert moved.list_id == active_list.id
-                results.add_pass(
-                    "Move to Claude-Active",
-                    "Successfully moved to Active list"
-                )
+                results.add_pass("Move to Claude-Active", "Successfully moved to Active list")
             except Exception as e:
                 results.add_fail("Move to Claude-Active", e)
 
@@ -282,10 +220,7 @@ def test_workflow_convenience_functions(rk, workflow_lists, results):
             try:
                 moved = rk.move_reminder(reminder_id, done_list.id)
                 assert moved.list_id == done_list.id
-                results.add_pass(
-                    "Move to Claude-Done",
-                    "Successfully moved to Done list"
-                )
+                results.add_pass("Move to Claude-Done", "Successfully moved to Done list")
             except Exception as e:
                 results.add_fail("Move to Claude-Done", e)
 
@@ -294,10 +229,7 @@ def test_workflow_convenience_functions(rk, workflow_lists, results):
             try:
                 moved = rk.move_reminder(reminder_id, waiting_list.id)
                 assert moved.list_id == waiting_list.id
-                results.add_pass(
-                    "Move to Claude-Waiting",
-                    "Successfully moved to Waiting list"
-                )
+                results.add_pass("Move to Claude-Waiting", "Successfully moved to Waiting list")
             except Exception as e:
                 results.add_fail("Move to Claude-Waiting", e)
 
@@ -315,10 +247,7 @@ def test_move_between_all_workflow_lists(rk, workflow_lists, results):
     print("=" * 70)
 
     if len(workflow_lists) < 2:
-        results.add_skip(
-            "Move through all lists",
-            f"Need at least 2 workflow lists, found {len(workflow_lists)}"
-        )
+        results.add_skip("Move through all lists", f"Need at least 2 workflow lists, found {len(workflow_lists)}")
         return None
 
     cst_timestamp = get_current_cst_iso8601()
@@ -329,13 +258,10 @@ def test_move_between_all_workflow_lists(rk, workflow_lists, results):
         reminder = rk.create_reminder(
             title=test_title,
             notes="Test reminder for moving through all workflow lists",
-            calendar_id=workflow_lists[0].id
+            calendar_id=workflow_lists[0].id,
         )
 
-        results.add_pass(
-            "Create reminder for chain test",
-            f"Created in '{workflow_lists[0].name}'"
-        )
+        results.add_pass("Create reminder for chain test", f"Created in '{workflow_lists[0].name}'")
 
         reminder_id = reminder.id
 
@@ -344,18 +270,12 @@ def test_move_between_all_workflow_lists(rk, workflow_lists, results):
             try:
                 moved = rk.move_reminder(reminder_id, target_list.id)
                 assert moved.list_id == target_list.id
-                results.add_pass(
-                    f"Move to list {i+1}/{len(workflow_lists)}",
-                    f"Moved to '{target_list.name}'"
-                )
+                results.add_pass(f"Move to list {i+1}/{len(workflow_lists)}", f"Moved to '{target_list.name}'")
             except Exception as e:
                 results.add_fail(f"Move to '{target_list.name}'", e)
                 return reminder_id
 
-        results.add_pass(
-            "Complete workflow chain",
-            f"Successfully moved through all {len(workflow_lists)} lists"
-        )
+        results.add_pass("Complete workflow chain", f"Successfully moved through all {len(workflow_lists)} lists")
 
         return reminder_id
 
@@ -377,16 +297,10 @@ def test_error_handling(rk, results):
 
         try:
             rk.move_reminder(fake_reminder_id, fake_calendar_id)
-            results.add_fail(
-                "Move non-existent reminder",
-                "Should have raised ValueError"
-            )
+            results.add_fail("Move non-existent reminder", "Should have raised ValueError")
         except ValueError as e:
             if "not found" in str(e):
-                results.add_pass(
-                    "Move non-existent reminder",
-                    "Correctly raised ValueError"
-                )
+                results.add_pass("Move non-existent reminder", "Correctly raised ValueError")
             else:
                 results.add_fail("Move non-existent reminder", f"Wrong error: {e}")
     except Exception as e:
@@ -395,25 +309,16 @@ def test_error_handling(rk, results):
     # Test moving to non-existent calendar
     try:
         # Create a real reminder first
-        reminder = rk.create_reminder(
-            title="Error Test Reminder",
-            notes="For testing error handling"
-        )
+        reminder = rk.create_reminder(title="Error Test Reminder", notes="For testing error handling")
 
         fake_calendar_id = "00000000-0000-0000-0000-000000000001"
 
         try:
             rk.move_reminder(reminder.id, fake_calendar_id)
-            results.add_fail(
-                "Move to non-existent calendar",
-                "Should have raised ValueError"
-            )
+            results.add_fail("Move to non-existent calendar", "Should have raised ValueError")
         except ValueError as e:
             if "not found" in str(e):
-                results.add_pass(
-                    "Move to non-existent calendar",
-                    "Correctly raised ValueError"
-                )
+                results.add_pass("Move to non-existent calendar", "Correctly raised ValueError")
             else:
                 results.add_fail("Move to non-existent calendar", f"Wrong error: {e}")
 
@@ -434,10 +339,7 @@ def cleanup_test_reminders(rk, reminder_ids, results):
         if reminder_id:
             try:
                 rk.delete_reminder(reminder_id)
-                results.add_pass(
-                    f"Delete reminder {reminder_id[:8]}",
-                    "Deleted successfully"
-                )
+                results.add_pass(f"Delete reminder {reminder_id[:8]}", "Deleted successfully")
             except Exception as e:
                 results.add_fail(f"Delete reminder {reminder_id[:8]}", e)
 
@@ -506,6 +408,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Fatal Error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

@@ -77,14 +77,11 @@ def test_calendar_operations(rk, results):
     # Test 1: List all calendars
     try:
         calendars = list(rk.calendars.list())
-        results.add_pass(
-            "List all calendars",
-            f"Found {len(calendars)} calendar(s)"
-        )
+        results.add_pass("List all calendars", f"Found {len(calendars)} calendar(s)")
 
         # Store for later use
         if calendars:
-            print(f"\n  📋 Available Calendars:")
+            print("\n  📋 Available Calendars:")
             for i, cal in enumerate(calendars[:5], 1):
                 default = " (default)" if cal.is_default else ""
                 print(f"     {i}. {cal.name}{default}")
@@ -98,10 +95,7 @@ def test_calendar_operations(rk, results):
     # Test 2: Get default calendar
     try:
         default_cal = rk.calendars.get_default()
-        results.add_pass(
-            "Get default calendar",
-            f"'{default_cal.name}'"
-        )
+        results.add_pass("Get default calendar", f"'{default_cal.name}'")
     except Exception as e:
         results.add_fail("Get default calendar", e)
         default_cal = None
@@ -112,10 +106,7 @@ def test_calendar_operations(rk, results):
             first_cal = calendars[0]
             retrieved_cal = rk.calendars.get(first_cal.name)
             assert retrieved_cal.id == first_cal.id
-            results.add_pass(
-                "Get calendar by name",
-                f"Retrieved '{first_cal.name}'"
-            )
+            results.add_pass("Get calendar by name", f"Retrieved '{first_cal.name}'")
         except Exception as e:
             results.add_fail("Get calendar by name", e)
 
@@ -125,10 +116,7 @@ def test_calendar_operations(rk, results):
             first_cal = calendars[0]
             retrieved_cal = rk.calendars.get_by_id(first_cal.id)
             assert retrieved_cal.name == first_cal.name
-            results.add_pass(
-                "Get calendar by ID",
-                f"Retrieved '{first_cal.name}'"
-            )
+            results.add_pass("Get calendar by ID", f"Retrieved '{first_cal.name}'")
         except Exception as e:
             results.add_fail("Get calendar by ID", e)
 
@@ -138,10 +126,7 @@ def test_calendar_operations(rk, results):
             # Search for first calendar's name
             search_query = calendars[0].name[:3]  # Use first 3 chars
             search_results = list(rk.calendars.search(search_query))
-            results.add_pass(
-                "Search calendars",
-                f"Query '{search_query}' found {len(search_results)} result(s)"
-            )
+            results.add_pass("Search calendars", f"Query '{search_query}' found {len(search_results)} result(s)")
         except Exception as e:
             results.add_fail("Search calendars", e)
 
@@ -179,10 +164,7 @@ def test_reminder_crud_operations(rk, calendars, default_cal, results):
         assert reminder.priority == 5
         assert reminder.url is not None
 
-        results.add_pass(
-            "Create reminder with full metadata",
-            f"ID: {reminder_id}"
-        )
+        results.add_pass("Create reminder with full metadata", f"ID: {reminder_id}")
     except Exception as e:
         results.add_fail("Create reminder with full metadata", e)
         return None  # Can't continue without a reminder
@@ -343,10 +325,7 @@ def test_reminder_crud_operations(rk, calendars, default_cal, results):
                 # Note: RemindKit doesn't have a direct "move" operation
                 # We need to delete and recreate in the new calendar
                 # Or update the calendar if the API supports it
-                results.add_skip(
-                    "Move to different list",
-                    "RemindKit API doesn't support moving between lists"
-                )
+                results.add_skip("Move to different list", "RemindKit API doesn't support moving between lists")
             else:
                 results.add_skip("Move to different list", "No alternative calendar available")
         except Exception as e:
@@ -359,31 +338,19 @@ def test_reminder_crud_operations(rk, calendars, default_cal, results):
         search_results = list(rk.search_reminders("UPDATED"))
         found = any(r.id == reminder_id for r in search_results)
         assert found
-        results.add_pass(
-            "Search for reminder",
-            f"Found in {len(search_results)} result(s)"
-        )
+        results.add_pass("Search for reminder", f"Found in {len(search_results)} result(s)")
     except Exception as e:
         results.add_fail("Search for reminder", e)
 
     # Test 20: Get reminder in filtered queries
     try:
         # Should appear in overdue reminders (we set due date to past)
-        overdue = list(rk.get_reminders(
-            due_before=datetime.now(),
-            is_completed=False
-        ))
+        overdue = list(rk.get_reminders(due_before=datetime.now(), is_completed=False))
         found = any(r.id == reminder_id for r in overdue)
         if found:
-            results.add_pass(
-                "Find in overdue reminders",
-                f"Found among {len(overdue)} overdue reminder(s)"
-            )
+            results.add_pass("Find in overdue reminders", f"Found among {len(overdue)} overdue reminder(s)")
         else:
-            results.add_fail(
-                "Find in overdue reminders",
-                "Reminder not found in overdue list"
-            )
+            results.add_fail("Find in overdue reminders", "Reminder not found in overdue list")
     except Exception as e:
         results.add_fail("Find in overdue reminders", e)
 
@@ -392,10 +359,7 @@ def test_reminder_crud_operations(rk, calendars, default_cal, results):
         all_reminders = list(rk.get_reminders())
         found = any(r.id == reminder_id for r in all_reminders)
         assert found
-        results.add_pass(
-            "Find in all reminders",
-            f"Found among {len(all_reminders)} total reminder(s)"
-        )
+        results.add_pass("Find in all reminders", f"Found among {len(all_reminders)} total reminder(s)")
     except Exception as e:
         results.add_fail("Find in all reminders", e)
 
@@ -421,10 +385,7 @@ def test_additional_reminder_operations(rk, results):
         assert reminder.notes is None or reminder.notes == ""
         assert reminder.due_date is None
 
-        results.add_pass(
-            "Create minimal reminder",
-            "Only title, no other fields"
-        )
+        results.add_pass("Create minimal reminder", "Only title, no other fields")
     except Exception as e:
         results.add_fail("Create minimal reminder", e)
 
@@ -438,10 +399,7 @@ def test_additional_reminder_operations(rk, results):
         assert reminder.title == title
         assert reminder.due_date is not None
 
-        results.add_pass(
-            "Create reminder with due date only",
-            f"Due: {due_date.strftime('%Y-%m-%d %H:%M')}"
-        )
+        results.add_pass("Create reminder with due date only", f"Due: {due_date.strftime('%Y-%m-%d %H:%M')}")
     except Exception as e:
         results.add_fail("Create reminder with due date only", e)
 
@@ -453,28 +411,19 @@ def test_additional_reminder_operations(rk, results):
 
         assert reminder.priority == 9
 
-        results.add_pass(
-            "Create high priority reminder",
-            "Priority set to 9 (High)"
-        )
+        results.add_pass("Create high priority reminder", "Priority set to 9 (High)")
     except Exception as e:
         results.add_fail("Create high priority reminder", e)
 
     # Test 4: Reminder with URL only
     try:
         title = f"MCP TEST URL: {cst_timestamp}"
-        reminder = rk.create_reminder(
-            title=title,
-            url="https://github.com/anthropics/claude-code"
-        )
+        reminder = rk.create_reminder(title=title, url="https://github.com/anthropics/claude-code")
         created_ids.append(reminder.id)
 
         assert reminder.url is not None
 
-        results.add_pass(
-            "Create reminder with URL",
-            reminder.url
-        )
+        results.add_pass("Create reminder with URL", reminder.url)
     except Exception as e:
         results.add_fail("Create reminder with URL", e)
 
@@ -485,23 +434,14 @@ def test_additional_reminder_operations(rk, results):
             # Use second calendar
             target_cal = calendars[1]
             title = f"MCP TEST SPECIFIC LIST: {cst_timestamp}"
-            reminder = rk.create_reminder(
-                title=title,
-                calendar_id=target_cal.id
-            )
+            reminder = rk.create_reminder(title=title, calendar_id=target_cal.id)
             created_ids.append(reminder.id)
 
             assert reminder.list_id == target_cal.id
 
-            results.add_pass(
-                "Create in specific calendar",
-                f"Created in '{target_cal.name}'"
-            )
+            results.add_pass("Create in specific calendar", f"Created in '{target_cal.name}'")
         else:
-            results.add_skip(
-                "Create in specific calendar",
-                "Only one calendar available"
-            )
+            results.add_skip("Create in specific calendar", "Only one calendar available")
     except Exception as e:
         results.add_fail("Create in specific calendar", e)
 
@@ -518,10 +458,7 @@ def test_query_operations(rk, results):
     try:
         next_reminder = rk.get_next_reminder()
         if next_reminder:
-            results.add_pass(
-                "Get next reminder",
-                f"'{next_reminder.title}' due {next_reminder.due_date}"
-            )
+            results.add_pass("Get next reminder", f"'{next_reminder.title}' due {next_reminder.due_date}")
         else:
             results.add_pass("Get next reminder", "No upcoming reminders")
     except Exception as e:
@@ -529,59 +466,37 @@ def test_query_operations(rk, results):
 
     # Test 2: Get overdue reminders
     try:
-        overdue = list(rk.get_reminders(
-            due_before=datetime.now(),
-            is_completed=False
-        ))
-        results.add_pass(
-            "Get overdue reminders",
-            f"Found {len(overdue)} overdue reminder(s)"
-        )
+        overdue = list(rk.get_reminders(due_before=datetime.now(), is_completed=False))
+        results.add_pass("Get overdue reminders", f"Found {len(overdue)} overdue reminder(s)")
     except Exception as e:
         results.add_fail("Get overdue reminders", e)
 
     # Test 3: Get completed reminders
     try:
         completed = list(rk.get_reminders(is_completed=True))
-        results.add_pass(
-            "Get completed reminders",
-            f"Found {len(completed)} completed reminder(s)"
-        )
+        results.add_pass("Get completed reminders", f"Found {len(completed)} completed reminder(s)")
     except Exception as e:
         results.add_fail("Get completed reminders", e)
 
     # Test 4: Get incomplete reminders
     try:
         incomplete = list(rk.get_reminders(is_completed=False))
-        results.add_pass(
-            "Get incomplete reminders",
-            f"Found {len(incomplete)} incomplete reminder(s)"
-        )
+        results.add_pass("Get incomplete reminders", f"Found {len(incomplete)} incomplete reminder(s)")
     except Exception as e:
         results.add_fail("Get incomplete reminders", e)
 
     # Test 5: Get reminders due in next 7 days
     try:
         week_from_now = datetime.now() + timedelta(days=7)
-        upcoming = list(rk.get_reminders(
-            due_after=datetime.now(),
-            due_before=week_from_now,
-            is_completed=False
-        ))
-        results.add_pass(
-            "Get reminders due in next 7 days",
-            f"Found {len(upcoming)} upcoming reminder(s)"
-        )
+        upcoming = list(rk.get_reminders(due_after=datetime.now(), due_before=week_from_now, is_completed=False))
+        results.add_pass("Get reminders due in next 7 days", f"Found {len(upcoming)} upcoming reminder(s)")
     except Exception as e:
         results.add_fail("Get reminders due in next 7 days", e)
 
     # Test 6: Search by partial text
     try:
         search_results = list(rk.search_reminders("MCP TEST"))
-        results.add_pass(
-            "Search by partial text",
-            f"Found {len(search_results)} result(s) matching 'MCP TEST'"
-        )
+        results.add_pass("Search by partial text", f"Found {len(search_results)} result(s) matching 'MCP TEST'")
     except Exception as e:
         results.add_fail("Search by partial text", e)
 
@@ -603,10 +518,7 @@ def cleanup_test_reminders(rk, reminder_ids, results):
     for reminder_id in reminder_ids:
         try:
             rk.get_reminder_by_id(reminder_id)
-            results.add_fail(
-                f"Verify deletion {reminder_id[:8]}",
-                "Reminder still exists!"
-            )
+            results.add_fail(f"Verify deletion {reminder_id[:8]}", "Reminder still exists!")
         except ValueError:
             # Expected - reminder should not exist
             results.add_pass(f"Verify deletion {reminder_id[:8]}", "Confirmed deleted")
@@ -637,9 +549,7 @@ def main():
         calendars, default_cal = test_calendar_operations(rk, results)
 
         # Test comprehensive CRUD operations
-        main_reminder_id = test_reminder_crud_operations(
-            rk, calendars, default_cal, results
-        )
+        main_reminder_id = test_reminder_crud_operations(rk, calendars, default_cal, results)
         if main_reminder_id:
             all_test_reminder_ids.append(main_reminder_id)
 
@@ -666,6 +576,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Fatal Error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

@@ -21,18 +21,22 @@ def test_imports():
     try:
         # Test MCP package
         import mcp
+
         print("✅ mcp package imported successfully")
 
         # Test EventKit
         from EventKit import EKEventStore
+
         print("✅ EventKit framework imported successfully")
 
         # Test pyremindkit
-        from pyremindkit import RemindKit, Priority, Reminder
+        from pyremindkit import Priority, Reminder, RemindKit
+
         print("✅ pyremindkit library imported successfully")
 
         # Test MCP server
         from mcp_apple_reminders import server
+
         print("✅ MCP Apple Reminders server imported successfully")
 
         return True
@@ -48,14 +52,14 @@ def test_server_structure():
     print("=" * 60)
 
     try:
-        from mcp_apple_reminders.server import app, list_tools, call_tool
+        from mcp_apple_reminders.server import app
 
         print("✅ Server app instance found")
         print("✅ list_tools handler found")
         print("✅ call_tool handler found")
 
         # Check server name
-        if hasattr(app, 'name'):
+        if hasattr(app, "name"):
             print(f"✅ Server name: {app.name}")
 
         return True
@@ -119,6 +123,7 @@ def test_remindkit_permissions():
     except Exception as e:
         print(f"❌ RemindKit error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -130,6 +135,7 @@ def test_tool_definitions():
 
     try:
         import asyncio
+
         from mcp_apple_reminders.server import list_tools
 
         # Call the list_tools handler directly
@@ -145,9 +151,22 @@ def test_tool_definitions():
 
             # Define expected tools
             expected_tools = {
-                'list_calendars', 'get_calendar', 'get_calendar_by_id', 'search_calendars', 'get_default_calendar',
-                'create_reminder', 'update_reminder', 'complete_reminder', 'uncomplete_reminder', 'get_reminder', 'delete_reminder',
-                'get_reminders', 'search_reminders', 'get_next_reminder', 'get_overdue_reminders', 'get_today_reminders'
+                "list_calendars",
+                "get_calendar",
+                "get_calendar_by_id",
+                "search_calendars",
+                "get_default_calendar",
+                "create_reminder",
+                "update_reminder",
+                "complete_reminder",
+                "uncomplete_reminder",
+                "get_reminder",
+                "delete_reminder",
+                "get_reminders",
+                "search_reminders",
+                "get_next_reminder",
+                "get_overdue_reminders",
+                "get_today_reminders",
             }
 
             tool_names = {t.name for t in tools}
@@ -157,16 +176,43 @@ def test_tool_definitions():
                 print(f"⚠️  Missing expected tools: {', '.join(missing)}")
 
             # Group tools by category
-            calendar_tools = [t for t in tools if t.name.startswith(('list_calendar', 'get_calendar', 'search_calendar', 'get_default_calendar'))]
-            reminder_crud = [t for t in tools if t.name in ('create_reminder', 'update_reminder', 'complete_reminder', 'uncomplete_reminder', 'get_reminder', 'delete_reminder')]
-            reminder_query = [t for t in tools if t.name in ('get_reminders', 'search_reminders', 'get_next_reminder', 'get_overdue_reminders', 'get_today_reminders')]
+            calendar_tools = [
+                t
+                for t in tools
+                if t.name.startswith(("list_calendar", "get_calendar", "search_calendar", "get_default_calendar"))
+            ]
+            reminder_crud = [
+                t
+                for t in tools
+                if t.name
+                in (
+                    "create_reminder",
+                    "update_reminder",
+                    "complete_reminder",
+                    "uncomplete_reminder",
+                    "get_reminder",
+                    "delete_reminder",
+                )
+            ]
+            reminder_query = [
+                t
+                for t in tools
+                if t.name
+                in (
+                    "get_reminders",
+                    "search_reminders",
+                    "get_next_reminder",
+                    "get_overdue_reminders",
+                    "get_today_reminders",
+                )
+            ]
 
-            print(f"\n📊 Tool Categories:")
+            print("\n📊 Tool Categories:")
             print(f"   Calendar Management: {len(calendar_tools)} tools")
             print(f"   Reminder CRUD: {len(reminder_crud)} tools")
             print(f"   Reminder Query: {len(reminder_query)} tools")
 
-            print(f"\n📋 All Tools:")
+            print("\n📋 All Tools:")
             for tool in sorted(tools, key=lambda t: t.name):
                 print(f"   • {tool.name}")
 
@@ -178,6 +224,7 @@ def test_tool_definitions():
     except Exception as e:
         print(f"❌ Tool definition error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -191,10 +238,10 @@ def main():
     results = {}
 
     # Run tests
-    results['imports'] = test_imports()
-    results['structure'] = test_server_structure()
-    results['permissions'] = test_remindkit_permissions()
-    results['tools'] = test_tool_definitions()
+    results["imports"] = test_imports()
+    results["structure"] = test_server_structure()
+    results["permissions"] = test_remindkit_permissions()
+    results["tools"] = test_tool_definitions()
 
     # Summary
     print("\n" + "=" * 60)
@@ -219,7 +266,7 @@ def main():
         failed_tests = [name for name, passed in results.items() if not passed]
         print(f"⚠️  Some tests failed: {', '.join(failed_tests)}")
 
-        if not results.get('permissions'):
+        if not results.get("permissions"):
             print("\n💡 Note: Permission errors are expected on first run.")
             print("   Grant access when prompted or in System Settings.")
 

@@ -1,961 +1,505 @@
-"""MCP Apple Reminders Server Implementation.
+"""FastMCP server for Apple Reminders.
 
-This module implements a Model Context Protocol (MCP) server that provides comprehensive
-integration with Apple Reminders. It exposes tools for managing reminders, calendars,
-and related operations through the pyremindkit library.
+Exposes Reminders as MCP tools, resources, and prompts to LLM clients.
+Tool input schemas are generated from Pydantic models on the function
+signatures; output payloads are returned as Pydantic instances which the
+SDK serializes to JSON for structured agent consumption.
 
-The server is designed to work seamlessly with Claude for macOS and other MCP-compatible clients.
+Resources and prompts are registered in :mod:`mcp_apple_reminders.resources`
+and :mod:`mcp_apple_reminders.prompts`; this module wires everything
+together and owns the singleton ``RemindKit`` connection.
 """
 
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
 import sys
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any
 
-# Add the pyremindkit library to the path
-# Use relative path from this file's location
-_current_file = Path(__file__).resolve()
-_project_root = _current_file.parent.parent.parent
-_pyremindkit_path = _project_root / "libs" / "pyremindkit" / "src"
-sys.path.insert(0, str(_pyremindkit_path))
+from mcp.server.fastmcp import FastMCP
+from pydantic import Field
 
-from pyremindkit import Priority, RemindKit, Reminder
+from . import __version__
+from ._helpers import parse_datetime, parse_priority, today_window
+from ._models import (
+    Calendar,
+    CalendarList,
+    OperationResult,
+    Reminder,
+    ReminderList,
+    calendar_from_obj,
+    reminder_from_obj,
+)
+from ._workflow import (
+    WorkflowListMissingError,
+    WorkflowRole,
+    all_workflow_names,
+    resolve_workflow_calendar,
+    workflow_list_name,
+)
 
-from mcp.server import Server
-from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
-import mcp.server.stdio
-
-
-# Initialize the RemindKit instance
-# This will request permissions on first run if not already granted
-try:
-    remind = RemindKit()
-except PermissionError as e:
-    print(f"Error: Unable to access Apple Reminders. Please grant permissions in System Settings > Privacy & Security > Reminders.", file=sys.stderr)
-    sys.exit(1)
-except Exception as e:
-    print(f"Error initializing RemindKit: {e}", file=sys.stderr)
-    sys.exit(1)
+logger = logging.getLogger("mcp_apple_reminders")
 
 
-# Create the MCP server instance
-app = Server("mcp-apple-reminders")
+# --- Server-level instructions read by clients on initialize -----------------
+
+INSTRUCTIONS = """\
+This server is a conversational layer over Apple Reminders, designed for
+ADHD-friendly task management. Prefer the prompts (`plan_my_day`,
+`triage_inbox`, `weekly_review`, `quick_capture`) for compound workflows;
+fall back to individual tools for surgical edits.
+
+Workflow lists follow a simple kanban convention:
+  Claude-On-Deck   — queued, ready to start
+  Claude-Active    — currently in progress (≤3 items at a time is healthy)
+  Claude-Done      — completed
+  Claude-Blocked   — waiting on someone or something
+
+Use `move_reminder_*` tools to transition items between states. The list
+prefix can be customized via the MCP_APPLE_REMINDERS_LIST_PREFIX env var.
+
+Datetimes are parsed leniently: ISO 8601 with or without a `Z` suffix,
+naive or zoned, all work. Priorities accept the words none/low/medium/high
+or integers 0-9 (Apple's UI shows four levels; the int range is preserved
+on round-trip).
+"""
 
 
-def format_reminder(reminder: Reminder) -> str:
-    """Format a reminder object as a human-readable string.
-
-    Args:
-        reminder: The Reminder object to format
-
-    Returns:
-        A formatted string representation of the reminder
-    """
-    parts = [
-        f"ID: {reminder.id}",
-        f"Title: {reminder.title}",
-        f"Completed: {'Yes' if reminder.completed else 'No'}",
-    ]
-
-    if reminder.due_date:
-        parts.append(f"Due Date: {reminder.due_date.strftime('%Y-%m-%d %H:%M:%S')}")
-
-    if reminder.notes:
-        parts.append(f"Notes: {reminder.notes}")
-
-    if reminder.url:
-        parts.append(f"URL: {reminder.url}")
-
-    # Format priority
-    priority_map = {0: "None", 1: "Low", 5: "Medium", 9: "High"}
-    priority_str = priority_map.get(reminder.priority, f"Custom ({reminder.priority})")
-    parts.append(f"Priority: {priority_str}")
-
-    parts.append(f"List ID: {reminder.list_id}")
-
-    if reminder.created_date:
-        parts.append(f"Created: {reminder.created_date.strftime('%Y-%m-%d %H:%M:%S')}")
-
-    if reminder.modified_date:
-        parts.append(f"Modified: {reminder.modified_date.strftime('%Y-%m-%d %H:%M:%S')}")
-
-    parts.append(f"Flagged: {'Yes' if reminder.flagged else 'No'}")
-
-    return "\n".join(parts)
+# --- pyremindkit connection (lazy, so import-time failures are recoverable) --
 
 
-def parse_datetime(date_string: str) -> datetime:
-    """Parse a datetime string in ISO format.
+def _connect_remindkit() -> Any:
+    """Open a connection to the local Reminders database via pyremindkit.
 
-    Args:
-        date_string: ISO format datetime string (e.g., "2024-01-15T14:30:00")
-
-    Returns:
-        datetime object
-
-    Raises:
-        ValueError: If the date string is invalid
+    Imported lazily so the module is importable on Linux/CI for unit tests.
+    Raises ``RuntimeError`` with an actionable message if the connection
+    fails — the caller (FastMCP) surfaces this to the client over MCP.
     """
     try:
-        return datetime.fromisoformat(date_string)
-    except ValueError:
-        raise ValueError(f"Invalid datetime format: {date_string}. Expected ISO format (e.g., '2024-01-15T14:30:00')")
-
-
-def parse_priority(priority_str: str) -> int:
-    """Parse a priority string to an integer value.
-
-    Apple Reminders uses these priority values:
-    - 0: None
-    - 1-4: Low (we use 1)
-    - 5: Medium
-    - 6-9: High (we use 9)
-
-    Args:
-        priority_str: Priority as string ("none", "low", "medium", "high") or integer string
-
-    Returns:
-        Integer priority value (0, 1, 5, or 9)
-
-    Raises:
-        ValueError: If the priority string is invalid
-    """
-    priority_lower = priority_str.lower().strip()
-
-    # Try direct integer parsing first
+        from pyremindkit import RemindKit
+    except ImportError as exc:  # pragma: no cover - import guard
+        raise RuntimeError(
+            "pyremindkit is not installed. Install via `pip install mcp-apple-reminders` "
+            "on macOS, or see the README for development setup."
+        ) from exc
     try:
-        val = int(priority_lower)
-        if 0 <= val <= 9:
-            return val
-    except ValueError:
-        pass
-
-    # Parse named priorities
-    priority_map = {
-        "none": 0,
-        "low": 1,
-        "medium": 5,
-        "high": 9,
-    }
-
-    if priority_lower in priority_map:
-        return priority_map[priority_lower]
-
-    raise ValueError(f"Invalid priority: {priority_str}. Expected 'none', 'low', 'medium', 'high', or integer 0-9")
+        return RemindKit()
+    except PermissionError as exc:
+        raise RuntimeError(
+            "Apple Reminders permission denied. Grant access in "
+            "System Settings → Privacy & Security → Reminders, then restart "
+            "your MCP client. See: https://support.apple.com/guide/mac-help/mh40596"
+        ) from exc
 
 
-@app.list_tools()
-async def list_tools() -> list[Tool]:
-    """List all available tools provided by this MCP server.
+_remind: Any | None = None
 
-    This function is called by the MCP client to discover available operations.
-    Each tool represents a specific operation that can be performed on Apple Reminders.
 
-    Returns:
-        List of Tool objects describing available operations
+def _remindkit() -> Any:
+    """Memoized accessor for the RemindKit singleton."""
+    global _remind
+    if _remind is None:
+        _remind = _connect_remindkit()
+    return _remind
+
+
+def _set_remindkit_for_testing(stub: Any) -> None:
+    """Inject a fake RemindKit for unit tests. Not part of the public API."""
+    global _remind
+    _remind = stub
+
+
+# --- Server instance ---------------------------------------------------------
+
+mcp = FastMCP(
+    name="apple-reminders",
+    instructions=INSTRUCTIONS,
+)
+
+
+# --- Calendar (list) tools ---------------------------------------------------
+
+
+@mcp.tool()
+def list_calendars() -> CalendarList:
+    """List every reminder list (Apple calls these calendars)."""
+    cals = [calendar_from_obj(c) for c in _remindkit().calendars.list()]
+    return CalendarList(calendars=cals, count=len(cals))
+
+
+@mcp.tool()
+def get_calendar(name: Annotated[str, Field(description="Exact (case-sensitive) list name.")]) -> Calendar:
+    """Get a list by exact name."""
+    return calendar_from_obj(_remindkit().calendars.get(name))
+
+
+@mcp.tool()
+def get_calendar_by_id(calendar_id: str) -> Calendar:
+    """Get a list by its unique ID. More reliable than lookup by name."""
+    return calendar_from_obj(_remindkit().calendars.get_by_id(calendar_id))
+
+
+@mcp.tool()
+def search_calendars(
+    query: Annotated[str, Field(description="Substring to match against list names (case-insensitive).")],
+) -> CalendarList:
+    """Search lists by partial name."""
+    cals = [calendar_from_obj(c) for c in _remindkit().calendars.search(query)]
+    return CalendarList(calendars=cals, count=len(cals))
+
+
+@mcp.tool()
+def get_default_calendar() -> Calendar:
+    """Get the default list new reminders are created in."""
+    return calendar_from_obj(_remindkit().calendars.get_default())
+
+
+# --- Reminder CRUD -----------------------------------------------------------
+
+
+@mcp.tool()
+def create_reminder(
+    title: Annotated[str, Field(min_length=1, description="Reminder title.")],
+    due_date: Annotated[str | None, Field(description="ISO 8601 datetime; trailing Z is OK.")] = None,
+    notes: str | None = None,
+    priority: Annotated[
+        str | int | None,
+        Field(description="'none'/'low'/'medium'/'high' or integer 0-9."),
+    ] = None,
+    url: str | None = None,
+    flagged: bool = False,
+    calendar_id: Annotated[
+        str | None,
+        Field(description="Target list ID. Defaults to the user's default list."),
+    ] = None,
+) -> Reminder:
+    """Create a new reminder."""
+    kwargs: dict[str, Any] = {"title": title}
+    if due_date is not None:
+        kwargs["due_date"] = parse_datetime(due_date)
+    if notes is not None:
+        kwargs["notes"] = notes
+    if priority is not None:
+        kwargs["priority"] = parse_priority(priority)
+    if url is not None:
+        kwargs["url"] = url
+    if flagged:
+        kwargs["flagged"] = True
+    if calendar_id is not None:
+        kwargs["calendar_id"] = calendar_id
+    return reminder_from_obj(_remindkit().create_reminder(**kwargs))
+
+
+@mcp.tool()
+def update_reminder(
+    reminder_id: str,
+    title: str | None = None,
+    due_date: str | None = None,
+    notes: str | None = None,
+    priority: str | int | None = None,
+    url: str | None = None,
+    flagged: bool | None = None,
+    is_completed: bool | None = None,
+) -> Reminder:
+    """Update an existing reminder.
+
+    Only fields you explicitly pass are touched. Pass an empty string to
+    clear ``notes`` or ``url``; pass 0 to clear ``priority``. Use ``None``
+    (the default) to leave a field unchanged.
     """
-    return [
-        # Calendar Management Tools
-        Tool(
-            name="list_calendars",
-            description="List all available reminder calendars (lists). Returns all reminder lists accessible to the user, including their IDs, names, colors, and whether they are the default list.",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        ),
-        Tool(
-            name="get_calendar",
-            description="Get a specific calendar (list) by name. Searches for a reminder list with the exact name provided.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "The exact name of the calendar to retrieve",
-                    },
-                },
-                "required": ["name"],
-            },
-        ),
-        Tool(
-            name="get_calendar_by_id",
-            description="Get a specific calendar (list) by its unique ID. More reliable than searching by name.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "calendar_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the calendar",
-                    },
-                },
-                "required": ["calendar_id"],
-            },
-        ),
-        Tool(
-            name="search_calendars",
-            description="Search for calendars (lists) by partial name match. Case-insensitive search that returns all calendars containing the query string.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Search query string (partial name match)",
-                    },
-                },
-                "required": ["query"],
-            },
-        ),
-        Tool(
-            name="get_default_calendar",
-            description="Get the default calendar (list) for new reminders. This is the list that Apple Reminders uses by default when creating new items.",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        ),
-
-        # Reminder CRUD Operations
-        Tool(
-            name="create_reminder",
-            description="Create a new reminder in Apple Reminders. You can specify the title, due date, notes, priority, URL, and which calendar (list) to add it to. If no calendar is specified, it will be added to the default list.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "title": {
-                        "type": "string",
-                        "description": "The title/name of the reminder",
-                    },
-                    "due_date": {
-                        "type": "string",
-                        "description": "ISO format datetime string (e.g., '2024-01-15T14:30:00'). Optional.",
-                    },
-                    "notes": {
-                        "type": "string",
-                        "description": "Additional notes or description for the reminder. Optional.",
-                    },
-                    "priority": {
-                        "type": "string",
-                        "description": "Priority level: 'none', 'low', 'medium', 'high', or integer 0-9. Default is 'none'. Optional.",
-                    },
-                    "url": {
-                        "type": "string",
-                        "description": "URL to associate with the reminder. Optional.",
-                    },
-                    "calendar_id": {
-                        "type": "string",
-                        "description": "ID of the calendar (list) to add the reminder to. If not specified, uses the default calendar. Optional.",
-                    },
-                },
-                "required": ["title"],
-            },
-        ),
-        Tool(
-            name="update_reminder",
-            description="Update an existing reminder. You can modify any combination of: title, due date, notes, priority, URL, and completion status. Only the fields you specify will be updated; others remain unchanged.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder to update",
-                    },
-                    "title": {
-                        "type": "string",
-                        "description": "New title for the reminder. Optional.",
-                    },
-                    "due_date": {
-                        "type": "string",
-                        "description": "New due date in ISO format (e.g., '2024-01-15T14:30:00'). Optional.",
-                    },
-                    "notes": {
-                        "type": "string",
-                        "description": "New notes/description. Optional.",
-                    },
-                    "priority": {
-                        "type": "string",
-                        "description": "New priority: 'none', 'low', 'medium', 'high', or integer 0-9. Optional.",
-                    },
-                    "url": {
-                        "type": "string",
-                        "description": "New URL to associate with the reminder. Optional.",
-                    },
-                    "is_completed": {
-                        "type": "boolean",
-                        "description": "Mark the reminder as completed (true) or incomplete (false). Optional.",
-                    },
-                },
-                "required": ["reminder_id"],
-            },
-        ),
-        Tool(
-            name="complete_reminder",
-            description="Mark a reminder as completed. This is a convenience tool that's equivalent to calling update_reminder with is_completed=true.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder to mark as complete",
-                    },
-                },
-                "required": ["reminder_id"],
-            },
-        ),
-        Tool(
-            name="uncomplete_reminder",
-            description="Mark a reminder as incomplete/not done. This is useful for reopening a reminder that was previously completed.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder to mark as incomplete",
-                    },
-                },
-                "required": ["reminder_id"],
-            },
-        ),
-        Tool(
-            name="get_reminder",
-            description="Get a specific reminder by its unique ID. Returns all details about the reminder including title, due date, notes, priority, completion status, and more.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder",
-                    },
-                },
-                "required": ["reminder_id"],
-            },
-        ),
-        Tool(
-            name="delete_reminder",
-            description="Permanently delete a reminder. This action cannot be undone. The reminder will be removed from Apple Reminders entirely.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder to delete",
-                    },
-                },
-                "required": ["reminder_id"],
-            },
-        ),
-
-        # Reminder Query Operations
-        Tool(
-            name="get_reminders",
-            description="Get reminders with optional filters. You can filter by: due date range, completion status, priority level, and specific calendar. Without filters, returns all reminders from all calendars.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "due_after": {
-                        "type": "string",
-                        "description": "Only return reminders due after this date (ISO format). Optional.",
-                    },
-                    "due_before": {
-                        "type": "string",
-                        "description": "Only return reminders due before this date (ISO format). Optional.",
-                    },
-                    "is_completed": {
-                        "type": "boolean",
-                        "description": "Filter by completion status: true for completed, false for incomplete, omit for all. Optional.",
-                    },
-                    "priority": {
-                        "type": "string",
-                        "description": "Filter by priority: 'none', 'low', 'medium', or 'high'. Optional.",
-                    },
-                    "calendar_id": {
-                        "type": "string",
-                        "description": "Only return reminders from this specific calendar. Optional.",
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of reminders to return. Optional.",
-                    },
-                },
-                "required": [],
-            },
-        ),
-        Tool(
-            name="search_reminders",
-            description="Search for reminders by text query. Searches both the reminder title and notes fields. Case-insensitive partial matching.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Search query string to match against titles and notes",
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return. Optional.",
-                    },
-                },
-                "required": ["query"],
-            },
-        ),
-        Tool(
-            name="get_next_reminder",
-            description="Get the next upcoming incomplete reminder based on due date. Returns the soonest incomplete reminder that has a due date set. Returns nothing if no upcoming reminders exist.",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        ),
-        Tool(
-            name="get_overdue_reminders",
-            description="Get all incomplete reminders that are overdue (due date is in the past). Useful for finding tasks that need immediate attention.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return. Optional.",
-                    },
-                },
-                "required": [],
-            },
-        ),
-        Tool(
-            name="get_today_reminders",
-            description="Get all reminders due today (both completed and incomplete). Useful for daily task management and review.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "include_completed": {
-                        "type": "boolean",
-                        "description": "Whether to include completed reminders. Default is false (only incomplete). Optional.",
-                    },
-                },
-                "required": [],
-            },
-        ),
-
-        # Workflow Management Tools
-        Tool(
-            name="get_workflow_lists",
-            description="Get all workflow lists (calendars starting with 'Claude-'). These are special lists used for workflow management with Claude, such as Claude-Brain-Dump, Claude-On-Deck, Claude-Active, Claude-Done, and Claude-Waiting.",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        ),
-        Tool(
-            name="move_reminder_to_list",
-            description="Move a reminder to a different calendar/list. This allows you to organize reminders by moving them between different lists.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder to move",
-                    },
-                    "calendar_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the target calendar/list",
-                    },
-                },
-                "required": ["reminder_id", "calendar_id"],
-            },
-        ),
-        Tool(
-            name="move_reminder_on_deck",
-            description="Move a reminder to the 'Claude-On-Deck' workflow list. This indicates the task is queued and ready to be worked on next. Convenience function for workflow management.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder to move",
-                    },
-                },
-                "required": ["reminder_id"],
-            },
-        ),
-        Tool(
-            name="move_reminder_active",
-            description="Move a reminder to the 'Claude-Active' workflow list. This indicates the task is currently being worked on. Convenience function for workflow management.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder to move",
-                    },
-                },
-                "required": ["reminder_id"],
-            },
-        ),
-        Tool(
-            name="move_reminder_done",
-            description="Move a reminder to the 'Claude-Done' workflow list. This indicates the task has been completed. Convenience function for workflow management.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder to move",
-                    },
-                },
-                "required": ["reminder_id"],
-            },
-        ),
-        Tool(
-            name="move_reminder_blocked",
-            description="Move a reminder to the 'Claude-Waiting' workflow list. This indicates the task is blocked or waiting for external input. Convenience function for workflow management.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "reminder_id": {
-                        "type": "string",
-                        "description": "The unique identifier of the reminder to move",
-                    },
-                },
-                "required": ["reminder_id"],
-            },
-        ),
-    ]
+    kwargs: dict[str, Any] = {}
+    if title is not None:
+        kwargs["title"] = title
+    if due_date is not None:
+        kwargs["due_date"] = parse_datetime(due_date) if due_date else None
+    if notes is not None:
+        kwargs["notes"] = notes
+    if priority is not None:
+        kwargs["priority"] = parse_priority(priority)
+    if url is not None:
+        kwargs["url"] = url
+    if flagged is not None:
+        kwargs["flagged"] = flagged
+    if is_completed is not None:
+        kwargs["is_completed"] = is_completed
+    return reminder_from_obj(_remindkit().update_reminder(reminder_id, **kwargs))
 
 
-@app.call_tool()
-async def call_tool(name: str, arguments: Any) -> list[TextContent]:
-    """Handle tool execution requests from the MCP client.
+@mcp.tool()
+def complete_reminder(reminder_id: str) -> Reminder:
+    """Mark a reminder as done."""
+    return reminder_from_obj(_remindkit().update_reminder(reminder_id, is_completed=True))
 
-    This function is called when the client wants to execute a specific tool.
-    It routes the request to the appropriate handler based on the tool name.
 
-    Args:
-        name: The name of the tool to execute
-        arguments: Dictionary of arguments for the tool
+@mcp.tool()
+def uncomplete_reminder(reminder_id: str) -> Reminder:
+    """Re-open a completed reminder."""
+    return reminder_from_obj(_remindkit().update_reminder(reminder_id, is_completed=False))
 
-    Returns:
-        List containing a TextContent with the tool's response
 
-    Raises:
-        ValueError: If the tool name is not recognized or arguments are invalid
-        RuntimeError: If the tool execution fails
+@mcp.tool()
+def get_reminder(reminder_id: str) -> Reminder:
+    """Fetch a reminder by ID."""
+    return reminder_from_obj(_remindkit().get_reminder_by_id(reminder_id))
+
+
+@mcp.tool()
+def delete_reminder(reminder_id: str) -> OperationResult:
+    """Permanently delete a reminder. This cannot be undone."""
+    success = bool(_remindkit().delete_reminder(reminder_id))
+    return OperationResult(
+        success=success,
+        message=f"Reminder {reminder_id} {'deleted' if success else 'not deleted (not found?)'}",
+        data={"reminder_id": reminder_id},
+    )
+
+
+@mcp.tool()
+def set_flagged(reminder_id: str, flagged: bool = True) -> Reminder:
+    """Set or clear the ⚑ flag on a reminder."""
+    return reminder_from_obj(_remindkit().update_reminder(reminder_id, flagged=flagged))
+
+
+# --- Reminder queries --------------------------------------------------------
+
+
+@mcp.tool()
+def get_reminders(
+    due_after: str | None = None,
+    due_before: str | None = None,
+    is_completed: bool | None = None,
+    priority: str | int | None = None,
+    calendar_id: str | None = None,
+    limit: Annotated[int | None, Field(ge=1, le=1000, description="Max items to return.")] = None,
+) -> ReminderList:
+    """Filter reminders by date / completion / priority / list."""
+    kwargs: dict[str, Any] = {}
+    if due_after is not None:
+        kwargs["due_after"] = parse_datetime(due_after)
+    if due_before is not None:
+        kwargs["due_before"] = parse_datetime(due_before)
+    if is_completed is not None:
+        kwargs["is_completed"] = is_completed
+    if priority is not None:
+        kwargs["priority"] = parse_priority(priority)
+    if calendar_id is not None:
+        kwargs["calendar_id"] = calendar_id
+    if limit is not None:
+        kwargs["limit"] = limit  # passed through; pyremindkit may or may not honor it
+
+    items = list(_remindkit().get_reminders(**kwargs))
+    if limit is not None:
+        items = items[:limit]
+    rems = [reminder_from_obj(r) for r in items]
+    return ReminderList(reminders=rems, count=len(rems))
+
+
+@mcp.tool()
+def search_reminders(
+    query: Annotated[str, Field(min_length=1, description="Text to match in titles and notes.")],
+    limit: Annotated[int | None, Field(ge=1, le=1000)] = None,
+) -> ReminderList:
+    """Free-text search across reminder titles and notes."""
+    items = list(_remindkit().search_reminders(query))
+    if limit:
+        items = items[:limit]
+    rems = [reminder_from_obj(r) for r in items]
+    return ReminderList(reminders=rems, count=len(rems))
+
+
+@mcp.tool()
+def get_next_reminder() -> Reminder | OperationResult:
+    """Soonest incomplete reminder with a due date, or a 'none' result."""
+    item = _remindkit().get_next_reminder()
+    if item is None:
+        return OperationResult(success=True, message="No upcoming reminders.")
+    return reminder_from_obj(item)
+
+
+@mcp.tool()
+def get_overdue_reminders(
+    limit: Annotated[int | None, Field(ge=1, le=1000)] = None,
+) -> ReminderList:
+    """Incomplete reminders with a due date in the past."""
+    kwargs: dict[str, Any] = {"due_before": datetime.now(), "is_completed": False}
+    if limit is not None:
+        kwargs["limit"] = limit
+    items = list(_remindkit().get_reminders(**kwargs))
+    if limit is not None:
+        items = items[:limit]
+    rems = [reminder_from_obj(r) for r in items]
+    return ReminderList(reminders=rems, count=len(rems))
+
+
+@mcp.tool()
+def get_today_reminders(include_completed: bool = False) -> ReminderList:
+    """Reminders due today (00:00 to next-day 00:00, exclusive)."""
+    start, end = today_window()
+    kwargs: dict[str, Any] = {"due_after": start, "due_before": end}
+    if not include_completed:
+        kwargs["is_completed"] = False
+    items = [reminder_from_obj(r) for r in _remindkit().get_reminders(**kwargs)]
+    return ReminderList(reminders=items, count=len(items))
+
+
+# --- Workflow (kanban) tools -------------------------------------------------
+
+
+@mcp.tool()
+def get_workflow_lists() -> CalendarList:
+    """The four kanban-style workflow lists (On-Deck / Active / Done / Blocked)."""
+    rk = _remindkit()
+    found: list[Any] = []
+    for name in all_workflow_names():
+        for cal in rk.calendars.search(name):
+            if cal.name == name:
+                found.append(cal)
+                break
+    cals = [calendar_from_obj(c) for c in found]
+    return CalendarList(calendars=cals, count=len(cals))
+
+
+def _move_to_role(reminder_id: str, role: WorkflowRole) -> Reminder:
+    rk = _remindkit()
+    cal = resolve_workflow_calendar(rk, role)
+    moved = rk.move_reminder(reminder_id, cal.id)
+    return reminder_from_obj(moved)
+
+
+@mcp.tool()
+def move_reminder_to_list(reminder_id: str, calendar_id: str) -> Reminder:
+    """Move a reminder to an arbitrary list by ID."""
+    return reminder_from_obj(_remindkit().move_reminder(reminder_id, calendar_id))
+
+
+@mcp.tool()
+def move_reminder_on_deck(reminder_id: str) -> Reminder:
+    """Move a reminder to the On-Deck list (queued for work)."""
+    return _move_to_role(reminder_id, "on_deck")
+
+
+@mcp.tool()
+def move_reminder_active(reminder_id: str) -> Reminder:
+    """Move a reminder to the Active list (in progress)."""
+    return _move_to_role(reminder_id, "active")
+
+
+@mcp.tool()
+def move_reminder_done(reminder_id: str) -> Reminder:
+    """Move a reminder to the Done list (completed)."""
+    return _move_to_role(reminder_id, "done")
+
+
+@mcp.tool()
+def move_reminder_blocked(reminder_id: str) -> Reminder:
+    """Move a reminder to the Blocked list (waiting on something)."""
+    return _move_to_role(reminder_id, "blocked")
+
+
+# --- Batch operations --------------------------------------------------------
+
+
+@mcp.tool()
+def batch_create_reminders(
+    titles: Annotated[list[str], Field(min_length=1, max_length=200)],
+    calendar_id: str | None = None,
+) -> ReminderList:
+    """Create many reminders at once (titles only). Ideal for inbox capture."""
+    rk = _remindkit()
+    kwargs_base: dict[str, Any] = {}
+    if calendar_id is not None:
+        kwargs_base["calendar_id"] = calendar_id
+    created = [reminder_from_obj(rk.create_reminder(title=t, **kwargs_base)) for t in titles]
+    return ReminderList(reminders=created, count=len(created))
+
+
+@mcp.tool()
+def batch_complete_reminders(reminder_ids: Annotated[list[str], Field(min_length=1, max_length=500)]) -> ReminderList:
+    """Mark many reminders done in one call."""
+    rk = _remindkit()
+    updated = [reminder_from_obj(rk.update_reminder(rid, is_completed=True)) for rid in reminder_ids]
+    return ReminderList(reminders=updated, count=len(updated))
+
+
+@mcp.tool()
+def batch_delete_reminders(reminder_ids: Annotated[list[str], Field(min_length=1, max_length=500)]) -> OperationResult:
+    """Delete many reminders. Cannot be undone."""
+    rk = _remindkit()
+    deleted = [rid for rid in reminder_ids if rk.delete_reminder(rid)]
+    return OperationResult(
+        success=len(deleted) == len(reminder_ids),
+        message=f"Deleted {len(deleted)} of {len(reminder_ids)} reminders.",
+        data={"deleted_ids": deleted},
+    )
+
+
+# --- Workflow-aware composite query (used by the plan_my_day prompt) --------
+
+
+@mcp.tool()
+def workflow_status() -> dict[str, Any]:
+    """One-shot snapshot of the kanban: counts per list + top-3 active items.
+
+    Designed for the ``plan_my_day`` prompt; cheap enough to call directly.
     """
-    try:
-        # Calendar Management Tools
-        if name == "list_calendars":
-            calendars = list(remind.calendars.list())
-            if not calendars:
-                return [TextContent(type="text", text="No calendars found.")]
-
-            result = f"Found {len(calendars)} calendar(s):\n\n"
-            for cal in calendars:
-                result += f"Name: {cal.name}\n"
-                result += f"ID: {cal.id}\n"
-                result += f"Color: {cal.color}\n"
-                result += f"Default: {'Yes' if cal.is_default else 'No'}\n"
-                result += f"Owner: {cal.owner}\n"
-                result += "-" * 40 + "\n"
-
-            return [TextContent(type="text", text=result)]
-
-        elif name == "get_calendar":
-            calendar = remind.calendars.get(arguments["name"])
-            result = f"Calendar Found:\n"
-            result += f"Name: {calendar.name}\n"
-            result += f"ID: {calendar.id}\n"
-            result += f"Color: {calendar.color}\n"
-            result += f"Default: {'Yes' if calendar.is_default else 'No'}\n"
-            result += f"Owner: {calendar.owner}\n"
-            return [TextContent(type="text", text=result)]
-
-        elif name == "get_calendar_by_id":
-            calendar = remind.calendars.get_by_id(arguments["calendar_id"])
-            result = f"Calendar Found:\n"
-            result += f"Name: {calendar.name}\n"
-            result += f"ID: {calendar.id}\n"
-            result += f"Color: {calendar.color}\n"
-            result += f"Default: {'Yes' if calendar.is_default else 'No'}\n"
-            result += f"Owner: {calendar.owner}\n"
-            return [TextContent(type="text", text=result)]
-
-        elif name == "search_calendars":
-            calendars = list(remind.calendars.search(arguments["query"]))
-            if not calendars:
-                return [TextContent(type="text", text=f"No calendars found matching '{arguments['query']}'.")]
-
-            result = f"Found {len(calendars)} calendar(s) matching '{arguments['query']}':\n\n"
-            for cal in calendars:
-                result += f"Name: {cal.name}\n"
-                result += f"ID: {cal.id}\n"
-                result += f"Color: {cal.color}\n"
-                result += f"Default: {'Yes' if cal.is_default else 'No'}\n"
-                result += "-" * 40 + "\n"
-
-            return [TextContent(type="text", text=result)]
-
-        elif name == "get_default_calendar":
-            calendar = remind.calendars.get_default()
-            result = f"Default Calendar:\n"
-            result += f"Name: {calendar.name}\n"
-            result += f"ID: {calendar.id}\n"
-            result += f"Color: {calendar.color}\n"
-            result += f"Owner: {calendar.owner}\n"
-            return [TextContent(type="text", text=result)]
-
-        # Reminder CRUD Operations
-        elif name == "create_reminder":
-            # Prepare kwargs for reminder creation
-            kwargs = {"title": arguments["title"]}
-
-            if "due_date" in arguments and arguments["due_date"]:
-                kwargs["due_date"] = parse_datetime(arguments["due_date"])
-
-            if "notes" in arguments and arguments["notes"]:
-                kwargs["notes"] = arguments["notes"]
-
-            if "priority" in arguments and arguments["priority"]:
-                kwargs["priority"] = parse_priority(arguments["priority"])
-
-            if "url" in arguments and arguments["url"]:
-                kwargs["url"] = arguments["url"]
-
-            if "calendar_id" in arguments and arguments["calendar_id"]:
-                kwargs["calendar_id"] = arguments["calendar_id"]
-
-            reminder = remind.create_reminder(**kwargs)
-
-            result = "Reminder created successfully!\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "update_reminder":
-            # Prepare kwargs for reminder update
-            kwargs = {}
-
-            if "title" in arguments and arguments["title"]:
-                kwargs["title"] = arguments["title"]
-
-            if "due_date" in arguments and arguments["due_date"]:
-                kwargs["due_date"] = parse_datetime(arguments["due_date"])
-
-            if "notes" in arguments and arguments["notes"]:
-                kwargs["notes"] = arguments["notes"]
-
-            if "priority" in arguments and arguments["priority"]:
-                kwargs["priority"] = parse_priority(arguments["priority"])
-
-            if "url" in arguments and arguments["url"]:
-                kwargs["url"] = arguments["url"]
-
-            if "is_completed" in arguments:
-                kwargs["is_completed"] = arguments["is_completed"]
-
-            reminder = remind.update_reminder(arguments["reminder_id"], **kwargs)
-
-            result = "Reminder updated successfully!\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "complete_reminder":
-            reminder = remind.update_reminder(
-                arguments["reminder_id"],
-                is_completed=True
-            )
-            result = "Reminder marked as complete!\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "uncomplete_reminder":
-            reminder = remind.update_reminder(
-                arguments["reminder_id"],
-                is_completed=False
-            )
-            result = "Reminder marked as incomplete!\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "get_reminder":
-            reminder = remind.get_reminder_by_id(arguments["reminder_id"])
-            result = "Reminder Details:\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "delete_reminder":
-            success = remind.delete_reminder(arguments["reminder_id"])
-            if success:
-                return [TextContent(type="text", text=f"Reminder {arguments['reminder_id']} deleted successfully.")]
-            else:
-                return [TextContent(type="text", text=f"Failed to delete reminder {arguments['reminder_id']}.")]
-
-        # Reminder Query Operations
-        elif name == "get_reminders":
-            # Parse filter arguments
-            kwargs = {}
-
-            if "due_after" in arguments and arguments["due_after"]:
-                kwargs["due_after"] = parse_datetime(arguments["due_after"])
-
-            if "due_before" in arguments and arguments["due_before"]:
-                kwargs["due_before"] = parse_datetime(arguments["due_before"])
-
-            if "is_completed" in arguments:
-                kwargs["is_completed"] = arguments["is_completed"]
-
-            if "priority" in arguments and arguments["priority"]:
-                priority_str = arguments["priority"].lower()
-                priority_map = {
-                    "none": Priority.NONE,
-                    "low": Priority.LOW,
-                    "medium": Priority.MEDIUM,
-                    "high": Priority.HIGH,
-                }
-                if priority_str in priority_map:
-                    kwargs["priority"] = priority_map[priority_str]
-
-            if "calendar_id" in arguments and arguments["calendar_id"]:
-                kwargs["calendar_id"] = arguments["calendar_id"]
-
-            # Get reminders
-            reminders = list(remind.get_reminders(**kwargs))
-
-            # Apply limit if specified
-            limit = arguments.get("limit")
-            if limit and limit > 0:
-                reminders = reminders[:limit]
-
-            if not reminders:
-                return [TextContent(type="text", text="No reminders found matching the specified filters.")]
-
-            result = f"Found {len(reminders)} reminder(s):\n\n"
-            for i, reminder in enumerate(reminders, 1):
-                result += f"=== Reminder {i} ===\n"
-                result += format_reminder(reminder)
-                result += "\n" + "=" * 40 + "\n\n"
-
-            return [TextContent(type="text", text=result)]
-
-        elif name == "search_reminders":
-            reminders = list(remind.search_reminders(arguments["query"]))
-
-            # Apply limit if specified
-            limit = arguments.get("limit")
-            if limit and limit > 0:
-                reminders = reminders[:limit]
-
-            if not reminders:
-                return [TextContent(type="text", text=f"No reminders found matching '{arguments['query']}'.")]
-
-            result = f"Found {len(reminders)} reminder(s) matching '{arguments['query']}':\n\n"
-            for i, reminder in enumerate(reminders, 1):
-                result += f"=== Reminder {i} ===\n"
-                result += format_reminder(reminder)
-                result += "\n" + "=" * 40 + "\n\n"
-
-            return [TextContent(type="text", text=result)]
-
-        elif name == "get_next_reminder":
-            reminder = remind.get_next_reminder()
-            if not reminder:
-                return [TextContent(type="text", text="No upcoming reminders found.")]
-
-            result = "Next Upcoming Reminder:\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "get_overdue_reminders":
-            now = datetime.now()
-            reminders = list(remind.get_reminders(
-                due_before=now,
-                is_completed=False
-            ))
-
-            # Apply limit if specified
-            limit = arguments.get("limit")
-            if limit and limit > 0:
-                reminders = reminders[:limit]
-
-            if not reminders:
-                return [TextContent(type="text", text="No overdue reminders found. Great job!")]
-
-            result = f"Found {len(reminders)} overdue reminder(s):\n\n"
-            for i, reminder in enumerate(reminders, 1):
-                result += f"=== Reminder {i} ===\n"
-                result += format_reminder(reminder)
-                result += "\n" + "=" * 40 + "\n\n"
-
-            return [TextContent(type="text", text=result)]
-
-        elif name == "get_today_reminders":
-            now = datetime.now()
-            start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=999999)
-
-            include_completed = arguments.get("include_completed", False)
-
-            if include_completed:
-                reminders = list(remind.get_reminders(
-                    due_after=start_of_day,
-                    due_before=end_of_day
-                ))
-            else:
-                reminders = list(remind.get_reminders(
-                    due_after=start_of_day,
-                    due_before=end_of_day,
-                    is_completed=False
-                ))
-
-            if not reminders:
-                status = "any" if include_completed else "incomplete"
-                return [TextContent(type="text", text=f"No {status} reminders due today.")]
-
-            result = f"Found {len(reminders)} reminder(s) due today:\n\n"
-            for i, reminder in enumerate(reminders, 1):
-                result += f"=== Reminder {i} ===\n"
-                result += format_reminder(reminder)
-                result += "\n" + "=" * 40 + "\n\n"
-
-            return [TextContent(type="text", text=result)]
-
-        # Workflow Management Tools
-        elif name == "get_workflow_lists":
-            calendars = list(remind.calendars.search("Claude-"))
-            if not calendars:
-                return [TextContent(type="text", text="No workflow lists found (calendars starting with 'Claude-').")]
-
-            result = f"Found {len(calendars)} workflow list(s):\n\n"
-            for cal in calendars:
-                result += f"Name: {cal.name}\n"
-                result += f"ID: {cal.id}\n"
-                result += f"Color: {cal.color}\n"
-                result += f"Default: {'Yes' if cal.is_default else 'No'}\n"
-                result += "-" * 40 + "\n"
-
-            return [TextContent(type="text", text=result)]
-
-        elif name == "move_reminder_to_list":
-            reminder = remind.move_reminder(
-                arguments["reminder_id"],
-                arguments["calendar_id"]
-            )
-
-            # Get calendar name for confirmation
-            calendar = remind.calendars.get_by_id(arguments["calendar_id"])
-
-            result = f"Reminder moved successfully to '{calendar.name}'!\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "move_reminder_on_deck":
-            # Find the Claude-On-Deck calendar
-            calendars = list(remind.calendars.search("Claude-On-Deck"))
-            if not calendars:
-                return [TextContent(
-                    type="text",
-                    text="Error: 'Claude-On-Deck' calendar not found. Please create it in Apple Reminders first."
-                )]
-
-            on_deck_calendar = calendars[0]
-            reminder = remind.move_reminder(
-                arguments["reminder_id"],
-                on_deck_calendar.id
-            )
-
-            result = f"Reminder moved to 'Claude-On-Deck' (queued for work)!\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "move_reminder_active":
-            # Find the Claude-Active calendar
-            calendars = list(remind.calendars.search("Claude-Active"))
-            if not calendars:
-                return [TextContent(
-                    type="text",
-                    text="Error: 'Claude-Active' calendar not found. Please create it in Apple Reminders first."
-                )]
-
-            active_calendar = calendars[0]
-            reminder = remind.move_reminder(
-                arguments["reminder_id"],
-                active_calendar.id
-            )
-
-            result = f"Reminder moved to 'Claude-Active' (now in progress)!\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "move_reminder_done":
-            # Find the Claude-Done calendar
-            calendars = list(remind.calendars.search("Claude-Done"))
-            if not calendars:
-                return [TextContent(
-                    type="text",
-                    text="Error: 'Claude-Done' calendar not found. Please create it in Apple Reminders first."
-                )]
-
-            done_calendar = calendars[0]
-            reminder = remind.move_reminder(
-                arguments["reminder_id"],
-                done_calendar.id
-            )
-
-            result = f"Reminder moved to 'Claude-Done' (task completed)!\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        elif name == "move_reminder_blocked":
-            # Find the Claude-Waiting calendar
-            calendars = list(remind.calendars.search("Claude-Waiting"))
-            if not calendars:
-                return [TextContent(
-                    type="text",
-                    text="Error: 'Claude-Waiting' calendar not found. Please create it in Apple Reminders first."
-                )]
-
-            waiting_calendar = calendars[0]
-            reminder = remind.move_reminder(
-                arguments["reminder_id"],
-                waiting_calendar.id
-            )
-
-            result = f"Reminder moved to 'Claude-Waiting' (task blocked/waiting)!\n\n"
-            result += format_reminder(reminder)
-            return [TextContent(type="text", text=result)]
-
-        else:
-            raise ValueError(f"Unknown tool: {name}")
-
-    except ValueError as e:
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error executing {name}: {str(e)}")]
-
-
-async def main():
-    """Main entry point for the MCP server.
-
-    Starts the server and begins listening for requests via stdio.
-    This function is called when the server is launched by an MCP client.
-    """
-    # Run the server using stdin/stdout streams
-    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-        await app.run(
-            read_stream,
-            write_stream,
-            app.create_initialization_options()
-        )
+    rk = _remindkit()
+    snapshot: dict[str, Any] = {"prefix": workflow_list_name("on_deck").rsplit("On-Deck", 1)[0]}
+    for role in ("on_deck", "active", "done", "blocked"):
+        try:
+            cal = resolve_workflow_calendar(rk, role)  # type: ignore[arg-type]
+            items = list(rk.get_reminders(calendar_id=cal.id, is_completed=False))
+            snapshot[role] = {
+                "list": cal.name,
+                "open_count": len(items),
+                "preview": [reminder_from_obj(r).model_dump(mode="json") for r in items[:3]],
+            }
+        except WorkflowListMissingError as exc:
+            snapshot[role] = {"missing": True, "expected_name": exc.expected_name}
+    return snapshot
+
+
+# --- Resources & prompts (registered in companion modules) -------------------
+
+# Imported for side-effect (registers @mcp.resource / @mcp.prompt handlers).
+from . import prompts as _prompts  # noqa: E402, F401
+from . import resources as _resources  # noqa: E402, F401
+
+# --- Entry points ------------------------------------------------------------
+
+
+def _configure_logging() -> None:
+    """Configure stderr-only logging respecting the MCP stdio transport."""
+    level_name = os.environ.get("MCP_APPLE_REMINDERS_LOG_LEVEL", "WARNING").upper()
+    level = getattr(logging, level_name, logging.WARNING)
+    handler = logging.StreamHandler(stream=sys.stderr)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s", datefmt="%Y-%m-%dT%H:%M:%S%z"),
+    )
+    root = logging.getLogger("mcp_apple_reminders")
+    root.setLevel(level)
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.propagate = False
+
+
+async def main() -> None:
+    """Run the MCP stdio server."""
+    _configure_logging()
+    logger.debug("starting mcp-apple-reminders %s", __version__)
+    await mcp.run_stdio_async()
 
 
 def cli_main() -> int:
-    """Synchronous entry point for console scripts."""
-    import asyncio
-
-    asyncio.run(main())
+    """Synchronous entry point for the ``mcp-apple-reminders`` console script."""
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        return 130
     return 0
 
 
 if __name__ == "__main__":
-    """Entry point when the module is run directly."""
     raise SystemExit(cli_main())
