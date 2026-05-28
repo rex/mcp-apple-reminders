@@ -175,21 +175,19 @@ start:
 	@echo "$(CYAN)Starting production server on port $(PORT)...$(RESET)"
 	@echo "$(YELLOW)  (stub — overlay a lang-* skill to fill this in; run 'make help-stack')$(RESET)"
 
-## lint: Run linter (stack-specific — fails closed until a lang-* skill overlays it)
+## lint: Run ruff (lint) + black (format check) on first-party code
 lint:
-	@echo "$(CYAN)Running linter...$(RESET)"
-	@echo "$(RED)  lint is NOT configured — no linter is wired for this repo.$(RESET)"
-	@echo "$(RED)  Overlay the lang-* skill for this stack (see: make help-stack).$(RESET)"
-	@echo "$(RED)  A gate that does not run is a failure, not a pass.$(RESET)"
-	@exit 1
+	@echo "$(CYAN)Running ruff check...$(RESET)"
+	@./venv/bin/python -m ruff check src/ libs/pyremindkit/src/ test_*.py test_support/
+	@echo "$(CYAN)Running black --check...$(RESET)"
+	@./venv/bin/python -m black --check --quiet src/ libs/pyremindkit/src/ test_*.py test_support/
+	@echo "$(GREEN)Lint clean.$(RESET)"
 
-## typecheck: Run type checker (stack-specific — fails closed until a lang-* skill overlays it)
+## typecheck: Run mypy on the MCP server package (PyObjC stubs missing → --ignore-missing-imports)
 typecheck:
-	@echo "$(CYAN)Running type checker...$(RESET)"
-	@echo "$(RED)  typecheck is NOT configured — no type checker is wired.$(RESET)"
-	@echo "$(RED)  Overlay the lang-* skill for this stack (see: make help-stack).$(RESET)"
-	@echo "$(RED)  A gate that does not run is a failure, not a pass.$(RESET)"
-	@exit 1
+	@echo "$(CYAN)Running mypy...$(RESET)"
+	@./venv/bin/python -m mypy src/mcp_apple_reminders/ --ignore-missing-imports
+	@echo "$(GREEN)Typecheck clean.$(RESET)"
 
 ## check-architecture: Enforce VIBE.yaml line limits + module shape (fails closed)
 check-architecture:

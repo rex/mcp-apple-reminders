@@ -17,6 +17,7 @@ _project_root = Path(__file__).parent
 _pyremindkit_path = _project_root / "libs" / "pyremindkit" / "src"
 sys.path.insert(0, str(_pyremindkit_path))
 
+# ruff: noqa: E402 — orchestrator must mutate sys.path before importing the per-domain test modules
 from test_crud_calendars import test_calendar_operations
 from test_crud_queries import test_query_operations
 from test_crud_reminders import test_reminder_crud_operations
@@ -69,6 +70,7 @@ def main() -> int:
     except Exception as e:
         print(f"\n❌ Fatal Error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

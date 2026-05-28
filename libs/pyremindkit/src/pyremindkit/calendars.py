@@ -23,6 +23,7 @@ from typing import Generator, Optional
 
 from EventKit import EKEntityTypeReminder, EKEventStore, EKReminder
 from Foundation import (
+    NSURL,
     NSCalendar,
     NSCalendarUnitDay,
     NSCalendarUnitHour,
@@ -31,7 +32,6 @@ from Foundation import (
     NSCalendarUnitSecond,
     NSCalendarUnitYear,
     NSDate,
-    NSURL,
 )
 
 from ._internal import _convert_ek_reminder_to_reminder, _save_ek_reminder
@@ -72,16 +72,8 @@ class Calendar:
         Priority filtering is applied client-side after fetch, because EventKit
         predicates do not natively filter on priority bucket.
         """
-        due_start_date = (
-            NSDate.dateWithTimeIntervalSince1970_(due_after.timestamp())
-            if due_after
-            else None
-        )
-        due_end_date = (
-            NSDate.dateWithTimeIntervalSince1970_(due_before.timestamp())
-            if due_before
-            else None
-        )
+        due_start_date = NSDate.dateWithTimeIntervalSince1970_(due_after.timestamp()) if due_after else None
+        due_end_date = NSDate.dateWithTimeIntervalSince1970_(due_before.timestamp()) if due_before else None
 
         ek_calendar = self._event_store.calendarWithIdentifier_(self.id)
 
@@ -89,11 +81,15 @@ class Calendar:
             predicate = self._event_store.predicateForRemindersInCalendars_([ek_calendar])
         elif is_completed:
             predicate = self._event_store.predicateForCompletedRemindersWithCompletionDateStarting_ending_calendars_(
-                due_start_date, due_end_date, [ek_calendar],
+                due_start_date,
+                due_end_date,
+                [ek_calendar],
             )
         else:
             predicate = self._event_store.predicateForIncompleteRemindersWithDueDateStarting_ending_calendars_(
-                due_start_date, due_end_date, [ek_calendar],
+                due_start_date,
+                due_end_date,
+                [ek_calendar],
             )
 
         fetch_done = Event()

@@ -25,16 +25,20 @@ def _move_to_named_list(remind, reminder_id: str, list_name: str, friendly_state
     """Shared implementation for the four sugar move handlers."""
     calendars = list(remind.calendars.search(list_name))
     if not calendars:
-        return [TextContent(
-            type="text",
-            text=f"Error: '{list_name}' calendar not found. Please create it in Apple Reminders first.",
-        )]
+        return [
+            TextContent(
+                type="text",
+                text=f"Error: '{list_name}' calendar not found. Please create it in Apple Reminders first.",
+            )
+        ]
     target = calendars[0]
     reminder = remind.move_reminder(reminder_id, target.id)
-    return [TextContent(
-        type="text",
-        text=f"Reminder moved to '{list_name}' ({friendly_state})!\n\n" + format_reminder(reminder),
-    )]
+    return [
+        TextContent(
+            type="text",
+            text=f"Reminder moved to '{list_name}' ({friendly_state})!\n\n" + format_reminder(reminder),
+        )
+    ]
 
 
 def _handle_get_workflow_lists(arguments: Any, remind) -> list[TextContent]:
@@ -55,10 +59,12 @@ def _handle_get_workflow_lists(arguments: Any, remind) -> list[TextContent]:
 def _handle_move_reminder_to_list(arguments: Any, remind) -> list[TextContent]:
     reminder = remind.move_reminder(arguments["reminder_id"], arguments["calendar_id"])
     calendar = remind.calendars.get_by_id(arguments["calendar_id"])
-    return [TextContent(
-        type="text",
-        text=f"Reminder moved successfully to '{calendar.name}'!\n\n" + format_reminder(reminder),
-    )]
+    return [
+        TextContent(
+            type="text",
+            text=f"Reminder moved successfully to '{calendar.name}'!\n\n" + format_reminder(reminder),
+        )
+    ]
 
 
 def _handle_move_reminder_on_deck(arguments: Any, remind) -> list[TextContent]:

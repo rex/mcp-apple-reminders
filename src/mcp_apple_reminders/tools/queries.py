@@ -124,11 +124,26 @@ TOOLS: list[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "due_after": {"type": "string", "description": "Only return reminders due after this date (ISO format). Optional."},
-                "due_before": {"type": "string", "description": "Only return reminders due before this date (ISO format). Optional."},
-                "is_completed": {"type": "boolean", "description": "Filter by completion status: true for completed, false for incomplete, omit for all. Optional."},
-                "priority": {"type": "string", "description": "Filter by priority: 'none', 'low', 'medium', or 'high'. Optional."},
-                "calendar_id": {"type": "string", "description": "Only return reminders from this specific calendar. Optional."},
+                "due_after": {
+                    "type": "string",
+                    "description": "Only return reminders due after this date (ISO format). Optional.",
+                },
+                "due_before": {
+                    "type": "string",
+                    "description": "Only return reminders due before this date (ISO format). Optional.",
+                },
+                "is_completed": {
+                    "type": "boolean",
+                    "description": "Filter by completion status: true for completed, false for incomplete, omit for all. Optional.",
+                },
+                "priority": {
+                    "type": "string",
+                    "description": "Filter by priority: 'none', 'low', 'medium', or 'high'. Optional.",
+                },
+                "calendar_id": {
+                    "type": "string",
+                    "description": "Only return reminders from this specific calendar. Optional.",
+                },
                 "limit": {"type": "integer", "description": "Maximum number of reminders to return. Optional."},
             },
             "required": [],
@@ -168,7 +183,10 @@ TOOLS: list[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "include_completed": {"type": "boolean", "description": "Whether to include completed reminders. Default is false (only incomplete). Optional."},
+                "include_completed": {
+                    "type": "boolean",
+                    "description": "Whether to include completed reminders. Default is false (only incomplete). Optional.",
+                },
             },
             "required": [],
         },

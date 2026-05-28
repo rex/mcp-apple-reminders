@@ -24,14 +24,12 @@ _project_root = _current_file.parent.parent.parent
 _pyremindkit_path = _project_root / "libs" / "pyremindkit" / "src"
 sys.path.insert(0, str(_pyremindkit_path))
 
-from pyremindkit import RemindKit  # noqa: E402  (must follow sys.path tweak)
-
 import mcp.server.stdio  # noqa: E402
 from mcp.server import Server  # noqa: E402
 from mcp.types import TextContent, Tool  # noqa: E402
+from pyremindkit import RemindKit  # noqa: E402  (must follow sys.path tweak)
 
 from .tools import ALL_HANDLERS, ALL_TOOLS  # noqa: E402
-
 
 # Initialize the RemindKit instance. Raises PermissionError on first run if
 # the user denies the macOS Reminders permission dialog.
@@ -87,6 +85,7 @@ async def main() -> None:
 def cli_main() -> int:
     """Synchronous entry point for the console-script wrapper."""
     import asyncio
+
     asyncio.run(main())
     return 0
 

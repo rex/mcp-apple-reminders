@@ -53,11 +53,13 @@ def test_query_operations(rk, results):
     # Next 7 days
     try:
         week_from_now = datetime.now() + timedelta(days=7)
-        upcoming = list(rk.get_reminders(
-            due_after=datetime.now(),
-            due_before=week_from_now,
-            is_completed=False,
-        ))
+        upcoming = list(
+            rk.get_reminders(
+                due_after=datetime.now(),
+                due_before=week_from_now,
+                is_completed=False,
+            )
+        )
         results.add_pass("Get reminders due in next 7 days", f"Found {len(upcoming)} upcoming reminder(s)")
     except Exception as e:
         results.add_fail("Get reminders due in next 7 days", e)

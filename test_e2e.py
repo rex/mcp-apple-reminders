@@ -54,7 +54,7 @@ def test_e2e_reminder_operations():
         retrieved = rk.get_reminder_by_id(reminder.id)
         assert retrieved.id == reminder.id, "Retrieved reminder ID doesn't match"
         assert retrieved.title == test_title, "Retrieved reminder title doesn't match"
-        print(f"✅ Reminder retrieved successfully")
+        print("✅ Reminder retrieved successfully")
         print(f"   ID matches: {retrieved.id == reminder.id}")
         print(f"   Title matches: {retrieved.title == test_title}")
 
@@ -69,34 +69,34 @@ def test_e2e_reminder_operations():
 
         assert updated.title == updated_title, "Updated title doesn't match"
         assert updated.priority == 9, "Updated priority doesn't match"
-        print(f"✅ Reminder updated successfully")
+        print("✅ Reminder updated successfully")
         print(f"   New title: {updated.title}")
         print(f"   New priority: {updated.priority}")
 
         # Test 4: Mark as complete
         print("\n✓  Test 4: Marking reminder as complete...")
         completed = rk.update_reminder(reminder.id, is_completed=True)
-        assert completed.completed == True, "Reminder should be marked as complete"
-        print(f"✅ Reminder marked as complete")
+        assert completed.completed is True, "Reminder should be marked as complete"
+        print("✅ Reminder marked as complete")
 
         # Test 5: Mark as incomplete
         print("\n○  Test 5: Marking reminder as incomplete...")
         uncompleted = rk.update_reminder(reminder.id, is_completed=False)
-        assert uncompleted.completed == False, "Reminder should be marked as incomplete"
-        print(f"✅ Reminder marked as incomplete")
+        assert uncompleted.completed is False, "Reminder should be marked as incomplete"
+        print("✅ Reminder marked as incomplete")
 
         # Test 6: Search for the reminder
         print("\n🔍 Test 6: Searching for the reminder...")
         search_results = list(rk.search_reminders("UPDATED"))
         found = any(r.id == reminder.id for r in search_results)
         assert found, "Reminder should be found in search results"
-        print(f"✅ Reminder found in search results")
+        print("✅ Reminder found in search results")
         print(f"   Found {len(search_results)} result(s)")
 
         # Test 7: Delete the reminder
         print("\n🗑️  Test 7: Deleting the reminder...")
         success = rk.delete_reminder(reminder.id)
-        print(f"✅ Reminder deleted successfully")
+        print("✅ Reminder deleted successfully")
 
         # Test 8: Verify deletion
         print("\n🔍 Test 8: Verifying deletion...")
@@ -104,8 +104,8 @@ def test_e2e_reminder_operations():
             rk.get_reminder_by_id(reminder.id)
             print("❌ Reminder should have been deleted!")
             return False
-        except ValueError as e:
-            print(f"✅ Reminder properly deleted (not found)")
+        except ValueError:
+            print("✅ Reminder properly deleted (not found)")
 
         print("\n" + "=" * 60)
         print("🎉 All end-to-end tests passed!")
@@ -116,15 +116,16 @@ def test_e2e_reminder_operations():
     except Exception as e:
         print(f"\n❌ End-to-end test failed: {e}")
         import traceback
+
         traceback.print_exc()
 
         # Try to clean up if we created a reminder
         try:
-            if 'reminder' in locals() and reminder:
+            if "reminder" in locals() and reminder:
                 print(f"\n🧹 Attempting cleanup: deleting test reminder {reminder.id}")
                 rk.delete_reminder(reminder.id)
                 print("✅ Cleanup successful")
-        except:
+        except Exception:
             pass
 
         return False

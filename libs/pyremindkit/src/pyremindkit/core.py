@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Callable, Generator, Optional
 
 from Foundation import (
+    NSURL,
     NSCalendar,
     NSCalendarUnitDay,
     NSCalendarUnitHour,
@@ -23,7 +24,6 @@ from Foundation import (
     NSCalendarUnitSecond,
     NSCalendarUnitYear,
     NSDate,
-    NSURL,
 )
 
 from ._internal import (
@@ -60,10 +60,7 @@ class RemindKit:
         Forwards remaining kwargs to `Calendar.create_reminder`.
         """
         calendar_id = kwargs.pop("calendar_id", None) or kwargs.pop("list_id", None)
-        if calendar_id:
-            calendar = self.calendars.get_by_id(calendar_id)
-        else:
-            calendar = self.calendars.get_default()
+        calendar = self.calendars.get_by_id(calendar_id) if calendar_id else self.calendars.get_default()
 
         reminder = calendar.create_reminder(**kwargs)
 
@@ -192,9 +189,11 @@ class RemindKit:
         """
         for calendar in self.calendars.list():
             for reminder in calendar.get_reminders():
-                if query.lower() in reminder.title.lower():
-                    yield reminder
-                elif reminder.notes and query.lower() in reminder.notes.lower():
+                if (
+                    query.lower() in reminder.title.lower()
+                    or reminder.notes
+                    and query.lower() in reminder.notes.lower()
+                ):
                     yield reminder
 
     def delete_reminder(self, reminder_id: str) -> bool:

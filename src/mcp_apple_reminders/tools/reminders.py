@@ -86,11 +86,23 @@ TOOLS: list[Tool] = [
             "type": "object",
             "properties": {
                 "title": {"type": "string", "description": "The title/name of the reminder"},
-                "due_date": {"type": "string", "description": "ISO format datetime string (e.g., '2024-01-15T14:30:00'). Optional."},
-                "notes": {"type": "string", "description": "Additional notes or description for the reminder. Optional."},
-                "priority": {"type": "string", "description": "Priority level: 'none', 'low', 'medium', 'high', or integer 0-9. Default is 'none'. Optional."},
+                "due_date": {
+                    "type": "string",
+                    "description": "ISO format datetime string (e.g., '2024-01-15T14:30:00'). Optional.",
+                },
+                "notes": {
+                    "type": "string",
+                    "description": "Additional notes or description for the reminder. Optional.",
+                },
+                "priority": {
+                    "type": "string",
+                    "description": "Priority level: 'none', 'low', 'medium', 'high', or integer 0-9. Default is 'none'. Optional.",
+                },
                 "url": {"type": "string", "description": "URL to associate with the reminder. Optional."},
-                "calendar_id": {"type": "string", "description": "ID of the calendar (list) to add the reminder to. If not specified, uses the default calendar. Optional."},
+                "calendar_id": {
+                    "type": "string",
+                    "description": "ID of the calendar (list) to add the reminder to. If not specified, uses the default calendar. Optional.",
+                },
             },
             "required": ["title"],
         },
@@ -103,11 +115,20 @@ TOOLS: list[Tool] = [
             "properties": {
                 "reminder_id": {"type": "string", "description": "The unique identifier of the reminder to update"},
                 "title": {"type": "string", "description": "New title for the reminder. Optional."},
-                "due_date": {"type": "string", "description": "New due date in ISO format (e.g., '2024-01-15T14:30:00'). Optional."},
+                "due_date": {
+                    "type": "string",
+                    "description": "New due date in ISO format (e.g., '2024-01-15T14:30:00'). Optional.",
+                },
                 "notes": {"type": "string", "description": "New notes/description. Optional."},
-                "priority": {"type": "string", "description": "New priority: 'none', 'low', 'medium', 'high', or integer 0-9. Optional."},
+                "priority": {
+                    "type": "string",
+                    "description": "New priority: 'none', 'low', 'medium', 'high', or integer 0-9. Optional.",
+                },
                 "url": {"type": "string", "description": "New URL to associate with the reminder. Optional."},
-                "is_completed": {"type": "boolean", "description": "Mark the reminder as completed (true) or incomplete (false). Optional."},
+                "is_completed": {
+                    "type": "boolean",
+                    "description": "Mark the reminder as completed (true) or incomplete (false). Optional.",
+                },
             },
             "required": ["reminder_id"],
         },
@@ -118,7 +139,10 @@ TOOLS: list[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "reminder_id": {"type": "string", "description": "The unique identifier of the reminder to mark as complete"},
+                "reminder_id": {
+                    "type": "string",
+                    "description": "The unique identifier of the reminder to mark as complete",
+                },
             },
             "required": ["reminder_id"],
         },
@@ -129,7 +153,10 @@ TOOLS: list[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "reminder_id": {"type": "string", "description": "The unique identifier of the reminder to mark as incomplete"},
+                "reminder_id": {
+                    "type": "string",
+                    "description": "The unique identifier of the reminder to mark as incomplete",
+                },
             },
             "required": ["reminder_id"],
         },

@@ -61,10 +61,10 @@ def parse_datetime(date_string: str) -> datetime:
     """
     try:
         return datetime.fromisoformat(date_string)
-    except ValueError:
+    except ValueError as err:
         raise ValueError(
             f"Invalid datetime format: {date_string}. Expected ISO format (e.g., '2024-01-15T14:30:00')"
-        )
+        ) from err
 
 
 def parse_priority(priority_str: str) -> int:
@@ -90,6 +90,4 @@ def parse_priority(priority_str: str) -> int:
     if priority_lower in priority_map:
         return priority_map[priority_lower]
 
-    raise ValueError(
-        f"Invalid priority: {priority_str}. Expected 'none', 'low', 'medium', 'high', or integer 0-9"
-    )
+    raise ValueError(f"Invalid priority: {priority_str}. Expected 'none', 'low', 'medium', 'high', or integer 0-9")
