@@ -88,7 +88,7 @@ architecture:
 docs:
   agents_md_required: true
   claude_md_required: true
-  task_state_required: false   # PR4 adds this; until then, don't gate on it.
+  task_state_required: true   # TASK_STATE.md committed in PR4 (001-visibility-foundation).
   vibe_yaml_required: true
 
 reporting:
