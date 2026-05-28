@@ -1,205 +1,81 @@
 # AGENTS.md
 
-## Purpose
+## 1. Project snapshot
 
-This repository contains a macOS-only Model Context Protocol (MCP) server for Apple Reminders.
-It exposes Apple Reminders operations to MCP clients such as Codex and Claude Desktop through
-Python, EventKit, and the vendored `pyremindkit` library.
+- **What**: macOS-only MCP server exposing Apple Reminders (EventKit) to Claude Code, Codex, and Claude Desktop.
+- **Runtime**: Python 3.10+ (repo venv runs 3.13.5 from miniconda). MCP SDK + PyObjC EventKit. Vendored `pyremindkit` in `libs/`.
+- **Platform**: macOS only — depends on `EventKit` and a granted Reminders permission on the interpreter binary.
+- **Owner**: @pierce (single-author repo as of 2026-05).
+- **Non-goals**: cross-platform support, reminder UI (use Reminders.app), iCloud sync logic (macOS handles it).
 
-Agents working in this repository must treat it as:
+## 2. Setup
 
-- A production MCP integration repository, not a throwaway experiment.
-- A macOS/EventKit bridge where runtime behavior depends on OS permissions and stdio correctness.
-- A repository whose documentation is part of the deliverable, not an afterthought.
+```bash
+./install.sh                          # creates ./venv, installs editable pkg + deps
+./venv/bin/python3 verify_setup.py    # preflight: interpreter, deps, perms, client configs
+```
 
-## Repository Layout
+Grant Reminders permission on first launch — approve the macOS dialog when `verify_setup.py` runs, OR run `./shim_mcp.sh` once and approve. Permission is per-binary; the conda Python interpreter must be the one approved.
 
-- `src/mcp_apple_reminders/`
-  - Main Python package.
-  - `server.py` contains the MCP server implementation and tool handlers.
-  - `__main__.py` and `__init__.py` provide import and CLI entrypoints.
-- `libs/pyremindkit/`
-  - Vendored dependency used to access Apple Reminders through EventKit.
-  - Treat this as an integrated local dependency. Do not assume it is installed globally.
-- `venv/`
-  - Local runtime environment for this repo.
-  - Prefer this interpreter for all validation and local execution.
-- `README.md`, `QUICKSTART.md`, `TOOLS.md`, `PROJECT_SUMMARY.md`, `WORKFLOW_FEATURES.md`
-  - User and contributor documentation.
-- `verify_setup.py`, `install.sh`, `shim_mcp.sh`
-  - Operational scripts for installation, verification, permissions bootstrap, and local launch.
-- `test_*.py`
-  - Test and validation scripts currently live at the repository root.
+## 3. Commands the agent MUST run before declaring done
 
-## Platform And Runtime Assumptions
+- `ruff check src/ libs/pyremindkit/src/`
+- `black --check src/ libs/pyremindkit/src/`
+- `./venv/bin/python -m pytest test_mcp_tools.py test_workflow_tools.py test_e2e.py` — root-level tests, explicit paths (no auto-discovery)
+- `make check-architecture` (line-limit gate: hard cap 400 lines/file)
+- `make bump-patch` (or minor/major) before commit — `bump_required_per_commit: true`
 
-- This project targets macOS only.
-- Apple Reminders access depends on EventKit permissions.
-- The system `python3` on macOS may be too old. Do not assume `python3` is acceptable.
-- Prefer the repo runtime at `./venv/bin/python3`.
-- Use dynamic path resolution derived from the repository structure. Do not hardcode personal absolute paths.
+## 4. Repo layout
 
-## Primary Goals For Agents
+```
+src/mcp_apple_reminders/    MCP server (server.py registers tools, marshals to pyremindkit)
+libs/pyremindkit/           Vendored EventKit wrapper (Calendar, Reminder, RemindKit)
+scripts/                    Gate scripts (bump_version, check_architecture, check_module_rules, …)
+test_*.py                   Tests live at repo root (NOT in tests/)
+verify_setup.py             Install + permission + client-config verification
+install.sh, shim_mcp.sh     Bootstrap + first-run permission-prompt shim
+AGENTS.md.pre-retrofit      Original 205-line guide (preserved for reference)
+```
 
-- Keep the MCP server stable for Codex and Claude Desktop.
-- Preserve clean stdio MCP behavior.
-- Improve correctness, safety, testability, and documentation together.
-- Leave the repository in a state that another engineer or agent can understand without reverse engineering.
+## 5. Code style
 
-## MCP Safety Rules
+- 120-line column (`pyproject.toml`).
+- Type hints throughout; prefer `from __future__ import annotations` for forward refs.
+- Module docstrings mandatory on every source file; function docstrings on non-trivial functions.
 
-- Never write diagnostic logs, debug prints, or status messages to stdout from the MCP server.
-- If runtime logging is necessary for MCP execution, write to stderr only.
-- Preserve stdin/stdout transport semantics. Do not add wrappers that emit non-JSON protocol output on stdout.
-- Be careful with first-run permission flows. If modifying bootstrap behavior, keep `shim_mcp.sh` safe for permission prompting.
-- Maintain compatibility with Codex configuration via `~/.codex/config.toml` and with Claude Desktop configuration via `claude_desktop_config.json`.
+## 6. Testing policy
 
-## Coding Standards
+- `deferred` (see VIBE.yaml). Tests exist at root (`test_*.py`) and must run with explicit paths — root is not on `testpaths`.
 
-- Use Python 3.10+ compatible code unless the repo is explicitly migrated to a newer minimum version.
-- Follow the style implied by `pyproject.toml`:
-  - `black` line length: 120
-  - `ruff` line length: 120
-  - type-hinted Python where practical
-- Prefer explicit, readable code over clever compression.
-- Avoid introducing hidden control flow or magical helpers unless they materially improve maintainability.
-- Keep business logic and MCP tool definitions consistent. If one changes, verify the other.
-- Preserve or improve error messages. Errors should help the operator fix the problem.
-- Avoid breaking public tool names, input schemas, or documented behavior without updating documentation and validation coverage.
+## 7. Security (hard stops)
 
-## Path And Environment Standards
+- **Never write to stdout from the MCP server.** stdio IS the JSON-RPC transport; any stray print corrupts the protocol. Logs go to stderr only.
+- No personal absolute paths (`/Users/<name>/...`) — use `Path(__file__).resolve()`.
+- macOS Reminders permission is privileged — do not chain shell calls that escalate access without the user's knowledge.
 
-- Do not hardcode developer-specific paths such as `/Users/<name>/...`.
-- Derive repo-local paths with `Path(__file__).resolve()` and related logic.
-- When invoking local scripts or the package, prefer:
-  - `./venv/bin/python3 -m mcp_apple_reminders`
-  - `./venv/bin/python -m pip ...`
-- If you update install or verification flows, ensure they still work when the repo is moved to a different absolute path.
+## 8. Architectural decisions
 
-## Documentation Requirements
+- Decision log: `VIBE.yaml::project.decisions` (append-only).
 
-Documentation is mandatory. Future agents must treat documentation updates as part of the code change, not optional follow-up.
+## 9. Things agents get wrong here
 
-### File-Level Documentation
+- **`Calendar.is_default` is buggy** — `libs/pyremindkit/src/pyremindkit/core.py:211` uses `EKCalendar.isImmutable()` as the proxy. That's wrong; `isImmutable` means "user can't modify," not "is the default list." Should compare against `event_store.defaultCalendarForNewReminders()`. Every list currently reports `Default: No`.
+- **Dead callbacks**: pyremindkit's `on_reminder_created` / `on_reminder_completed` register but never fire. Don't rely on them.
+- **EventKit error out-params are mishandled** — `error = None` then passed to PyObjC. Actual errors never propagate; failure messages always literally say `None`.
+- **Significant capability gaps from EventKit**: NO `create_calendar` / `delete_calendar` / `update_calendar`, NO `flagged` setter, NO recurrence rules, NO alarms (time- or location-based), NO subtasks. P0–P3 roadmap in `PROGRESS.md` (after PR4).
 
-- Every source file must start with a meaningful module/file docstring describing:
-  - purpose
-  - major responsibilities
-  - important external dependencies
-  - side effects or operational constraints if relevant
-- Shell scripts must include a clear header comment describing:
-  - why the script exists
-  - expected inputs
-  - important safety assumptions
+## 10. Workflow
 
-### Function And Method Documentation
+1. Read this file.
+2. Check `MAP.md` (after PR2) for the module you're touching.
+3. If `.mcp.json` declares `serena` (after PR3): `mcp__serena__activate_project` first, then `onboarding` on a fresh project else `list_memories`. Use Serena's symbolic tools (`find_symbol`, `replace_symbol_body`, `search_for_pattern`) over `Read`/`Edit`/`Grep`. Full protocol: `.claude/rules/serena.md` (after PR5).
+4. Run §3 commands before declaring done. Bump VERSION before commit.
 
-- Every non-trivial function and method must have a docstring.
-- Docstrings must document, where applicable:
-  - purpose
-  - parameters
-  - return value
-  - raised exceptions
-  - side effects
-  - important invariants or edge cases
-- If a function is intentionally simple enough to omit a longer docstring, it still needs at least a short descriptive docstring.
+## 11. When ending a session
 
-### Class Documentation
+- Update `TASK_STATE.md` §6 Handoff (after PR4) if work continues.
+- Promote durable new facts into AGENTS.md §9 — don't accumulate tribal knowledge in Serena auto-memory.
 
-- Every class must have a docstring explaining its role, lifecycle, and key collaborators.
-- Public methods on public classes must be documented.
+## 12. Subdirectory AGENTS.md (precedence: nearest wins)
 
-### Variable Documentation
-
-- All module-level constants, configuration values, and non-obvious variables must be documented with nearby comments.
-- Complex local variables must be named clearly and documented when intent is not immediately obvious.
-- Publicly meaningful fields, state containers, and schema fragments should be explained in code comments or surrounding docstrings.
-- If a variable exists only because of a platform or framework quirk, document that quirk.
-
-### User-Facing Documentation
-
-- Any change to behavior, setup, configuration, testing workflow, or supported tools must be reflected in the appropriate docs.
-- Keep `README.md` and `QUICKSTART.md` aligned with the real setup.
-- If a change affects Codex, Claude Desktop, installation, verification, or permissions, update the relevant operational docs in the same task.
-
-## Testing And Validation Standards
-
-- Validate the smallest relevant surface first, then broader flows.
-- Prefer the repo interpreter and explicit commands.
-- Because tests currently live at the repo root, do not rely on bare `pytest` discovery without arguments.
-- Use explicit test targets such as:
-  - `./venv/bin/python -m pytest test_mcp_tools.py`
-  - `./venv/bin/python -m pytest test_e2e.py`
-  - `./venv/bin/python -m pytest test_workflow_tools.py`
-- For install/runtime verification, use:
-  - `python3 verify_setup.py`
-  - `./venv/bin/python3 -m mcp_apple_reminders`
-- If a change affects packaging or entrypoints, verify both module execution and installed script behavior when practical.
-- If a change affects MCP behavior, prefer at least one real MCP smoke check.
-- If you cannot run a meaningful validation step, state exactly what was not run and why.
-
-## Documentation And Testing Coupling
-
-- No code change is complete until:
-  - the relevant docs are updated
-  - the relevant validation has been run or explicitly explained
-- If behavior changed but docs did not, the task is incomplete.
-- If docs changed but the real workflow was not sanity-checked, the task is incomplete.
-
-## Integration Standards
-
-### Codex
-
-- Keep Codex instructions accurate for `~/.codex/config.toml`.
-- Prefer the repo venv interpreter in examples.
-- If the Reminders permission bootstrap matters, keep `shim_mcp.sh` documented and working.
-
-### Claude Desktop
-
-- Keep Claude Desktop configuration examples accurate.
-- Do not assume Claude Desktop and Codex use identical config formats.
-
-### Vendored pyremindkit
-
-- Treat `libs/pyremindkit` as part of the working system.
-- If server changes depend on vendored library behavior, inspect or update the vendored code deliberately.
-- Document any coupling between server logic and vendored library quirks.
-
-## Change Management Rules
-
-- Make focused changes with clear intent.
-- Do not leave partially migrated patterns behind.
-- If you touch an operational workflow, update the docs in the same change.
-- If you discover a misleading or stale instruction while working, fix it as part of the current task when reasonable.
-- Do not silently ignore broken tooling or broken docs that are directly in the path of your task.
-
-## Git Workflow Requirements
-
-These rules are mandatory for every future agent working in this repository.
-
-- After all requested work for a task or phase is complete, create a signed commit.
-- Use `git commit -S` for signed commits.
-- After the signed commit succeeds, push the current branch to `origin`.
-- Do not leave completed work uncommitted locally.
-- Do not declare a task fully complete until the signed commit and push have both succeeded.
-- If signing or pushing fails, treat that as an unresolved blocker and report the exact failure.
-- If the repository contains unrelated user changes, do not overwrite them. Stage and commit only the intended changes.
-
-### Required Completion Sequence
-
-1. Finish the implementation.
-2. Update all relevant documentation.
-3. Run relevant validation.
-4. Review the diff for accuracy.
-5. Create a signed commit with `git commit -S`.
-6. Push to `origin`.
-7. Only then report the task as complete.
-
-## What Good Work Looks Like Here
-
-- MCP tools remain stable and discoverable.
-- Runtime scripts work after the repo moves to a new path.
-- Docs match reality.
-- Tests or verification steps are explicit and reproducible.
-- Code is documented enough that another agent can continue safely.
-- The final state is committed with a signed commit and pushed to `origin`.
+- `libs/pyremindkit/` is treated as a vendored dep; may gain its own AGENTS.md if it diverges into independent work.
