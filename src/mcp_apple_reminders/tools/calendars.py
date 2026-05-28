@@ -25,6 +25,12 @@ from .._native.eventkit import (
 from .._native.eventkit import (
     create_calendar as helper_create_calendar,
 )
+from .._native.eventkit import (
+    delete_calendar as helper_delete_calendar,
+)
+from .._native.eventkit import (
+    rename_calendar as helper_rename_calendar,
+)
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import AppContext
 from ..models import Calendar, native_calendar_to_pydantic
@@ -174,6 +180,142 @@ async def create_calendar(name: str, ctx: Context, color: Optional[str] = None) 
 
     await ctx.info(f"Created calendar {created.id} ({name!r})")
     return created
+
+
+@mcp.tool(
+    name="delete_calendar",
+    description=(
+        "Delete a reminder calendar (list). By default, refuses to delete a "
+        "list that contains any reminders — set force=true to cascade-delete "
+        "the list and every reminder inside it atomically. The default list "
+        "(the one new reminders go into) cannot be deleted; rename the default "
+        "in Apple Reminders first if you need to remove it. DESTRUCTIVE — "
+        "this action cannot be undone."
+    ),
+)
+async def delete_calendar(name: str, ctx: Context, force: bool = False) -> dict:
+    """Delete a reminder list.
+
+    Args:
+        name: The name of the list to delete.
+        force: When false (default), refuse to delete a non-empty list.
+            When true, cascade-delete the list and every reminder it
+            contains atomically. Optional.
+    """
+    if not name or not name.strip():
+        raise ValueError("name is required and must be non-empty")
+
+    app = _app_context(ctx)
+
+    # 1. Resolve the calendar (and reject the default).
+    cal: Optional[Calendar] = None
+    reminder_count: Optional[int] = None
+    try:
+        with app.open_sqlite() as conn:
+            reader = Reader(conn)
+            cal = reader.get_calendar_by_name(name)
+            if cal is not None:
+                reminder_count = sum(1 for _ in reader.iter_reminders(calendar_id=cal.id))
+    except RemindersDBUnavailable:
+        # Fallback path: scan EventKit
+        cal_native = next((c for c in app.bridge.calendars.list() if c.name == name), None)
+        if cal_native is not None:
+            cal = native_calendar_to_pydantic(cal_native)
+            reminder_count = sum(1 for _ in app.bridge.get_reminders(calendar_id=cal_native.id))
+
+    if cal is None:
+        raise ValueError(f"Calendar named {name!r} not found.")
+
+    default_cal = native_calendar_to_pydantic(app.bridge.calendars.get_default())
+    if cal.id == default_cal.id:
+        raise ValueError(
+            f"Refusing to delete the default calendar {name!r}. "
+            f"Change the default in Apple Reminders → Settings → Default List first."
+        )
+
+    if reminder_count and reminder_count > 0 and not force:
+        raise ValueError(
+            f"Calendar {name!r} has {reminder_count} reminder(s). "
+            f"Pass force=true to delete the list and all its reminders."
+        )
+
+    await ctx.warning(f"Deleting calendar {name!r} (force={force}, {reminder_count or 0} reminders)")
+
+    try:
+        helper_delete_calendar(name)
+    except EventKitHelperUnavailable as e:
+        await ctx.error(f"EventKit helper unavailable: {e}")
+        raise ValueError(
+            f"EventKit helper binary not built. Run `make build-native` from the project root. ({e})"
+        ) from e
+    except EventKitHelperError as e:
+        await ctx.error(f"delete_calendar failed: {e.message}")
+        raise ValueError(e.message) from e
+
+    await ctx.info(f"Deleted calendar {name!r} (cascade={force})")
+    return {
+        "id": cal.id,
+        "name": name,
+        "deleted_reminders": reminder_count or 0,
+        "force": force,
+    }
+
+
+@mcp.tool(
+    name="update_calendar",
+    description=(
+        "Rename an existing reminder calendar (list). Pass the current name "
+        "and the new name. The new name must not collide with another existing "
+        "list. Color updates are not yet supported via this tool — they will "
+        "land alongside the ReminderKit helper integration in Slice 1.7."
+    ),
+)
+async def update_calendar(name: str, new_name: str, ctx: Context) -> Calendar:
+    """Rename an existing reminder list.
+
+    Args:
+        name: The current name of the list.
+        new_name: The new name.
+    """
+    if not name or not name.strip():
+        raise ValueError("name is required and must be non-empty")
+    if not new_name or not new_name.strip():
+        raise ValueError("new_name is required and must be non-empty")
+    if name == new_name:
+        raise ValueError("new_name must be different from name")
+
+    app = _app_context(ctx)
+
+    # Existence + collision checks via the SQLite reader (fast).
+    try:
+        with app.open_sqlite() as conn:
+            reader = Reader(conn)
+            current = reader.get_calendar_by_name(name)
+            collision = reader.get_calendar_by_name(new_name)
+    except RemindersDBUnavailable:
+        current_native = next((c for c in app.bridge.calendars.list() if c.name == name), None)
+        collision_native = next((c for c in app.bridge.calendars.list() if c.name == new_name), None)
+        current = native_calendar_to_pydantic(current_native) if current_native else None
+        collision = native_calendar_to_pydantic(collision_native) if collision_native else None
+
+    if current is None:
+        raise ValueError(f"Calendar named {name!r} not found.")
+    if collision is not None:
+        raise ValueError(f"A calendar named {new_name!r} already exists. Pick a unique name.")
+
+    try:
+        renamed = helper_rename_calendar(name, new_name)
+    except EventKitHelperUnavailable as e:
+        await ctx.error(f"EventKit helper unavailable: {e}")
+        raise ValueError(
+            f"EventKit helper binary not built. Run `make build-native` from the project root. ({e})"
+        ) from e
+    except EventKitHelperError as e:
+        await ctx.error(f"update_calendar failed: {e.message}")
+        raise ValueError(e.message) from e
+
+    await ctx.info(f"Renamed calendar {name!r} → {new_name!r}")
+    return renamed
 
 
 @mcp.tool(

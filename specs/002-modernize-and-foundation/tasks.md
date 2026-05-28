@@ -109,13 +109,15 @@
 
 ### S1.3 — `delete_calendar` + `update_calendar`
 
-- **Files**: `_native/eventkit.py` (extend Python wrapper), `tools/calendars.py`
+- **Files**: `src/mcp_apple_reminders/_native/eventkit.py` (added `delete_calendar()` and `rename_calendar()` wrappers), `src/mcp_apple_reminders/tools/calendars.py` (added `delete_calendar` and `update_calendar` @mcp.tool), `test_eventkit_wrapper.py` (added 4 unit tests + 1 opt-in live round-trip).
 - **Acceptance** (spec §Event-driven, §Unwanted-behavior):
-  - [ ] `delete_calendar` with `force=false` errors if any reminders exist.
-  - [ ] `delete_calendar` with `force=true` deletes all + the calendar.
-  - [ ] `delete_calendar` on default calendar rejects.
-  - [ ] `update_calendar` updates `name`/`color`; returns updated.
-- [ ] Complete
+  - [x] `delete_calendar` with `force=false` raises `ValueError("Calendar {name!r} has N reminder(s). Pass force=true to delete the list and all its reminders.")` if any reminders exist.
+  - [x] `delete_calendar` with `force=true` cascades: the underlying EventKit `removeCalendar(commit:)` deletes the list and every reminder it contains atomically. Tool returns `{"id", "name", "deleted_reminders", "force"}`.
+  - [x] `delete_calendar` on the default list raises `ValueError("Refusing to delete the default calendar …; change the default in Apple Reminders → Settings → Default List first.")`.
+  - [x] `update_calendar(name, new_name)` renames via the Swift helper's `rename_list` action; collision detection via SQLite `Reader.get_calendar_by_name`; returns the renamed `Calendar` Pydantic.
+  - [x] **Color updates deferred to Slice 1.7** (alongside other ReminderKit-only writes; documented in the tool description and in the changelog). Avoids forking the Swift helper for a feature whose natural home is the Obj-C ReminderKit helper.
+  - [x] **Live round-trips verified**: `test_live_create_rename_and_delete_round_trip` and `test_live_create_and_cleanup_round_trip` both PASSED end-to-end against the user's Reminders.app.
+- [x] Complete
 
 ### S1.4 — ReminderKit helper Python wrapper
 

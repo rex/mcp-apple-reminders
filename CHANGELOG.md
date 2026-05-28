@@ -5,6 +5,40 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.23] — 2026-05-28 — Agent: Claude — Slice 1.3 (delete_calendar + update_calendar)
+
+Calendar lifecycle is now complete. Three of the four CRUD operations
+(`create`, `delete`, `update`) flow through the Swift EventKit helper;
+the read path goes through SQLite. The visibility-plane pilot pieces
+needed for Phase 4 are now buildable end-to-end on the substrate.
+
+### Added
+- **`_native/eventkit.py::delete_calendar(title)`** — pipes `{"action":"delete_list","title":...}` to the helper. Cascades to remove every reminder in the list atomically (EventKit's `removeCalendar(commit:)` is transactional).
+- **`_native/eventkit.py::rename_calendar(title, new_title)`** — pipes `{"action":"rename_list","title":...,"newTitle":...}` and returns a Pydantic `Calendar`.
+- **`tools/calendars.py::delete_calendar(name, force=False)`** — `@mcp.tool`. Safety choreography:
+  1. Blank-name → `ValueError`.
+  2. SQLite `Reader.get_calendar_by_name(name)` → check existence + count reminders (sub-ms).
+  3. Refuse to delete the default calendar (matched against `bridge.calendars.get_default()`).
+  4. If `force=False` and the list has any reminders, raise `ValueError` with the count.
+  5. `ctx.warning(...)` before the destructive call fires.
+  6. Helper invocation → on success, `ctx.info(...)` + return `{"id","name","deleted_reminders","force"}`.
+- **`tools/calendars.py::update_calendar(name, new_name)`** — `@mcp.tool`. Renames via `rename_calendar`. Collision check via SQLite reader. **Color updates intentionally deferred to Slice 1.7** — the Swift helper doesn't expose color updates today, and forking it for one feature whose natural home is the Obj-C ReminderKit helper (S1.4) would just generate work to undo later. The tool description calls this out explicitly.
+- **`test_eventkit_wrapper.py`** gains 4 unit tests + 1 opt-in live test:
+  - `test_delete_calendar_wrapper_blank_title_raises`
+  - `test_delete_calendar_wrapper_invokes_helper` (asserts wire-level payload)
+  - `test_rename_calendar_wrapper_invokes_helper_and_returns_calendar` (asserts wire-level payload + Pydantic shape)
+  - `test_rename_calendar_wrapper_blank_titles_raise`
+  - `test_live_create_rename_and_delete_round_trip` (guarded by `REM_LIVE_HELPER=1`) — **PASSED live**.
+
+### Verified
+- `pytest test_eventkit_wrapper.py`: 10 passed + 2 skipped (the live tests).
+- `REM_LIVE_HELPER=1 pytest test_eventkit_wrapper.py::test_live_create_rename_and_delete_round_trip test_eventkit_wrapper.py::test_live_create_and_cleanup_round_trip`: **both PASSED**.
+- `await mcp.list_tools()`: 25 tools registered (was 23; `delete_calendar` + `update_calendar` are new).
+- `make lint && make check-architecture`: green.
+
+### Status
+- Phase 1 progress: S1.0 ✅, S1.1 ✅, S1.2 ✅, S1.3 ✅ — four of nine slices landed. S1.4 (ReminderKit helper Python wrapper) next — that wrapper unlocks subtasks, flagged-via-API, tags, and sections.
+
 ## [0.1.22] — 2026-05-28 — Agent: Claude — Slice 1.2 (create_calendar)
 
 The first write tool that goes through the Swift EventKit helper subprocess.

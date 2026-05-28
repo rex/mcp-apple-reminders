@@ -169,9 +169,82 @@ def create_calendar(
     )
 
 
+def delete_calendar(
+    title: str,
+    *,
+    helper_path: Optional[Path] = None,
+) -> dict:
+    """Delete a reminder list (and all its reminders) via the Swift helper.
+
+    The underlying EventKit call (`removeCalendar(commit:)`) is atomic and
+    cascading — removing the calendar removes its reminders in the same
+    transaction. The tool layer is where the force-flag semantics and
+    the default-calendar guard live; this wrapper just talks to the helper.
+
+    Args:
+        title: The list name to delete.
+
+    Returns:
+        The raw helper response dict (`{"status": "deleted", "title": ...}`).
+
+    Raises:
+        ValueError: `title` is blank.
+        EventKitHelperUnavailable: helper binary missing.
+        EventKitHelperError: helper returned a structured error
+            (e.g. the named list does not exist).
+    """
+    if not title or not title.strip():
+        raise ValueError("title is required and must be non-empty")
+    return _invoke({"action": "delete_list", "title": title}, helper_path=helper_path)
+
+
+def rename_calendar(
+    title: str,
+    new_title: str,
+    *,
+    helper_path: Optional[Path] = None,
+) -> Calendar:
+    """Rename a reminder list via the Swift helper.
+
+    Args:
+        title: The current list name.
+        new_title: The desired new name.
+
+    Returns:
+        A Pydantic `Calendar` reflecting the renamed list.
+
+    Raises:
+        ValueError: titles are blank.
+        EventKitHelperUnavailable: helper binary missing.
+        EventKitHelperError: helper returned a structured error
+            (e.g. the named list does not exist; new name conflicts).
+    """
+    if not title or not title.strip():
+        raise ValueError("title is required and must be non-empty")
+    if not new_title or not new_title.strip():
+        raise ValueError("new_title is required and must be non-empty")
+    response = _invoke(
+        {"action": "rename_list", "title": title, "newTitle": new_title},
+        helper_path=helper_path,
+    )
+    cal_id = str(response.get("id") or "")
+    if not cal_id:
+        raise EventKitHelperError(f"Helper succeeded but returned no id: {response!r}")
+    return Calendar(
+        id=cal_id,
+        name=str(response.get("title") or new_title),
+        color="",
+        is_default=False,
+        owner=None,
+        deeplink=calendar_deeplink(cal_id),
+    )
+
+
 __all__ = [
     "DEFAULT_HELPER_PATH",
     "EventKitHelperError",
     "EventKitHelperUnavailable",
     "create_calendar",
+    "delete_calendar",
+    "rename_calendar",
 ]

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -23,6 +22,8 @@ from mcp_apple_reminders._native.eventkit import (
     EventKitHelperError,
     EventKitHelperUnavailable,
     create_calendar,
+    delete_calendar,
+    rename_calendar,
 )
 from mcp_apple_reminders.models import Calendar
 
@@ -129,12 +130,97 @@ def test_color_argument_is_passed_to_helper(tmp_path):
 # ---------------------------------------------------------------------------
 
 
+def test_delete_calendar_wrapper_blank_title_raises(tmp_path):
+    """delete_calendar guards against blank title."""
+    with pytest.raises(ValueError, match="non-empty"):
+        delete_calendar("")
+
+
+def test_delete_calendar_wrapper_invokes_helper(tmp_path):
+    """delete_calendar pipes the right action + title to the helper."""
+    stdin_dump = tmp_path / "captured-stdin.json"
+    helper = tmp_path / "helper"
+    helper.write_text(
+        "#!/bin/sh\n"
+        f"cat > {stdin_dump.as_posix()}\n"
+        "cat <<'EOF'\n"
+        '{"status":"deleted","title":"X"}\n'
+        "EOF\n"
+        "exit 0\n"
+    )
+    helper.chmod(0o755)
+    response = delete_calendar("X", helper_path=helper)
+    assert response["status"] == "deleted"
+    payload = json.loads(stdin_dump.read_text())
+    assert payload == {"action": "delete_list", "title": "X"}
+
+
+def test_rename_calendar_wrapper_invokes_helper_and_returns_calendar(tmp_path):
+    """rename_calendar emits rename_list with both titles and parses the response."""
+    stdin_dump = tmp_path / "captured-stdin.json"
+    helper = tmp_path / "helper"
+    helper.write_text(
+        "#!/bin/sh\n"
+        f"cat > {stdin_dump.as_posix()}\n"
+        "cat <<'EOF'\n"
+        '{"status":"renamed","id":"NEW-UUID","title":"NewName"}\n'
+        "EOF\n"
+        "exit 0\n"
+    )
+    helper.chmod(0o755)
+    cal = rename_calendar("OldName", "NewName", helper_path=helper)
+    assert cal.id == "NEW-UUID"
+    assert cal.name == "NewName"
+    assert cal.deeplink == "x-apple-reminderkit://REMCDList/NEW-UUID"
+    payload = json.loads(stdin_dump.read_text())
+    assert payload == {"action": "rename_list", "title": "OldName", "newTitle": "NewName"}
+
+
+def test_rename_calendar_wrapper_blank_titles_raise():
+    """rename_calendar requires both title and new_title."""
+    with pytest.raises(ValueError, match="title"):
+        rename_calendar("", "y")
+    with pytest.raises(ValueError, match="new_title"):
+        rename_calendar("x", "")
+
+
+@pytest.mark.skipif(
+    os.environ.get("REM_LIVE_HELPER") != "1" or not DEFAULT_HELPER_PATH.exists(),
+    reason="Set REM_LIVE_HELPER=1 with a built helper to run the live round-trip.",
+)
+def test_live_create_rename_and_delete_round_trip():
+    """Live: create → rename → delete via the helper. Cleans up after itself."""
+    initial_name = "REM-TEST-AUTODELETE-S13a"
+    renamed_name = "REM-TEST-AUTODELETE-S13b"
+
+    cal = create_calendar(initial_name, color="green")
+    assert cal.id
+    assert cal.deeplink == f"x-apple-reminderkit://REMCDList/{cal.id}"
+
+    try:
+        renamed = rename_calendar(initial_name, renamed_name)
+        assert renamed.id  # helper returns the same EKCalendar identifier
+    finally:
+        # Clean up using whichever name currently exists.
+        cleanup_attempts = [renamed_name, initial_name]
+        last_err: Exception | None = None
+        for name in cleanup_attempts:
+            try:
+                delete_calendar(name)
+                last_err = None
+                break
+            except EventKitHelperError as e:
+                last_err = e
+        if last_err is not None:
+            raise AssertionError(f"Cleanup failed; manually delete {cleanup_attempts!r}: {last_err}")
+
+
 @pytest.mark.skipif(
     os.environ.get("REM_LIVE_HELPER") != "1" or not DEFAULT_HELPER_PATH.exists(),
     reason="Set REM_LIVE_HELPER=1 with a built helper to run the live round-trip.",
 )
 def test_live_create_and_cleanup_round_trip():
-    """Live: create a list, verify deeplink format, then delete via the helper."""
+    """Live: create a list via wrapper, verify deeplink, then delete via wrapper."""
     test_name = "REM-TEST-AUTODELETE-S12"
 
     cal = create_calendar(test_name, color="blue")
@@ -142,17 +228,5 @@ def test_live_create_and_cleanup_round_trip():
     assert cal.deeplink == f"x-apple-reminderkit://REMCDList/{cal.id}"
     assert cal.name == test_name
 
-    # Clean up via the helper's `delete_list` action.
-    delete_payload = json.dumps({"action": "delete_list", "title": test_name})
-    proc = subprocess.run(
-        [str(DEFAULT_HELPER_PATH)],
-        input=delete_payload,
-        capture_output=True,
-        text=True,
-        timeout=15,
-        check=False,
-    )
-    assert proc.returncode == 0, (
-        f"delete_list cleanup failed; you may need to delete {test_name!r} manually. "
-        f"stderr={proc.stderr!r} stdout={proc.stdout!r}"
-    )
+    response = delete_calendar(test_name)
+    assert response["status"] == "deleted"
