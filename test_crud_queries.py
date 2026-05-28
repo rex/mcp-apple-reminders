@@ -1,6 +1,6 @@
 """Query / filter / search test surface.
 
-Exercises every read-only query the pyremindkit RemindKit client exposes:
+Exercises every read-only query the RemindKit client exposes:
 `get_next_reminder`, `get_reminders` with date/completion filters,
 `search_reminders`. Does not create or modify any reminders.
 """

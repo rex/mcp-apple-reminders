@@ -42,18 +42,16 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 - Files edited: `pyproject.toml`, `requirements.txt`, `verify_setup.py`
 - Result: mcp 1.24.0 → 1.27.1; pyobjc pinned to 12.x; pydantic 2.13.4. All `verify_setup.py` probes green. No deprecation warnings.
 
-### Slice 0.2 — Rename libs/pyremindkit → src/mcp_apple_reminders/_native/  ← NEXT
+### Slice 0.2 — Rename libs/pyremindkit → src/mcp_apple_reminders/_native/  ✅ DONE
 
-- Status: ⏸ pending
-- Files: many (move + import updates)
-- Depends on: S0.1 ✅
-- Acceptance: see `tasks.md::S0.2`. Tip: do this with git mv for history preservation.
+- Status: ✅ done (commit: pending push)
+- Result: libs/ removed; 5 modules moved (`git mv` preserved history); 7 callers re-imported (`server`, `formatting`, `tools/queries`, 4 test orchestrators); `sys.path` mutations dropped; AGENTS/MAP/Makefile/verify_setup swept.
 
-### Slice 0.3 — Pydantic models
+### Slice 0.3 — Pydantic models  ← NEXT
 
 - Status: ⏸ pending
 - Files: `src/mcp_apple_reminders/models.py` (new), `_native/_internal.py`
-- Depends on: S0.2
+- Depends on: S0.2 ✅
 - Acceptance: see `tasks.md::S0.3`. CONTRACT FREEZE at end of this slice for the Reminder field order.
 
 ### Slice 0.4 — FastMCP migration

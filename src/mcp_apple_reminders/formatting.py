@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pyremindkit import Reminder
+from mcp_apple_reminders._native import Reminder
 
 
 def format_reminder(reminder: Reminder) -> str:

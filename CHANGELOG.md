@@ -5,6 +5,27 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.16] — 2026-05-28 — Agent: Claude — Slice 0.2
+
+### Changed
+- **Renamed `libs/pyremindkit/` → `src/mcp_apple_reminders/_native/`.** Drops the vendored-dep narrative; the EventKit wrapper is now first-party. Five module files moved via `git mv` (history preserved): `__init__.py`, `_internal.py`, `calendars.py`, `core.py`, `models.py`. Internal module names unchanged (transitional aliases until S0.3+0.4 reshape further).
+- `src/mcp_apple_reminders/server.py`: dropped `sys.path` mutation; imports `RemindKit` via `from ._native import RemindKit`. File shortened 95 → 89 lines.
+- `src/mcp_apple_reminders/formatting.py` + `src/mcp_apple_reminders/tools/queries.py`: re-imported `from mcp_apple_reminders._native`.
+- All test orchestrators (`test_comprehensive_crud.py`, `test_workflow_tools.py`, `test_e2e.py`, `test_mcp_tools.py`): dropped `sys.path` insert; switched to `from mcp_apple_reminders._native import ...`.
+- `verify_setup.py`: replaced the pyremindkit-on-sys.path probe with a direct `from mcp_apple_reminders import _native` probe.
+- `Makefile`: lint/black targets no longer reference `libs/pyremindkit/src/`.
+
+### Removed
+- `libs/` directory entirely: `LICENSE`, `MANIFEST.in`, `Makefile`, `README.md`, `README.upstream.md`, `VENDOR.md`, `examples/`, `requirements/`, `setup.py`, `pyproject.toml`, `.gitignore`, `.pre-commit-config.yaml`.
+
+### Documented
+- `AGENTS.md` + `MAP.md` swept: references to `libs/pyremindkit/`/`pyremindkit/` replaced with `_native/` throughout (paths, gotchas, decision-log entries).
+
+### Verified
+- `make lint && make check-architecture` green (38 source files; ⚠ 3 soft warnings unchanged from pre-slice).
+- `pytest test_mcp_tools.py test_e2e.py`: 5 passed.
+- `verify_setup.py`: all probes green against the renamed package.
+
 ## [0.1.15] — 2026-05-28 — Agent: Claude — Slice 0.1
 
 ### Changed

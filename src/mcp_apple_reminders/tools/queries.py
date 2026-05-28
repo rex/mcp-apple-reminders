@@ -14,7 +14,8 @@ from datetime import datetime
 from typing import Any
 
 from mcp.types import TextContent, Tool
-from pyremindkit import Priority
+
+from mcp_apple_reminders._native import Priority
 
 from ..formatting import format_reminder, parse_datetime
 

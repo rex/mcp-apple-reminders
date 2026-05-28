@@ -6,12 +6,6 @@ This test creates, updates, and deletes a test reminder to verify full functiona
 
 import sys
 from datetime import datetime, timedelta
-from pathlib import Path
-
-# Add the pyremindkit library to the path
-_project_root = Path(__file__).parent
-_pyremindkit_path = _project_root / "libs" / "pyremindkit" / "src"
-sys.path.insert(0, str(_pyremindkit_path))
 
 
 def test_e2e_reminder_operations():
@@ -22,7 +16,7 @@ def test_e2e_reminder_operations():
     print("=" * 60)
 
     try:
-        from pyremindkit import RemindKit
+        from mcp_apple_reminders._native import RemindKit
 
         # Initialize RemindKit
         rk = RemindKit()

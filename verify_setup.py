@@ -165,21 +165,19 @@ def main():
     all_passed = all_passed and package_ok
     print()
 
-    # Check 6: pyremindkit import path
-    print("📚 Checking pyremindkit library...")
-    pyremindkit_result = run_python(
-        "import sys; "
-        f"sys.path.insert(0, {str(REPO_ROOT / 'libs' / 'pyremindkit' / 'src')!r}); "
-        "import pyremindkit; "
-        "print(pyremindkit.__file__)"
+    # Check 6: _native package (post-S0.2 home of the EventKit wrapper)
+    print("📚 Checking mcp_apple_reminders._native package...")
+    native_result = run_python(
+        "from mcp_apple_reminders import _native; "
+        "print(_native.__file__)"
     )
-    pyremindkit_ok = pyremindkit_result.returncode == 0
+    native_ok = native_result.returncode == 0
     print_status(
-        "pyremindkit",
-        pyremindkit_ok,
-        pyremindkit_result.stdout.strip() if pyremindkit_ok else pyremindkit_result.stderr.strip(),
+        "_native",
+        native_ok,
+        native_result.stdout.strip() if native_ok else native_result.stderr.strip(),
     )
-    all_passed = all_passed and pyremindkit_ok
+    all_passed = all_passed and native_ok
     print()
 
     # Check 7: Claude Desktop configuration

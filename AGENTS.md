@@ -3,7 +3,7 @@
 ## 1. Project snapshot
 
 - **What**: macOS-only MCP server exposing Apple Reminders (EventKit) to Claude Code, Codex, and Claude Desktop.
-- **Runtime**: Python 3.10+ (repo venv runs 3.13.5 from miniconda). MCP SDK + PyObjC EventKit. Vendored `pyremindkit` in `libs/`.
+- **Runtime**: Python 3.10+ (repo venv runs 3.13.5 from miniconda). MCP SDK 1.27+ + PyObjC EventKit. EventKit wrapper lives at `src/mcp_apple_reminders/_native/` (renamed from `libs/pyremindkit/` in slice 0.2).
 - **Platform**: macOS only — depends on `EventKit` and a granted Reminders permission on the interpreter binary.
 - **Owner**: @pierce (single-author repo as of 2026-05).
 - **Non-goals**: cross-platform support, reminder UI (use Reminders.app), iCloud sync logic (macOS handles it).
@@ -19,8 +19,8 @@ Grant Reminders permission on first launch — approve the macOS dialog when `ve
 
 ## 3. Commands the agent MUST run before declaring done
 
-- `ruff check src/ libs/pyremindkit/src/`
-- `black --check src/ libs/pyremindkit/src/`
+- `ruff check src/ test_*.py test_support/`
+- `black --check src/ test_*.py test_support/`
 - `./venv/bin/python -m pytest test_mcp_tools.py test_workflow_tools.py test_e2e.py` — root-level tests, explicit paths (no auto-discovery)
 - `make check-architecture` (line-limit gate: hard cap 400 lines/file)
 - `make bump-patch` (or minor/major) before commit — `bump_required_per_commit: true`
@@ -30,8 +30,8 @@ Grant Reminders permission on first launch — approve the macOS dialog when `ve
 ```
 src/mcp_apple_reminders/        MCP server orchestrator (server.py) + formatting helpers
 src/mcp_apple_reminders/tools/  Per-category tool defs (calendars, reminders, queries, workflow)
-libs/pyremindkit/               Vendored EventKit wrapper
-libs/pyremindkit/src/pyremindkit/  core (RemindKit), calendars (Calendar + Manager), models, _internal
+src/mcp_apple_reminders/_native/   EventKit wrapper (formerly `libs/pyremindkit/`; renamed in S0.2)
+src/mcp_apple_reminders/_native/   core (RemindKit), calendars (Calendar + Manager), models, _internal
 scripts/                        Gate scripts (bump_version, check_architecture, check_module_rules, …)
 test_*.py                       Per-domain test files at repo root (orchestrators + per-domain modules)
 test_support/                   Shared test scaffolding (TestResults harness, cleanup)
@@ -62,7 +62,7 @@ AGENTS.md.pre-retrofit          Original 205-line guide (preserved for reference
 
 ## 9. Things agents get wrong here
 
-- **Dead callbacks**: pyremindkit's `on_reminder_created` / `on_reminder_completed` register but never fire. Don't rely on them.
+- **Dead callbacks**: `_native/core.py`'s `on_reminder_created` / `on_reminder_completed` register but never fire. Don't rely on them.
 - **EventKit error out-params are mishandled** — `error = None` then passed to PyObjC. Actual errors never propagate; failure messages always literally say `None`.
 - **Significant capability gaps from EventKit**: NO `create_calendar` / `delete_calendar` / `update_calendar`, NO `flagged` setter, NO recurrence rules, NO alarms (time- or location-based), NO subtasks. P0–P3 roadmap in `PROGRESS.md` (after PR4).
 - **Architecture gate is opt-OUT**: every source file is scanned by default. Hard cap 400 lines, soft 250. The 4 pre-retrofit oversized files (`server.py`, `core.py`, two test files) were split — do NOT add new files that bust the cap on the assumption a grandfather glob will catch them. There are no grandfather globs.
@@ -81,4 +81,4 @@ AGENTS.md.pre-retrofit          Original 205-line guide (preserved for reference
 
 ## 12. Subdirectory AGENTS.md (precedence: nearest wins)
 
-- `libs/pyremindkit/` is treated as a vendored dep; may gain its own AGENTS.md if it diverges into independent work.
+- `src/mcp_apple_reminders/_native/` houses the EventKit wrapper (formerly vendored as `libs/pyremindkit/`; renamed in S0.2).

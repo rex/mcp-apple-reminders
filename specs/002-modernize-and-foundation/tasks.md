@@ -24,13 +24,13 @@
 
 ### S0.2 — Rename libs/pyremindkit → src/mcp_apple_reminders/_native
 
-- **Files**: move files via `git mv`; delete `libs/pyremindkit/{VENDOR.md, README.upstream.md, LICENSE, MANIFEST.in, Makefile, README.md, examples/, requirements/, setup.py, pyproject.toml, .gitignore, .pre-commit-config.yaml}`. Update all imports.
+- **Files**: moved files via `git mv`; deleted `libs/pyremindkit/{VENDOR.md, README.upstream.md, LICENSE, MANIFEST.in, Makefile, README.md, examples/, requirements/, setup.py, pyproject.toml, .gitignore, .pre-commit-config.yaml}`. Updated all imports (server, formatting, tools/queries, all test_*.py, verify_setup, Makefile, AGENTS.md, MAP.md).
 - **Acceptance**:
-  - [ ] `libs/` directory removed.
-  - [ ] `from mcp_apple_reminders._native import RemindKit, Reminder, Priority, Calendar, CalendarManager` works (transitional aliases until S0.3+0.4 rename further).
-  - [ ] `server.py` no longer mutates `sys.path`.
-  - [ ] All tests still pass; `make check-architecture` green.
-- [ ] Complete
+  - [x] `libs/` directory removed.
+  - [x] `from mcp_apple_reminders._native import RemindKit, Reminder, Priority, Calendar, CalendarManager` works (transitional aliases — internal module names unchanged until S0.3+0.4 reshape further).
+  - [x] `server.py` no longer mutates `sys.path` (also removed from all test_*.py).
+  - [x] All tests still pass (test_mcp_tools + test_e2e: 5 passed); `make lint && make check-architecture` green.
+- [x] Complete
 
 ### S0.3 — Pydantic models (+ deeplink verification)
 

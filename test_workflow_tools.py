@@ -1,23 +1,18 @@
 #!/usr/bin/env python3
 """Workflow tools test suite orchestrator.
 
-Top-level driver that sets up the pyremindkit import path, instantiates
-`RemindKit`, runs each per-domain workflow test module, and cleans up.
-Per-domain tests live in `test_workflow_*.py`; shared helpers in
-`test_support/`.
+Top-level driver that instantiates `RemindKit`, runs each per-domain workflow
+test module, and cleans up. Per-domain tests live in `test_workflow_*.py`;
+shared helpers in `test_support/`.
+
+(post S0.2 — no sys.path mutation; RemindKit lives at
+`mcp_apple_reminders._native`.)
 """
 
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
-# Ensure vendored pyremindkit is on sys.path before the first import.
-_project_root = Path(__file__).parent
-_pyremindkit_path = _project_root / "libs" / "pyremindkit" / "src"
-sys.path.insert(0, str(_pyremindkit_path))
-
-# ruff: noqa: E402 — orchestrator must mutate sys.path before importing the per-domain test modules
 from test_support.cleanup import cleanup_test_reminders
 from test_support.harness import TestResults, get_current_cst_iso8601
 from test_workflow_convenience import test_workflow_convenience_functions
@@ -38,7 +33,7 @@ def main() -> int:
     test_reminder_ids = []
 
     try:
-        from pyremindkit import RemindKit
+        from mcp_apple_reminders._native import RemindKit
 
         print("\n📱 Initializing RemindKit...")
         rk = RemindKit()

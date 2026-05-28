@@ -5,12 +5,6 @@ Tests server initialization and RemindKit functionality.
 """
 
 import sys
-from pathlib import Path
-
-# Add the pyremindkit library to the path
-_project_root = Path(__file__).parent
-_pyremindkit_path = _project_root / "libs" / "pyremindkit" / "src"
-sys.path.insert(0, str(_pyremindkit_path))
 
 
 def test_imports():
@@ -29,10 +23,10 @@ def test_imports():
 
         print("✅ EventKit framework imported successfully")
 
-        # Test pyremindkit
-        from pyremindkit import Priority, Reminder, RemindKit  # noqa: F401 — availability probe
+        # Test mcp_apple_reminders._native (post-S0.2 home of RemindKit)
+        from mcp_apple_reminders._native import Priority, Reminder, RemindKit  # noqa: F401 — availability probe
 
-        print("✅ pyremindkit library imported successfully")
+        print("✅ mcp_apple_reminders._native imported successfully")
 
         # Test MCP server
         from mcp_apple_reminders import server  # noqa: F401 — availability probe
@@ -75,7 +69,7 @@ def test_remindkit_permissions():
     print("=" * 60)
 
     try:
-        from pyremindkit import RemindKit
+        from mcp_apple_reminders._native import RemindKit
 
         # Create RemindKit instance (will request permissions if needed)
         rk = RemindKit()

@@ -178,9 +178,9 @@ start:
 ## lint: Run ruff (lint) + black (format check) on first-party code
 lint:
 	@echo "$(CYAN)Running ruff check...$(RESET)"
-	@./venv/bin/python -m ruff check src/ libs/pyremindkit/src/ test_*.py test_support/
+	@./venv/bin/python -m ruff check src/ test_*.py test_support/
 	@echo "$(CYAN)Running black --check...$(RESET)"
-	@./venv/bin/python -m black --check --quiet src/ libs/pyremindkit/src/ test_*.py test_support/
+	@./venv/bin/python -m black --check --quiet src/ test_*.py test_support/
 	@echo "$(GREEN)Lint clean.$(RESET)"
 
 ## typecheck: Run mypy on the MCP server package (PyObjC stubs missing → --ignore-missing-imports)
