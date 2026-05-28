@@ -5,6 +5,29 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.18] — 2026-05-28 — Agent: Claude — Slice 0.4 (FastMCP migration)
+
+### Changed (substrate)
+- **Server rewritten on `FastMCP`** (`mcp>=1.27`). The pre-S0.4 low-level `Server` + `@app.list_tools()` / `@app.call_tool()` dispatch with a manual handler dict (`ALL_TOOLS`, `ALL_HANDLERS`) is gone. `server.py` is now 50 LOC; tool registration is decorator-driven and happens at import time.
+- New **`src/mcp_apple_reminders/lifespan.py`** owns the single `RemindKit` bridge via an `@asynccontextmanager` returning an `AppContext` dataclass. All tools access it through `ctx.request_context.lifespan_context.bridge`. The pre-session `PermissionError` path stays on stderr (no MCP session yet to log through).
+- **All 22 tools migrated to `@mcp.tool` decorators** across `tools/calendars.py`, `tools/reminders.py`, `tools/queries.py`, `tools/workflow.py`. Each handler is `async def …(arg1, …, ctx: Context) -> Pydantic`.
+- Output shape moved from `list[TextContent]` (a hand-formatted human-readable block) to **structured Pydantic models**. FastMCP serializes them as structured output AND renders a text-content fallback for clients that don't surface structured output.
+- `tools/__init__.py` no longer aggregates an `ALL_TOOLS` / `ALL_HANDLERS` registry — FastMCP owns the registry directly.
+- `__init__.py`: `from .server import cli_main, mcp` (was `cli_main, main`).
+
+### Added (converters)
+- `models.py::native_calendar_to_pydantic(_native.Calendar)` and `native_reminder_to_pydantic(_native.Reminder)` — transitional adapters that let the FastMCP tools wrap the existing `_native` data-access surface without forcing a simultaneous rewrite of `_native` to return Pydantic. They go away in S1.0 when the SQLite reader returns Pydantic directly.
+
+### Preserved (acceptance criterion: bit-for-bit tool surface)
+- Tool **names** and descriptions: verbatim. All 22 names confirmed via `await mcp.list_tools()`.
+- **Semantic** input schemas: identical parameter sets and `required` lists per tool. FastMCP normalizes optional params to `anyOf [type, null]` (vs the old `properties` + omit-from-`required` shape) — semantic equivalence; the diff is syntactic. The migration was an explicit Pierce-approved trade for Resources/Prompts/Sampling/Elicitation in Phase 2.
+
+### Verified
+- `pytest test_mcp_tools.py test_e2e.py test_models.py`: 15 passed, 1 skipped (the opt-in deeplink open round-trip).
+- `make lint && make check-architecture`: green (41 files; ⚠ 5 soft warnings at 258–291 LOC; under hard cap 400).
+- `./venv/bin/python -m mcp_apple_reminders` boots cleanly and blocks on stdio as expected.
+- `verify_setup.py`: all probes green.
+
 ## [0.1.17] — 2026-05-28 — Agent: Claude — Slice 0.3 (CONTRACT FREEZE)
 
 ### Added

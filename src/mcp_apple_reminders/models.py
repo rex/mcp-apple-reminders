@@ -230,11 +230,62 @@ def eventkit_calendar_to_pydantic(
     )
 
 
+# ---------------------------------------------------------------------------
+# Native (NamedTuple/dataclass) → Pydantic converters
+# ---------------------------------------------------------------------------
+# `_native.Calendar` is a dataclass and `_native.Reminder` is a NamedTuple.
+# These transitional converters let FastMCP tools wrap the existing
+# data-access surface without changing the underlying _native types. They go
+# away in S1.0+ once SQLite reads return Pydantic models directly.
+
+
+def native_calendar_to_pydantic(native_cal) -> Calendar:
+    """Convert a `_native.Calendar` (dataclass) into the public `Calendar` model."""
+    cal_id = str(native_cal.id)
+    owner = native_cal.owner if native_cal.owner not in (None, "Unknown") else None
+    return Calendar(
+        id=cal_id,
+        name=native_cal.name,
+        color=native_cal.color,
+        is_default=native_cal.is_default,
+        owner=owner,
+        deeplink=calendar_deeplink(cal_id),
+    )
+
+
+def native_reminder_to_pydantic(native_r) -> Reminder:
+    """Convert a `_native.Reminder` (NamedTuple) into the public `Reminder` model.
+
+    ReminderKit-only fields (parent_reminder_id, subtasks, tags, section_name)
+    default to None / [] because `_native` only surfaces the EventKit subset.
+    Slice 1.0 hydrates them from the SQLite read path.
+    """
+    reminder_id = str(native_r.id)
+    return Reminder(
+        id=reminder_id,
+        title=native_r.title,
+        due_date=native_r.due_date,
+        notes=native_r.notes,
+        completed=native_r.completed,
+        url=native_r.url,
+        priority=native_r.priority,
+        list_id=native_r.list_id,
+        created_date=native_r.created_date,
+        modified_date=native_r.modified_date,
+        flagged=native_r.flagged,
+        deeplink=reminder_deeplink(reminder_id),
+    )
+
+
 __all__ = [
+    "CALENDAR_DEEPLINK_SCHEME",
     "Calendar",
+    "REMINDER_DEEPLINK_SCHEME",
     "Reminder",
     "calendar_deeplink",
     "eventkit_calendar_to_pydantic",
     "eventkit_reminder_to_pydantic",
+    "native_calendar_to_pydantic",
+    "native_reminder_to_pydantic",
     "reminder_deeplink",
 ]

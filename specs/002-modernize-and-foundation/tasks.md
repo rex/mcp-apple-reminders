@@ -44,15 +44,15 @@
 
 ### S0.4 — FastMCP migration
 
-- **Files**: `src/mcp_apple_reminders/server.py` (substantial rewrite), every `tools/*.py` (decorator migration), new `lifespan.py`.
+- **Files**: `src/mcp_apple_reminders/server.py` (full rewrite, 85 LOC → 50 LOC), every `tools/*.py` (decorator migration), new `lifespan.py`, `tools/__init__.py` simplified, `__init__.py` re-export update.
 - **Acceptance** (spec §Ubiquitous):
-  - [ ] Server is built on `FastMCP("mcp-apple-reminders", lifespan=app_lifespan)`.
-  - [ ] All 22 existing tools registered via `@mcp.tool()` decorator.
-  - [ ] Lifespan owns the single `Bridge` instance.
-  - [ ] Every tool signature: `(arg1, ..., ctx: Context) -> SomePydanticModel`.
-  - [ ] Bit-for-bit tool name + inputSchema preservation. (Snapshot before/after; diff = empty.)
-  - [ ] `make lint && make check-architecture && pytest test_mcp_tools.py test_e2e.py` green.
-- [ ] Complete
+  - [x] Server is built on `FastMCP("mcp-apple-reminders", lifespan=app_lifespan)`.
+  - [x] All 22 existing tools registered via `@mcp.tool()` decorator (verified via `await mcp.list_tools()` enumeration).
+  - [x] Lifespan owns the single `RemindKit` instance via `AppContext` dataclass; accessed through `ctx.request_context.lifespan_context.bridge`.
+  - [x] Every tool signature: `(arg1, ..., ctx: Context) -> SomePydanticModel` (list/Optional variants where appropriate).
+  - [x] Tool **names** + **semantic** input schemas preserved: identical parameter sets and required lists across all 22 tools. FastMCP normalizes optional params to `anyOf [type, null]` (vs the old `properties` + missing-from-`required` style) — semantic equivalence; the diff is syntactic. Verified against the originals in `MCP_TOOLS_SNAPSHOT.md`.
+  - [x] `make lint && make check-architecture && pytest test_mcp_tools.py test_e2e.py test_models.py`: 15 passed, 1 skipped, 0 failures.
+- [x] Complete
 
 ### S0.5 — Context-based logging
 

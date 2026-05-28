@@ -53,14 +53,12 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 - Files: `src/mcp_apple_reminders/models.py` (new, 203 LOC), `test_models.py` (new, 247 LOC, 10 passed + 1 opt-in skip).
 - Result: Calendar (6 fields) + Reminder (18 fields), `frozen=True`. Deeplink helpers + EventKit→Pydantic converters. Field order guarded by two regression tests — touching it fails the suite.
 
-### Slice 0.4 — FastMCP migration  ← NEXT
+### Slice 0.4 — FastMCP migration  ✅ DONE
 
-- Status: ⏸ pending
-- Files: `server.py` (rewrite), every `tools/*.py`, new `lifespan.py`
-- Depends on: S0.3
-- Acceptance: see `tasks.md::S0.4`. THE BIGGEST SLICE — may need split mid-execution.
+- Status: ✅ done (commit: pending push)
+- Files: `server.py` rewritten (50 LOC), `lifespan.py` (new), all 4 `tools/*.py` migrated to `@mcp.tool` decorators, `tools/__init__.py` simplified, `__init__.py` re-export update. All 22 tools register correctly with FastMCP; semantic input schemas preserved; tests + lint + architecture green.
 
-### Slice 0.5 — Context-based logging
+### Slice 0.5 — Context-based logging  ← NEXT
 
 - Status: ⏸ pending
 - Files: every `tools/*.py`, server.py

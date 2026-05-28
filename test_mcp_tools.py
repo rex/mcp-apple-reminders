@@ -41,20 +41,16 @@ def test_imports():
 
 
 def test_server_structure():
-    """Test that the server has the expected structure."""
+    """Test that the server has the expected structure (post-S0.4 FastMCP edition)."""
     print("\n🏗️  Testing Server Structure")
     print("=" * 60)
 
     try:
-        from mcp_apple_reminders.server import app
+        from mcp_apple_reminders.server import mcp
 
-        print("✅ Server app instance found")
-        print("✅ list_tools handler found")
-        print("✅ call_tool handler found")
-
-        # Check server name
-        if hasattr(app, "name"):
-            print(f"✅ Server name: {app.name}")
+        print("✅ FastMCP server instance found")
+        if hasattr(mcp, "name"):
+            print(f"✅ Server name: {mcp.name}")
 
         return True
 
@@ -130,16 +126,15 @@ def test_tool_definitions():
     try:
         import asyncio
 
-        from mcp_apple_reminders.server import list_tools
+        from mcp_apple_reminders.server import mcp
 
-        # Call the list_tools handler directly
+        # Post-S0.4: FastMCP exposes tools via `mcp.list_tools()`.
         async def check_tools():
-            tools = await list_tools()
-            return tools
+            return await mcp.list_tools()
 
         tools = asyncio.run(check_tools())
 
-        expected_tool_count = 16
+        expected_tool_count = 22
         if len(tools) >= expected_tool_count:
             print(f"✅ Found {len(tools)} tools (expected at least {expected_tool_count})")
 

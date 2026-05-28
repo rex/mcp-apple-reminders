@@ -1,195 +1,188 @@
-"""Reminder CRUD MCP tools.
+"""Reminder CRUD MCP tools — FastMCP edition.
 
-Six operations: create, update, complete (sugar over update), uncomplete (sugar),
-get-by-id, delete. The complete/uncomplete handlers are thin wrappers that call
-`update_reminder(is_completed=…)` so they stay in sync with the canonical update
-path automatically.
+Six operations: create, update, complete (sugar over update), uncomplete
+(sugar), get-by-id, delete. The complete/uncomplete handlers are thin
+wrappers that call `update_reminder(is_completed=…)` so they stay in sync
+with the canonical update path automatically.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Optional
 
-from mcp.types import TextContent, Tool
+from mcp.server.fastmcp import Context
 
-from ..formatting import format_reminder, parse_datetime, parse_priority
-
-
-def _handle_create_reminder(arguments: Any, remind) -> list[TextContent]:
-    kwargs = {"title": arguments["title"]}
-
-    if arguments.get("due_date"):
-        kwargs["due_date"] = parse_datetime(arguments["due_date"])
-    if arguments.get("notes"):
-        kwargs["notes"] = arguments["notes"]
-    if arguments.get("priority"):
-        kwargs["priority"] = parse_priority(arguments["priority"])
-    if arguments.get("url"):
-        kwargs["url"] = arguments["url"]
-    if arguments.get("calendar_id"):
-        kwargs["calendar_id"] = arguments["calendar_id"]
-
-    reminder = remind.create_reminder(**kwargs)
-    return [TextContent(type="text", text="Reminder created successfully!\n\n" + format_reminder(reminder))]
+from ..formatting import parse_datetime, parse_priority
+from ..models import Reminder, native_reminder_to_pydantic
+from ..server import mcp
 
 
-def _handle_update_reminder(arguments: Any, remind) -> list[TextContent]:
-    kwargs = {}
-
-    if arguments.get("title"):
-        kwargs["title"] = arguments["title"]
-    if arguments.get("due_date"):
-        kwargs["due_date"] = parse_datetime(arguments["due_date"])
-    if arguments.get("notes") is not None:
-        # Notes may be an empty string to explicitly clear them — preserve that.
-        kwargs["notes"] = arguments["notes"]
-    if arguments.get("priority"):
-        kwargs["priority"] = parse_priority(arguments["priority"])
-    if "url" in arguments:
-        # Same as notes — empty string is a clear, not a no-op.
-        kwargs["url"] = arguments["url"]
-    if "is_completed" in arguments:
-        kwargs["is_completed"] = arguments["is_completed"]
-
-    reminder = remind.update_reminder(arguments["reminder_id"], **kwargs)
-    return [TextContent(type="text", text="Reminder updated successfully!\n\n" + format_reminder(reminder))]
+def _bridge_from_ctx(ctx: Context):
+    return ctx.request_context.lifespan_context.bridge
 
 
-def _handle_complete_reminder(arguments: Any, remind) -> list[TextContent]:
-    reminder = remind.update_reminder(arguments["reminder_id"], is_completed=True)
-    return [TextContent(type="text", text="Reminder marked as complete!\n\n" + format_reminder(reminder))]
-
-
-def _handle_uncomplete_reminder(arguments: Any, remind) -> list[TextContent]:
-    reminder = remind.update_reminder(arguments["reminder_id"], is_completed=False)
-    return [TextContent(type="text", text="Reminder marked as incomplete!\n\n" + format_reminder(reminder))]
-
-
-def _handle_get_reminder(arguments: Any, remind) -> list[TextContent]:
-    reminder = remind.get_reminder_by_id(arguments["reminder_id"])
-    return [TextContent(type="text", text="Reminder Details:\n\n" + format_reminder(reminder))]
-
-
-def _handle_delete_reminder(arguments: Any, remind) -> list[TextContent]:
-    rid = arguments["reminder_id"]
-    success = remind.delete_reminder(rid)
-    if success:
-        return [TextContent(type="text", text=f"Reminder {rid} deleted successfully.")]
-    return [TextContent(type="text", text=f"Failed to delete reminder {rid}.")]
-
-
-TOOLS: list[Tool] = [
-    Tool(
-        name="create_reminder",
-        description="Create a new reminder in Apple Reminders. You can specify the title, due date, notes, priority, URL, and which calendar (list) to add it to. If no calendar is specified, it will be added to the default list.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "The title/name of the reminder"},
-                "due_date": {
-                    "type": "string",
-                    "description": "ISO format datetime string (e.g., '2024-01-15T14:30:00'). Optional.",
-                },
-                "notes": {
-                    "type": "string",
-                    "description": "Additional notes or description for the reminder. Optional.",
-                },
-                "priority": {
-                    "type": "string",
-                    "description": "Priority level: 'none', 'low', 'medium', 'high', or integer 0-9. Default is 'none'. Optional.",
-                },
-                "url": {"type": "string", "description": "URL to associate with the reminder. Optional."},
-                "calendar_id": {
-                    "type": "string",
-                    "description": "ID of the calendar (list) to add the reminder to. If not specified, uses the default calendar. Optional.",
-                },
-            },
-            "required": ["title"],
-        },
+@mcp.tool(
+    name="create_reminder",
+    description=(
+        "Create a new reminder in Apple Reminders. You can specify the title, "
+        "due date, notes, priority, URL, and which calendar (list) to add it "
+        "to. If no calendar is specified, it will be added to the default list."
     ),
-    Tool(
-        name="update_reminder",
-        description="Update an existing reminder. You can modify any combination of: title, due date, notes, priority, URL, and completion status. Only the fields you specify will be updated; others remain unchanged.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "reminder_id": {"type": "string", "description": "The unique identifier of the reminder to update"},
-                "title": {"type": "string", "description": "New title for the reminder. Optional."},
-                "due_date": {
-                    "type": "string",
-                    "description": "New due date in ISO format (e.g., '2024-01-15T14:30:00'). Optional.",
-                },
-                "notes": {"type": "string", "description": "New notes/description. Optional."},
-                "priority": {
-                    "type": "string",
-                    "description": "New priority: 'none', 'low', 'medium', 'high', or integer 0-9. Optional.",
-                },
-                "url": {"type": "string", "description": "New URL to associate with the reminder. Optional."},
-                "is_completed": {
-                    "type": "boolean",
-                    "description": "Mark the reminder as completed (true) or incomplete (false). Optional.",
-                },
-            },
-            "required": ["reminder_id"],
-        },
-    ),
-    Tool(
-        name="complete_reminder",
-        description="Mark a reminder as completed. This is a convenience tool that's equivalent to calling update_reminder with is_completed=true.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "reminder_id": {
-                    "type": "string",
-                    "description": "The unique identifier of the reminder to mark as complete",
-                },
-            },
-            "required": ["reminder_id"],
-        },
-    ),
-    Tool(
-        name="uncomplete_reminder",
-        description="Mark a reminder as incomplete/not done. This is useful for reopening a reminder that was previously completed.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "reminder_id": {
-                    "type": "string",
-                    "description": "The unique identifier of the reminder to mark as incomplete",
-                },
-            },
-            "required": ["reminder_id"],
-        },
-    ),
-    Tool(
-        name="get_reminder",
-        description="Get a specific reminder by its unique ID. Returns all details about the reminder including title, due date, notes, priority, completion status, and more.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "reminder_id": {"type": "string", "description": "The unique identifier of the reminder"},
-            },
-            "required": ["reminder_id"],
-        },
-    ),
-    Tool(
-        name="delete_reminder",
-        description="Permanently delete a reminder. This action cannot be undone. The reminder will be removed from Apple Reminders entirely.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "reminder_id": {"type": "string", "description": "The unique identifier of the reminder to delete"},
-            },
-            "required": ["reminder_id"],
-        },
-    ),
-]
+)
+async def create_reminder(
+    title: str,
+    ctx: Context,
+    due_date: Optional[str] = None,
+    notes: Optional[str] = None,
+    priority: Optional[str] = None,
+    url: Optional[str] = None,
+    calendar_id: Optional[str] = None,
+) -> Reminder:
+    """Create a new reminder.
 
-HANDLERS = {
-    "create_reminder": _handle_create_reminder,
-    "update_reminder": _handle_update_reminder,
-    "complete_reminder": _handle_complete_reminder,
-    "uncomplete_reminder": _handle_uncomplete_reminder,
-    "get_reminder": _handle_get_reminder,
-    "delete_reminder": _handle_delete_reminder,
-}
+    Args:
+        title: The title/name of the reminder.
+        due_date: ISO format datetime string (e.g., '2024-01-15T14:30:00'). Optional.
+        notes: Additional notes or description for the reminder. Optional.
+        priority: Priority level: 'none', 'low', 'medium', 'high', or integer 0-9. Default is 'none'. Optional.
+        url: URL to associate with the reminder. Optional.
+        calendar_id: ID of the calendar (list) to add the reminder to. If not specified, uses the default calendar. Optional.
+    """
+    kwargs: dict = {"title": title}
+    if due_date:
+        kwargs["due_date"] = parse_datetime(due_date)
+    if notes:
+        kwargs["notes"] = notes
+    if priority:
+        kwargs["priority"] = parse_priority(priority)
+    if url:
+        kwargs["url"] = url
+    if calendar_id:
+        kwargs["calendar_id"] = calendar_id
+
+    bridge = _bridge_from_ctx(ctx)
+    return native_reminder_to_pydantic(bridge.create_reminder(**kwargs))
+
+
+@mcp.tool(
+    name="update_reminder",
+    description=(
+        "Update an existing reminder. You can modify any combination of: "
+        "title, due date, notes, priority, URL, and completion status. Only "
+        "the fields you specify will be updated; others remain unchanged."
+    ),
+)
+async def update_reminder(
+    reminder_id: str,
+    ctx: Context,
+    title: Optional[str] = None,
+    due_date: Optional[str] = None,
+    notes: Optional[str] = None,
+    priority: Optional[str] = None,
+    url: Optional[str] = None,
+    is_completed: Optional[bool] = None,
+) -> Reminder:
+    """Update an existing reminder.
+
+    Args:
+        reminder_id: The unique identifier of the reminder to update.
+        title: New title for the reminder. Optional.
+        due_date: New due date in ISO format (e.g., '2024-01-15T14:30:00'). Optional.
+        notes: New notes/description. Optional.
+        priority: New priority: 'none', 'low', 'medium', 'high', or integer 0-9. Optional.
+        url: New URL to associate with the reminder. Optional.
+        is_completed: Mark the reminder as completed (true) or incomplete (false). Optional.
+    """
+    kwargs: dict = {}
+    if title:
+        kwargs["title"] = title
+    if due_date:
+        kwargs["due_date"] = parse_datetime(due_date)
+    if notes is not None:
+        # Empty string is an explicit clear, not a no-op.
+        kwargs["notes"] = notes
+    if priority:
+        kwargs["priority"] = parse_priority(priority)
+    if url is not None:
+        kwargs["url"] = url
+    if is_completed is not None:
+        kwargs["is_completed"] = is_completed
+
+    bridge = _bridge_from_ctx(ctx)
+    return native_reminder_to_pydantic(bridge.update_reminder(reminder_id, **kwargs))
+
+
+@mcp.tool(
+    name="complete_reminder",
+    description=(
+        "Mark a reminder as completed. This is a convenience tool that's "
+        "equivalent to calling update_reminder with is_completed=true."
+    ),
+)
+async def complete_reminder(reminder_id: str, ctx: Context) -> Reminder:
+    """Mark a reminder as completed.
+
+    Args:
+        reminder_id: The unique identifier of the reminder to mark as complete.
+    """
+    bridge = _bridge_from_ctx(ctx)
+    return native_reminder_to_pydantic(bridge.update_reminder(reminder_id, is_completed=True))
+
+
+@mcp.tool(
+    name="uncomplete_reminder",
+    description=(
+        "Mark a reminder as incomplete/not done. This is useful for reopening "
+        "a reminder that was previously completed."
+    ),
+)
+async def uncomplete_reminder(reminder_id: str, ctx: Context) -> Reminder:
+    """Mark a reminder as incomplete.
+
+    Args:
+        reminder_id: The unique identifier of the reminder to mark as incomplete.
+    """
+    bridge = _bridge_from_ctx(ctx)
+    return native_reminder_to_pydantic(bridge.update_reminder(reminder_id, is_completed=False))
+
+
+@mcp.tool(
+    name="get_reminder",
+    description=(
+        "Get a specific reminder by its unique ID. Returns all details about "
+        "the reminder including title, due date, notes, priority, completion "
+        "status, and more."
+    ),
+)
+async def get_reminder(reminder_id: str, ctx: Context) -> Reminder:
+    """Get a reminder by its unique ID.
+
+    Args:
+        reminder_id: The unique identifier of the reminder.
+    """
+    bridge = _bridge_from_ctx(ctx)
+    return native_reminder_to_pydantic(bridge.get_reminder_by_id(reminder_id))
+
+
+@mcp.tool(
+    name="delete_reminder",
+    description=(
+        "Permanently delete a reminder. This action cannot be undone. The "
+        "reminder will be removed from Apple Reminders entirely."
+    ),
+)
+async def delete_reminder(reminder_id: str, ctx: Context) -> dict:
+    """Permanently delete a reminder.
+
+    Args:
+        reminder_id: The unique identifier of the reminder to delete.
+    """
+    bridge = _bridge_from_ctx(ctx)
+    success = bridge.delete_reminder(reminder_id)
+    return {
+        "reminder_id": reminder_id,
+        "deleted": bool(success),
+        "message": (
+            f"Reminder {reminder_id} deleted successfully." if success else f"Failed to delete reminder {reminder_id}."
+        ),
+    }
