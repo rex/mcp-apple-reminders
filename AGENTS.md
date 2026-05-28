@@ -28,13 +28,16 @@ Grant Reminders permission on first launch — approve the macOS dialog when `ve
 ## 4. Repo layout
 
 ```
-src/mcp_apple_reminders/    MCP server (server.py registers tools, marshals to pyremindkit)
-libs/pyremindkit/           Vendored EventKit wrapper (Calendar, Reminder, RemindKit)
-scripts/                    Gate scripts (bump_version, check_architecture, check_module_rules, …)
-test_*.py                   Tests live at repo root (NOT in tests/)
-verify_setup.py             Install + permission + client-config verification
-install.sh, shim_mcp.sh     Bootstrap + first-run permission-prompt shim
-AGENTS.md.pre-retrofit      Original 205-line guide (preserved for reference)
+src/mcp_apple_reminders/        MCP server orchestrator (server.py) + formatting helpers
+src/mcp_apple_reminders/tools/  Per-category tool defs (calendars, reminders, queries, workflow)
+libs/pyremindkit/               Vendored EventKit wrapper
+libs/pyremindkit/src/pyremindkit/  core (RemindKit), calendars (Calendar + Manager), models, _internal
+scripts/                        Gate scripts (bump_version, check_architecture, check_module_rules, …)
+test_*.py                       Per-domain test files at repo root (orchestrators + per-domain modules)
+test_support/                   Shared test scaffolding (TestResults harness, cleanup)
+verify_setup.py                 Install + permission + client-config verification
+install.sh, shim_mcp.sh         Bootstrap + first-run permission-prompt shim
+AGENTS.md.pre-retrofit          Original 205-line guide (preserved for reference)
 ```
 
 ## 5. Code style
@@ -59,10 +62,11 @@ AGENTS.md.pre-retrofit      Original 205-line guide (preserved for reference)
 
 ## 9. Things agents get wrong here
 
-- **`Calendar.is_default` is buggy** — `libs/pyremindkit/src/pyremindkit/core.py:211` uses `EKCalendar.isImmutable()` as the proxy. That's wrong; `isImmutable` means "user can't modify," not "is the default list." Should compare against `event_store.defaultCalendarForNewReminders()`. Every list currently reports `Default: No`.
+- **`Calendar.is_default` is buggy** — `libs/pyremindkit/src/pyremindkit/calendars.py::CalendarManager.list()` uses `EKCalendar.isImmutable()` as the proxy. That's wrong; `isImmutable` means "user can't modify," not "is the default list." Should compare against `event_store.defaultCalendarForNewReminders()`. Every list currently reports `Default: No`.
 - **Dead callbacks**: pyremindkit's `on_reminder_created` / `on_reminder_completed` register but never fire. Don't rely on them.
 - **EventKit error out-params are mishandled** — `error = None` then passed to PyObjC. Actual errors never propagate; failure messages always literally say `None`.
 - **Significant capability gaps from EventKit**: NO `create_calendar` / `delete_calendar` / `update_calendar`, NO `flagged` setter, NO recurrence rules, NO alarms (time- or location-based), NO subtasks. P0–P3 roadmap in `PROGRESS.md` (after PR4).
+- **Architecture gate is opt-OUT**: every source file is scanned by default. Hard cap 400 lines, soft 250. The 4 pre-retrofit oversized files (`server.py`, `core.py`, two test files) were split — do NOT add new files that bust the cap on the assumption a grandfather glob will catch them. There are no grandfather globs.
 
 ## 10. Workflow
 

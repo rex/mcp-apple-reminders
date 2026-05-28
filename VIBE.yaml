@@ -81,13 +81,6 @@ architecture:
   exclude_globs:
     - "**/*.generated.*"
     - "**/node_modules/**"
-    # Brownfield grandfather: pre-retrofit files that exceed the hard
-    # limit. Tracked as refactor work in PROGRESS.md (added in PR4) and
-    # AGENTS.md §9. REMOVE these globs as the refactor lands.
-    - "src/mcp_apple_reminders/server.py"            # 961 lines → split by tool category
-    - "libs/pyremindkit/src/pyremindkit/core.py"     # 504 lines → split calendar/reminder/event_store
-    - "test_comprehensive_crud.py"                   # 682 lines → split by reminder vs calendar tests
-    - "test_workflow_tools.py"                       # 522 lines → split by status-lane vs move-to-list
   max_lines_per_file:
     soft: 250    # warning only — refactor trigger
     hard: 400    # blocking failure

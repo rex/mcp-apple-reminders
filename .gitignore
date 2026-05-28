@@ -56,7 +56,9 @@ env/
 htmlcov/
 lib/
 lib64/
-libs/
+# NOTE: `libs/` (plural) is intentionally NOT ignored — this repo uses it
+# for the vendored `pyremindkit` package. Only `lib/` and `lib64/` (Python
+# build artifacts) are ignored.
 local_config.json
 parts/
 pip-wheel-metadata/
