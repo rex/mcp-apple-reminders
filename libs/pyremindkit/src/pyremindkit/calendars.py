@@ -6,12 +6,6 @@ Defines:
   `create_reminder`) can talk to EventKit directly.
 - `CalendarManager` — accessor surface bolted onto `RemindKit` as `.calendars`.
   Exposes `list`, `get` (by name), `get_by_id`, `search`, `get_default`.
-
-Known issue: `Calendar.is_default` is reported via `EKCalendar.isImmutable()`.
-That is the WRONG semantics — `isImmutable` means "user can't modify the
-calendar," not "is the default list." See `CalendarManager.list()`. The
-correct fix compares each calendar's identifier against
-`event_store.defaultCalendarForNewReminders()`. Tracked as P0 in the roadmap.
 """
 
 from __future__ import annotations
@@ -185,11 +179,12 @@ class CalendarManager:
     def list(self) -> Generator[Calendar, None, None]:
         """Yield every reminder-type calendar accessible to the user.
 
-        BUG: `is_default` is set from `EKCalendar.isImmutable()`, which is wrong
-        semantics. Should compare against `self._event_store.defaultCalendarForNewReminders()`.
-        Preserved here verbatim to maintain bug-for-bug compatibility with the
-        original code; tracked as a P0 fix.
+        `is_default` is `True` for exactly the calendar returned by
+        `EKEventStore.defaultCalendarForNewReminders()` — determined by
+        comparing `calendarIdentifier()` values.
         """
+        default_cal = self._event_store.defaultCalendarForNewReminders()
+        default_id = default_cal.calendarIdentifier() if default_cal else None
         calendars = self._event_store.calendarsForEntityType_(EKEntityTypeReminder)
         for calendar in calendars:
             yield Calendar(
@@ -197,7 +192,7 @@ class CalendarManager:
                 name=calendar.title(),
                 owner="Unknown",
                 color=str(calendar.color()),
-                is_default=calendar.isImmutable(),
+                is_default=(calendar.calendarIdentifier() == default_id),
                 _event_store=self._event_store,
             )
 

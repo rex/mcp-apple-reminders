@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.9] — 2026-05-28 — Agent: Claude
+### Changed
+- _(fill in — what changed in this version)_
+
 ## [0.1.8] — 2026-05-28 — Agent: Claude
 ### Changed
 - Adopted trunk-strategy: `VIBE.yaml::project.branch_strategy: trunk`. Pierce-explicit (2026-05-28) — sole-author repo, no PR review dance. All work commits directly to `main`.

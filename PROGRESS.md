@@ -3,8 +3,8 @@
 - **Project**: mcp-apple-reminders (python-mcp; macOS-only EventKit MCP server)
 - **Active branch**: `main` (trunk strategy — Pierce explicit 2026-05-28: no feature-branch dance, commits land on main directly)
 - **Active feature spec**: `specs/001-visibility-foundation/`
-- **Active TASK_STATE**: `TASK_STATE.md` (Phase 1 / Slice 1.1 ← NEXT)
-- **Last session**: 2026-05-28 (Claude, /retrofit run — PRs 1-4 landed, PR5 pending)
+- **Active TASK_STATE**: `TASK_STATE.md` (Phase 1 / Slice 1.2 ← NEXT)
+- **Last session**: 2026-05-28 (Claude Sonnet 4.6 — S1.1 done: is_default bug fixed, VERSION 0.1.9)
 
 ## Last three decisions
 

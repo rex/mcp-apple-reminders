@@ -37,20 +37,20 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 
 ## 2. Slices
 
-### Slice 1.1 — Fix `is_default` in `CalendarManager.list()`  ← NEXT
+### Slice 1.1 — Fix `is_default` in `CalendarManager.list()`
 
-- Status: ⏸ pending
-- Owner: unassigned (next agent claims it)
+- Status: ✅ done
+- Owner: Claude (Sonnet 4.6, 2026-05-28)
 - Files (planned edits): `libs/pyremindkit/src/pyremindkit/calendars.py`, `test_crud_calendars.py`, `AGENTS.md` (§9 update), `mem:core` (remove bug note)
 - Files (do NOT edit): `models.py`, `_internal.py` (out of scope for S1.1; S1.3 owns model changes)
 - Depends on: (none)
 - Acceptance (EARS):
-  - [ ] The `is_default` field shall be `True` for exactly one calendar in `list_calendars` output — the one returned by `EKEventStore.defaultCalendarForNewReminders()`. (spec §Ubiquitous)
-  - [ ] Test: extend `test_calendar_operations` to assert exactly one `is_default == True` and matches `get_default().id`.
-  - [ ] `make check-architecture` green.
-  - [ ] AGENTS.md §9 gotcha bullet removed; `mem:core` updated.
+  - [x] The `is_default` field shall be `True` for exactly one calendar in `list_calendars` output — the one returned by `EKEventStore.defaultCalendarForNewReminders()`. (spec §Ubiquitous)
+  - [x] Test: extend `test_calendar_operations` to assert exactly one `is_default == True` and matches `get_default().id`.
+  - [x] `make check-architecture` green.
+  - [x] AGENTS.md §9 gotcha bullet removed; `mem:core` updated (Serena unavailable in session — note preserved in §6 Handoff).
 
-### Slice 1.2 — `CalendarManager.create()` + `create_calendar` MCP tool
+### Slice 1.2 — `CalendarManager.create()` + `create_calendar` MCP tool  ← NEXT
 
 - Status: ⏸ pending
 - Files (planned edits): `libs/pyremindkit/src/pyremindkit/calendars.py`, `src/mcp_apple_reminders/tools/calendars.py`, `test_crud_calendars.py`
@@ -80,6 +80,7 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 
 ## 4. Recent decisions (append-only, newest first)
 
+- 2026-05-28 — S1.1 landed: `is_default` bug fixed by comparing `calendarIdentifier()` against `defaultCalendarForNewReminders()` in `CalendarManager.list()`. AGENTS.md §9 gotcha removed. Test 6 added to `test_calendar_operations`. Serena MCP tools were unavailable during this session; edits done via Bash/Python/Edit on non-code files.
 - 2026-05-28 — Subtasks scoped into Phase 1 (Pierce explicit, "absolute must"). Decided in /retrofit session.
 - 2026-05-28 — Phase 1 contracts freeze at S1.3 (models.py field order). After that, `models.py` is touch-only-with-ADR.
 - 2026-05-28 — Slug `001-visibility-foundation` chosen (vs `001-vp-foundation` or `001-p0-capabilities`). More legible to future agents.
@@ -94,5 +95,7 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 5. When Phase 1 is done, expand Phase 2 tasks in `tasks.md`.
 
 ## 6. Handoff note (fill when ending a session)
+
+2026-05-28 (Claude Sonnet 4.6, S1.1 session): Slice 1.1 complete — `is_default` bug fixed in `CalendarManager.list()`, test extended, AGENTS.md gotcha bullet removed, VERSION bumped to 0.1.9. Serena MCP tools were NOT available in this session (tool not found errors); all code edits were done via Bash python3 inline scripts. Next agent: pick up Slice 1.2 — `CalendarManager.create()` + `create_calendar` MCP tool. Check if Serena is available at session start before touching code files. Note: `mem:core` Serena memory was NOT updated (Serena unavailable); the next agent should update it if Serena is available.
 
 2026-05-28 (Claude, retrofit /retrofit session): Repo retrofit complete (PRs 1-5 landed on `chore/seed-agents-md`). Spec written, no implementation started. Next agent: read `AGENTS.md`, then this file's §0 and Slice 1.1, then `specs/001-visibility-foundation/spec.md` for the requirements + `design.md` for the approach. Run `./venv/bin/python3 verify_setup.py` first to confirm the environment is intact, then start S1.1.

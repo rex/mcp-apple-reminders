@@ -62,7 +62,6 @@ AGENTS.md.pre-retrofit          Original 205-line guide (preserved for reference
 
 ## 9. Things agents get wrong here
 
-- **`Calendar.is_default` is buggy** — `libs/pyremindkit/src/pyremindkit/calendars.py::CalendarManager.list()` uses `EKCalendar.isImmutable()` as the proxy. That's wrong; `isImmutable` means "user can't modify," not "is the default list." Should compare against `event_store.defaultCalendarForNewReminders()`. Every list currently reports `Default: No`.
 - **Dead callbacks**: pyremindkit's `on_reminder_created` / `on_reminder_completed` register but never fire. Don't rely on them.
 - **EventKit error out-params are mishandled** — `error = None` then passed to PyObjC. Actual errors never propagate; failure messages always literally say `None`.
 - **Significant capability gaps from EventKit**: NO `create_calendar` / `delete_calendar` / `update_calendar`, NO `flagged` setter, NO recurrence rules, NO alarms (time- or location-based), NO subtasks. P0–P3 roadmap in `PROGRESS.md` (after PR4).

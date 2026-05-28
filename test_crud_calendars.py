@@ -74,4 +74,22 @@ def test_calendar_operations(rk, results):
         except Exception as e:
             results.add_fail("Search calendars", e)
 
+    # Test 6: is_default correctness — exactly one True, and its id matches get_default
+    if calendars and default_cal:
+        try:
+            default_matches = [cal for cal in calendars if cal.is_default]
+            assert len(default_matches) == 1, (
+                f"Expected exactly 1 default calendar, got {len(default_matches)}"
+            )
+            assert default_matches[0].id == default_cal.id, (
+                f"Default calendar id mismatch: list()={default_matches[0].id!r} "
+                f"vs get_default()={default_cal.id!r}"
+            )
+            results.add_pass(
+                "is_default correctness",
+                f"Exactly one default ('{default_matches[0].name}') matching get_default()",
+            )
+        except Exception as e:
+            results.add_fail("is_default correctness", e)
+
     return calendars, default_cal
