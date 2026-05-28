@@ -5,6 +5,18 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.13] — 2026-05-28 — Agent: Claude
+### Changed
+- **Spec 002 pivoted to RemCTL's actual three-tier architecture**: direct SQLite reads + Swift EventKit helper subprocess + Objective-C ReminderKit helper subprocess. Replaces the earlier "PyObjC for everything" approach after surfacing RemCTL's real implementation (Python 83.4% / Obj-C 9.6% / Swift 5.8% / Shell 1.2%, three compiled helpers + direct SQLite reads).
+- Added **Slice 0.6** (native build pipeline) and **Slice 1.0** (SQLite reader) to plan + tasks. Phase 0 grows from 5 to 6 slices; Phase 1 grows from 7 to 9 slices (adding S1.0 SQLite reader and S1.8 `assign_section`).
+- `Reminder` Pydantic model gains `deeplink: str` field (`x-apple-reminderkit://REMCDReminder/{id}`); `Calendar` model gains the same (`x-apple-reminderkit://REMCDList/{id}`). Surfaces on every response.
+- `Reminder` model also gains `section_name: str | None` (from SQLite read).
+- Total scope: 25 slices, ~13-14 days focused capacity. SQLite-reader win means many Phase 3 reads come for free.
+
+### Documented
+- Borrow plan: `viticci/remctl::remctl-bridge.swift` → `_native/src/rem_eventkit.swift`; `viticci/remctl::remctl-private.m` → `_native/src/rem_reminderkit.m`. MIT-licensed. Attribution in `_native/THIRD_PARTY_NOTICES.md` + inline file headers (created in S0.6).
+- Verified RemCTL is open source (github.com/viticci/remctl), MIT-licensed, actively maintained (last push 2026-05-26), 40 stars.
+
 ## [0.1.12] — 2026-05-28 — Agent: Claude
 ### Added
 - `specs/002-modernize-and-foundation/{spec,design,plan,tasks}.md` — new 4-phase spec replacing the archived `001-visibility-foundation` after gold-standard research surfaced significant scope expansion (FastMCP, MCP 1.27+, ReminderKit private API for subtasks/flagged/tags, MCP Resources/Prompts/Sampling/Elicitation, alarms, recurrence, bulk ops, visibility-plane pilot).

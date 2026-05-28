@@ -8,9 +8,9 @@
 
 ## Last three decisions
 
-- 2026-05-28 — Spec 002 supersedes spec 001. After research vs gold-standard, scope expanded to four phases (modernize → P0 → MCP primitives → feature parity + visibility-plane). ReminderKit (private) used for subtasks/flagged/tags. Pierce-explicit on all scope decisions.
+- 2026-05-28 — Spec 002 pivoted to RemCTL three-tier architecture (SQLite reads + Swift EventKit helper subprocess + Obj-C ReminderKit helper subprocess). Borrows code from `viticci/remctl` (MIT). Added Slice 0.6 (native build) + Slice 1.0 (SQLite reader). Adds `deeplink` field to Reminder + Calendar models. Pierce-explicit.
+- 2026-05-28 — Spec 002 supersedes spec 001. After research vs gold-standard, scope expanded to four phases (modernize → P0 → MCP primitives → feature parity + visibility-plane).
 - 2026-05-28 — ALL subagents run on Opus (Pierce-explicit global preference; recorded in `mem:global/agent_model_policy`).
-- 2026-05-28 — Adopted trunk-strategy: `VIBE.yaml::project.branch_strategy: trunk`.
 
 ## Open blockers
 

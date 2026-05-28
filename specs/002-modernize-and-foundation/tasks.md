@@ -14,33 +14,32 @@
 
 ### S0.1 — Upgrade mcp + pyobjc
 
-- **Files**: `pyproject.toml`, `requirements.txt`, `verify_setup.py` (version pins)
+- **Files**: `pyproject.toml`, `requirements.txt`, `verify_setup.py`
 - **Acceptance**:
   - [ ] `mcp>=1.27,<2` pinned.
   - [ ] `verify_setup.py` confirms `mcp.__version__ >= 1.27`.
-  - [ ] `./venv/bin/python3 -m mcp_apple_reminders` starts cleanly on the new mcp version.
+  - [ ] `./venv/bin/python3 -m mcp_apple_reminders` starts cleanly.
   - [ ] No PyObjC deprecation warnings on macOS 26.1.
 - [ ] Complete
 
 ### S0.2 — Rename libs/pyremindkit → src/mcp_apple_reminders/_native
 
-- **Files**: move libs/pyremindkit/src/pyremindkit/{core,calendars,models,_internal,__init__}.py → src/mcp_apple_reminders/_native/{eventkit,calendars,models,_internal,__init__}.py (rename `core.py` → `eventkit.py`). Delete `libs/pyremindkit/*` (VENDOR.md, LICENSE, etc.). Update all imports.
+- **Files**: move files via `git mv`; delete `libs/pyremindkit/{VENDOR.md, README.upstream.md, LICENSE, MANIFEST.in, Makefile, README.md, examples/, requirements/, setup.py, pyproject.toml, .gitignore, .pre-commit-config.yaml}`. Update all imports.
 - **Acceptance**:
   - [ ] `libs/` directory removed.
-  - [ ] `from mcp_apple_reminders._native import RemindKit, Reminder, Priority, Calendar, CalendarManager` works.
-  - [ ] `server.py` no longer mutates `sys.path` (the vendored-dep import dance is unnecessary).
-  - [ ] All tests still pass.
-  - [ ] `make check-architecture` green.
+  - [ ] `from mcp_apple_reminders._native import RemindKit, Reminder, Priority, Calendar, CalendarManager` works (transitional aliases until S0.3+0.4 rename further).
+  - [ ] `server.py` no longer mutates `sys.path`.
+  - [ ] All tests still pass; `make check-architecture` green.
 - [ ] Complete
 
-### S0.3 — Pydantic models
+### S0.3 — Pydantic models (+ deeplink verification)
 
 - **Files**: `src/mcp_apple_reminders/models.py` (new), `_native/_internal.py` (add converters)
 - **Acceptance**:
-  - [ ] `models.py` defines Pydantic `Calendar`, `Reminder` with the full field set from `design.md::API surface`.
-  - [ ] `Reminder.parent_reminder_id`, `subtasks`, `tags`, `completion_date`, `start_date` fields present (populated lazily — `None`/`[]` until later slices wire them up).
-  - [ ] Converter `eventkit_reminder_to_pydantic(ek_reminder) -> Reminder` exists.
-  - [ ] Field order is locked at end of this slice.
+  - [ ] `models.py` defines Pydantic `Calendar` (6 fields including `deeplink`) and `Reminder` (18 fields including `deeplink`, `section_name`, `parent_reminder_id`, `subtasks`, `tags`).
+  - [ ] Helper `reminder_deeplink(uuid)` and `calendar_deeplink(uuid)` exist and round-trip via `subprocess.run(['open', deeplink])` smoke test (skipped in CI but runnable locally).
+  - [ ] Converter `eventkit_reminder_to_pydantic(ek_reminder) -> Reminder` exists; `calendarItemIdentifier()` correctly populates the `id` and `deeplink` fields.
+  - [ ] Field order locked at end of this slice; CONTRACT FREEZE.
 - [ ] Complete
 
 ### S0.4 — FastMCP migration
@@ -49,9 +48,9 @@
 - **Acceptance** (spec §Ubiquitous):
   - [ ] Server is built on `FastMCP("mcp-apple-reminders", lifespan=app_lifespan)`.
   - [ ] All 22 existing tools registered via `@mcp.tool()` decorator.
-  - [ ] Lifespan owns the single `RemindKit` (later renamed to `Bridge`) instance.
+  - [ ] Lifespan owns the single `Bridge` instance.
   - [ ] Every tool signature: `(arg1, ..., ctx: Context) -> SomePydanticModel`.
-  - [ ] Bit-for-bit tool name + inputSchema preservation. (Smoke-test: snapshot before/after, diff = empty.)
+  - [ ] Bit-for-bit tool name + inputSchema preservation. (Snapshot before/after; diff = empty.)
   - [ ] `make lint && make check-architecture && pytest test_mcp_tools.py test_e2e.py` green.
 - [ ] Complete
 
@@ -64,85 +63,113 @@
   - [ ] Server startup retains its `sys.stderr` permission-error path (cannot route through Context — no session yet).
 - [ ] Complete
 
+### S0.6 — Native build pipeline (Swift + Obj-C helpers from RemCTL)
+
+- **Files**: `_native/src/rem_eventkit.swift` (borrowed from `viticci/remctl::remctl-bridge.swift`), `_native/src/rem_reminderkit.m` (borrowed from `remctl-private.m`), `_native/THIRD_PARTY_NOTICES.md` (MIT attribution), `Makefile` (build targets), `install.sh` (invoke build).
+- **Acceptance** (spec §Ubiquitous re borrowed code):
+  - [ ] `_native/src/rem_eventkit.swift` and `_native/src/rem_reminderkit.m` present with inline `// Borrowed from viticci/remctl@<sha>, MIT-licensed — see _native/THIRD_PARTY_NOTICES.md` headers.
+  - [ ] `_native/THIRD_PARTY_NOTICES.md` contains the verbatim MIT license + file-by-file mapping + upstream SHAs.
+  - [ ] `make build-native` compiles to `_native/bin/rem_eventkit` and `_native/bin/rem_reminderkit`, ~50ms each.
+  - [ ] `install.sh` invokes `make build-native` after the venv install.
+  - [ ] `verify_setup.py` confirms both binaries exist and exit 0 on a `--ping` invocation.
+  - [ ] Helper-process lifetime mode decided (long-lived vs per-call); documented in `_native/bridge.py` docstring.
+- [ ] Complete
+
 ## Phase 1 — P0 capabilities
 
 ### S1.1 — is_default fix (DONE in commit 117cc8a)
 
 - **Acceptance**:
-  - [x] The `is_default` field is `True` for exactly one calendar in `list_calendars` output.
+  - [x] `is_default` is `True` for exactly one calendar in `list_calendars`.
   - [x] Test 6 in `test_crud_calendars.py` enforces this.
 
-### S1.2 — `CalendarManager.create()` + `create_calendar` tool
+### S1.0 — Direct SQLite reader
 
-- **Files**: `_native/calendars.py` (add `.create()`), `tools/calendars.py` (add tool), `test_crud_calendars.py`
+- **Files**: `_native/sqlite.py` (new), `_native/bridge.py` (route reads here)
+- **Acceptance** (spec §Ubiquitous re reads):
+  - [ ] `_native/sqlite.py` opens `~/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores/Data-*.sqlite` with `?mode=ro&immutable=1`.
+  - [ ] Schema version captured at module load; warning logged if unknown.
+  - [ ] Iterators expose: calendars (`list_calendars()`), reminders (`get_reminders()`), subtask relationships, tags, sections, attachments metadata, alarms metadata.
+  - [ ] Existing read tools switched to SQLite path; EventKit reads kept as fallback (used if SQLite missing).
+  - [ ] If SQLite file absent: `RemindersDBUnavailable` raised; tools degrade to EventKit reads with a warning logged via Context.
+  - [ ] Tests: `test_crud_calendars.py::test_calendar_operations` passes against SQLite path; latency assertion (`list()` < 100ms).
+- [ ] Complete
+
+### S1.2 — `create_calendar`
+
+- **Files**: `_native/eventkit.py` (Python wrapper for the Swift helper), `tools/calendars.py`
 - **Acceptance** (spec §Event-driven, §Optional):
-  - [ ] When `create_calendar` is invoked with a unique name, a new reminder calendar is created in the user's primary source and returned.
-  - [ ] When invoked with a duplicate name, an error is returned without creating a second calendar.
-  - [ ] If the user's only source doesn't support reminders, an error is returned (vs silently picking a wrong source).
-  - [ ] Where `color` is provided, the named palette OR hex is honored.
-  - [ ] Test: create → assert in `list_calendars` → delete (manual cleanup via direct EventKit call until S1.3).
+  - [ ] `create_calendar` dispatches to `rem_eventkit` subprocess with a JSON request.
+  - [ ] Returns the new `Calendar` (with `deeplink`).
+  - [ ] Duplicate-name handling: helper returns structured error; Python wrapper raises `ValueError`.
+  - [ ] Color argument honored (named palette or hex).
 - [ ] Complete
 
 ### S1.3 — `delete_calendar` + `update_calendar`
 
-- **Files**: `_native/calendars.py` (add `.delete()`, `.update()`), `tools/calendars.py`, `test_crud_calendars.py`
+- **Files**: `_native/eventkit.py` (extend Python wrapper), `tools/calendars.py`
 - **Acceptance** (spec §Event-driven, §Unwanted-behavior):
-  - [ ] `delete_calendar` with `force=false` errors if reminders exist, listing the count.
-  - [ ] `delete_calendar` with `force=true` deletes everything inside.
-  - [ ] `delete_calendar` on the default calendar rejects.
-  - [ ] `update_calendar` accepts `name` and/or `color`; returns the updated calendar.
-  - [ ] Test: create → update name → update color → delete with force=true → confirm gone.
+  - [ ] `delete_calendar` with `force=false` errors if any reminders exist.
+  - [ ] `delete_calendar` with `force=true` deletes all + the calendar.
+  - [ ] `delete_calendar` on default calendar rejects.
+  - [ ] `update_calendar` updates `name`/`color`; returns updated.
 - [ ] Complete
 
-### S1.4 — ReminderKit bindings
+### S1.4 — ReminderKit helper Python wrapper
 
-- **Files**: `_native/reminderkit.py` (new), `_native/bridge.py` (new — facade), `verify_setup.py` (probe for ReminderKit load)
-- **Acceptance** (spec §Unwanted-behavior, §State-driven):
-  - [ ] `objc.loadBundle` succeeds on macOS 26.1, exposing `REMReminder` to Python.
-  - [ ] If load fails, `_native.reminderkit.REMINDERKIT_AVAILABLE` flips false; bridge methods that need it raise `ReminderKitUnavailable` exception.
-  - [ ] `bridge.py` exposes unified API: `get_subtasks(reminder_id)`, `get_flagged(reminder_id)`, `get_tags(reminder_id)` — read-only in this slice.
-  - [ ] Converters populate the new `Reminder` fields (`parent_reminder_id`, `subtasks`, `tags`) when ReminderKit is available.
-  - [ ] Test: `verify_setup.py` reports ReminderKit availability. New `test_reminderkit_smoke.py` exercises the load + a read.
+- **Files**: `_native/reminderkit.py` (new)
+- **Acceptance** (spec §State-driven, §Unwanted-behavior):
+  - [ ] Long-lived (or per-call, per S0.6 decision) subprocess management of `rem_reminderkit`.
+  - [ ] JSON-over-stdio protocol: send `{"action": "...", ...}` on stdin; read response from stdout.
+  - [ ] If binary missing or fails to start: module sets `REMINDERKIT_HELPER_AVAILABLE = False`; calls raise `ReminderKitHelperUnavailable`.
+  - [ ] `verify_setup.py` reports helper availability.
+  - [ ] Smoke test (`test_reminderkit_smoke.py`): ping the helper, set/clear a tag on a test reminder, assert round-trip.
 - [ ] Complete
 
 ### S1.5 — Subtask write paths
 
-- **Files**: `_native/reminderkit.py` (add write methods), `_native/bridge.py`, `tools/reminders.py`, `tools/queries.py`, new `test_subtasks.py`
+- **Files**: `_native/reminderkit.py` (subtask write methods), `_native/bridge.py`, `tools/reminders.py`, `tools/queries.py`, `test_subtasks.py`
 - **Acceptance** (spec §Event-driven, §Unwanted-behavior):
-  - [ ] `create_reminder(parent_reminder_id=...)` creates the new reminder as a subtask in the parent's calendar.
-  - [ ] If `parent_reminder_id` + `calendar_id` mismatch, the call rejects with `ValueError`.
-  - [ ] `set_parent(reminder_id, parent_reminder_id)` reassigns; `parent_reminder_id=null` detaches.
-  - [ ] `get_subtasks(reminder_id)` returns ordered subtask `Reminder` list.
-  - [ ] Test: create parent → create 3 subtasks → get_subtasks → reparent one → detach another → assert state → cleanup.
+  - [ ] `create_reminder(parent_reminder_id=...)` routes to ReminderKit helper; sets parent in the parent's calendar.
+  - [ ] Parent/calendar mismatch → `ValueError`.
+  - [ ] `set_parent` reassigns/detaches.
+  - [ ] `get_subtasks` reads from SQLite (fast).
+  - [ ] Test: parent + 3 subtasks + reparent + detach + cleanup.
 - [ ] Complete
 
-### S1.6 — `set_flagged` tool
+### S1.6 — `set_flagged`
 
-- **Files**: `tools/reminders.py` (add `set_flagged`), or extend `update_reminder` to accept `flagged`.
+- **Files**: `tools/reminders.py`, `_native/reminderkit.py`
 - **Acceptance**:
-  - [ ] `create_reminder(flagged=true)` and `update_reminder(reminder_id, flagged=...)` set the flag via ReminderKit.
-  - [ ] Reminder.flagged field surfaces correctly.
-  - [ ] Test: create + flag + get + assert + unflag + assert + cleanup.
+  - [ ] `create_reminder(flagged=true)` and `update_reminder(... flagged=...)` set the flag via the helper.
+  - [ ] `Reminder.flagged` field surfaces correctly (from SQLite read).
 - [ ] Complete
 
-### S1.7 — `set_tags` tool + tag filter
+### S1.7 — `set_tags`
 
-- **Files**: `tools/reminders.py`, `tools/queries.py`, `_native/bridge.py`, `test_crud_reminders.py`
+- **Files**: `tools/reminders.py`, `tools/queries.py`, `_native/reminderkit.py`
 - **Acceptance**:
-  - [ ] `update_reminder(reminder_id, tags=["a","b"])` replaces the tag set.
-  - [ ] `get_reminders(tags=["x"])` filters by tag.
-  - [ ] Test: create + tag + filter + retag + filter + cleanup.
+  - [ ] `update_reminder(tags=[...])` replaces the tag set via the helper.
+  - [ ] `get_reminders(tags=[...])` filter applied as a SQL WHERE clause.
+- [ ] Complete
+
+### S1.8 — `assign_section`
+
+- **Files**: `tools/reminders.py`, `_native/reminderkit.py`
+- **Acceptance**:
+  - [ ] `assign_section(reminder_id, section_name)` moves the reminder via helper.
+  - [ ] `Reminder.section_name` surfaces correctly (from SQLite read).
+  - [ ] If section doesn't exist in the calendar, error message lists existing sections.
 - [ ] Complete
 
 ## Phase 2 — MCP protocol primitives
 
-### S2.1 — Resources (4 read views)
+### S2.1 — Resources (4 SQLite-served views)
 
 - **Files**: `src/mcp_apple_reminders/resources/__init__.py`, `resources/reminders.py`, registration in `server.py`
-- **Acceptance** (spec §Ubiquitous re Resources):
-  - [ ] `reminders://list/{id}` returns the full reminder set as structured Pydantic JSON.
-  - [ ] `reminders://default`, `reminders://overdue`, `reminders://today` each work.
-  - [ ] Resources are listed by `mcp__apple-reminders__list_resources` (or whatever the client API is).
+- **Acceptance**:
+  - [ ] `reminders://list/{id}`, `reminders://default`, `reminders://overdue`, `reminders://today` registered, all served from SQLite (~10ms each).
+  - [ ] Resources are discoverable via the client's resource-listing call.
 - [ ] Complete
 
 ### S2.2 — Prompts (4 canned workflows)
@@ -150,23 +177,22 @@
 - **Files**: `src/mcp_apple_reminders/prompts/__init__.py`, `prompts/*.py`
 - **Acceptance**:
   - [ ] `daily_review`, `weekly_retro`, `brain_dump_triage`, `agent_visibility_sync` registered.
-  - [ ] Each accepts arguments documented in `design.md::API surface::New prompts`.
-  - [ ] Each renders to MCP `Prompt` messages the client can surface.
+  - [ ] Each renders to MCP `Prompt` messages with documented arguments.
 - [ ] Complete
 
 ### S2.3 — Progress reporting skeleton
 
-- **Files**: `_native/bulk.py` (new — bulk-op helpers)
+- **Files**: `_native/bulk.py`
 - **Acceptance**:
   - [ ] `bulk_iter(items, ctx)` yields each item with progress reporting + cancellation check.
-  - [ ] Smoke test against a fake list of 25 items: progress emits at item 10, 20, 25.
+  - [ ] Smoke test against a fake list of 25 items.
 - [ ] Complete
 
 ### S2.4 — Elicitation guards
 
-- **Files**: `tools/calendars.py::delete_calendar` (Phase 1.3 augmented), `tools/reminders.py::bulk_delete_completed` (Phase 3.4 augmented)
-- **Acceptance** (spec §Event-driven):
-  - [ ] `delete_calendar(force=true)` with N≥1 reminders prompts via `ctx.elicit` with a confirmation schema before executing.
+- **Files**: `tools/calendars.py::delete_calendar`, `tools/reminders.py::bulk_delete_completed`
+- **Acceptance** (spec §Event-driven re destructive ops):
+  - [ ] `delete_calendar(force=true)` with N≥1 reminders prompts via `ctx.elicit` first.
   - [ ] `bulk_delete_completed` prompts via `ctx.elicit`.
 - [ ] Complete
 
@@ -174,102 +200,96 @@
 
 - **Files**: `tools/sampling.py` (new), test
 - **Acceptance**:
-  - [ ] Given a `from_list` (default: Claude-Brain-Dump), the tool calls `ctx.session.create_message` with the items and a structured-output request to classify each by domain.
-  - [ ] The tool then moves each item to the suggested list (or asks user via elicitation if confidence < threshold).
-  - [ ] Test mock the sampling call; assert routing.
+  - [ ] Given `from_list` (default Claude-Brain-Dump), the tool calls `ctx.session.create_message` to classify each item by domain.
+  - [ ] Routes accordingly (with elicitation if confidence < threshold).
+  - [ ] Test mocks the sampling call.
 - [ ] Complete
 
 ## Phase 3 — Feature parity
 
-### S3.1 — Time-based alarms (relative + absolute)
+### S3.1 — Time-based alarms
 
-- **Files**: `tools/alarms.py` (new), `_native/eventkit.py` add alarm helpers
+- **Files**: `tools/alarms.py` (new), `_native/eventkit.py` (extend Python wrapper)
 - **Acceptance**:
-  - [ ] `set_alarm(reminder_id, relative_offset=...)` or `set_alarm(reminder_id, absolute_date=...)` attaches an EKAlarm.
-  - [ ] Reminder model exposes alarms list.
+  - [ ] `set_alarm(reminder_id, relative_offset=...)` or `set_alarm(reminder_id, absolute_date=...)` works.
+  - [ ] Reminder.alarms surfaces from SQLite read.
 - [ ] Complete
 
 ### S3.2 — Location-based alarms
 
-- **Files**: `tools/alarms.py`, models.py (add Alarm with location/proximity)
+- **Files**: `tools/alarms.py`, `models.py` (Alarm with location/proximity)
 - **Acceptance**:
   - [ ] `set_location_alarm(reminder_id, location, proximity)` works for enter/leave.
-  - [ ] Test mocks `structuredLocation`.
 - [ ] Complete
 
 ### S3.3 — Recurrence rules
 
-- **Files**: `tools/recurrence.py` (new), models.py (RecurrenceRule)
+- **Files**: `tools/recurrence.py`, `models.py` (RecurrenceRule)
 - **Acceptance**:
-  - [ ] `set_recurrence(reminder_id, frequency, interval, end_*)` attaches `EKRecurrenceRule`.
-  - [ ] Daily / weekly / monthly / yearly all work.
-  - [ ] End conditions: never / on date / after N occurrences.
+  - [ ] `set_recurrence(reminder_id, frequency, interval, end_*)` works.
+  - [ ] All four frequencies + end conditions.
 - [ ] Complete
 
 ### S3.4 — Bulk ops
 
-- **Files**: `tools/bulk.py` (new). Uses S2.3 helpers + S2.4 elicitation.
+- **Files**: `tools/bulk.py`. Uses S2.3 + S2.4.
 - **Acceptance**:
-  - [ ] `bulk_complete(reminder_ids=[...])` completes each, reports progress.
-  - [ ] `bulk_delete_completed(calendar_id?)` deletes (after elicitation).
-  - [ ] `bulk_move(reminder_ids, target_calendar_id)` moves all.
+  - [ ] `bulk_complete`, `bulk_delete_completed`, `bulk_move`. Progress + elicitation as required.
 - [ ] Complete
 
 ### S3.5 — Multi-calendar query
 
-- **Files**: `tools/queries.py::get_reminders` — accept `calendar_ids: list[str]`
+- **Files**: `_native/sqlite.py::get_reminders` (accept `calendar_ids`)
 - **Acceptance**:
-  - [ ] `get_reminders(calendar_ids=["a","b"])` returns merged results.
+  - [ ] `get_reminders(calendar_ids=["a","b"])` returns merged results from one SQL query.
 - [ ] Complete
 
 ### S3.6 — `get_completed_in_range`
 
-- **Files**: `tools/queries.py` (new tool)
+- **Files**: `tools/queries.py`, `_native/sqlite.py`
 - **Acceptance**:
-  - [ ] `get_completed_in_range(start, end, calendar_id?)` returns reminders with `completion_date` in [start, end).
+  - [ ] `get_completed_in_range(start, end, calendar_id?)` returns matches with `completion_date` in `[start, end)`.
 - [ ] Complete
 
 ## Phase 4 — Visibility-plane pilot + cross-cutting
 
 ### S4.1 — Agent visibility-plane bootstrap
 
-- **Files**: `tools/agents.py` (new), `resources/agents.py`, AGENTS.md sweep, global rule snippet for CLAUDE.md
+- **Files**: `tools/agents.py`, `resources/agents.py`, AGENTS.md sweep
 - **Acceptance**:
-  - [ ] `bootstrap_agent_list(project_name)` creates `Agents-<project_name>` if missing; returns the calendar.
+  - [ ] `bootstrap_agent_list(project_name)` creates `Agents-<project_name>` if missing.
   - [ ] `agents://current` resource exposes the current project's list.
   - [ ] AGENTS.md documents the session-start auto-bootstrap rule.
 - [ ] Complete
 
 ### S4.2 — TodoWrite mirror (STRETCH)
 
-- **Files**: `tools/agents.py::sync_todos`, polling helper
+- **Files**: `tools/agents.py::sync_todos`
 - **Acceptance**:
-  - [ ] Given a TodoWrite-shaped payload, mirror state into `Agents-<project>` reminders within 5s.
-  - [ ] Status mapping: todos.status → reminder.completed / flagged.
+  - [ ] TodoWrite payload mirrors into `Agents-<project>` reminders within 5s.
 - [ ] Complete
 
 ### S4.3 — Streamable HTTP transport (opt-in)
 
-- **Files**: `server.py` (transport selection), `VIBE.yaml` (server.transport)
+- **Files**: `server.py`, `VIBE.yaml`
 - **Acceptance**:
-  - [ ] `VIBE.yaml::server.transport: streamable_http` boots the server on HTTP instead of stdio.
-  - [ ] CORS configured for localhost.
+  - [ ] `VIBE.yaml::server.transport: streamable_http` boots on HTTP.
 - [ ] Complete
 
 ### S4.4 — Security review + kill switches
 
-- **Files**: `docs/SECURITY-REVIEW.md`, `tools/_kill_switch.py` (helper), `VIBE.yaml::agents.tool_flags`
+- **Files**: `docs/SECURITY-REVIEW.md`, `tools/_kill_switch.py`
 - **Acceptance**:
-  - [ ] SECURITY-REVIEW.md done against OWASP MCP guide.
-  - [ ] Every `@mcp.tool()` consults the kill-switch flag; disabled tools return immediate error.
+  - [ ] SECURITY-REVIEW.md per OWASP guide.
+  - [ ] Per-tool kill switch consults `VIBE.yaml::agents.tool_flags`.
 - [ ] Complete
 
 ### S4.5 — Docs sweep
 
-- **Files**: README.md, MAP.md, AGENTS.md, `docs/TOOLS.md` (auto-generated from registered tools)
+- **Files**: README.md, MAP.md, AGENTS.md, `docs/TOOLS.md` (auto-generated)
 - **Acceptance**:
-  - [ ] README reflects the new capability matrix.
-  - [ ] Tool catalog auto-generates from FastMCP registry.
+  - [ ] Capability matrix in README current.
+  - [ ] Tool catalog auto-generates.
 - [ ] Complete
 
 ## Done when
@@ -277,5 +297,6 @@
 - [ ] All Phase 0–4 acceptance bullets checked.
 - [ ] `make check-if-the-agent-can-consider-this-task-completed` green.
 - [ ] No open blockers in `TASK_STATE.md §3`.
-- [ ] `mem:core` reflects the new module layout and ReminderKit availability.
-- [ ] AGENTS.md §9 gotchas re-audited against final state.
+- [ ] `mem:core` reflects three-tier layout + SQLite read path + helper subprocesses.
+- [ ] AGENTS.md §9 gotchas re-audited.
+- [ ] `_native/THIRD_PARTY_NOTICES.md` reviewed against current RemCTL SHAs.
