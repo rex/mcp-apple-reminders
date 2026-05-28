@@ -5,6 +5,43 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.24] — 2026-05-28 — Agent: Claude — Slice 1.4 (ReminderKit Python wrapper)
+
+The Obj-C ReminderKit (private-framework) helper now has its Python skin.
+Slices 1.5–1.8 stack their per-action surface on top of it: subtasks
+(S1.5), set_flagged (S1.6), set_tags (S1.7), assign_section (S1.8). All
+four of those are now mechanically straightforward — the protocol +
+availability detection live here.
+
+### Added
+- **`src/mcp_apple_reminders/_native/reminderkit.py`** (226 LOC; 5 public entry points). Mirror-image of `_native/eventkit.py`:
+  - `ReminderKitHelperUnavailable` — helper binary missing.
+  - `ReminderKitHelperError(message)` — helper returned a structured error.
+  - `REMINDERKIT_HELPER_AVAILABLE` — module-level constant, computed at import time via a `--ping` probe of `_native/bin/rem_reminderkit`.
+  - `is_available(refresh=False)` — fast cached check; pass `refresh=True` after a fresh `make build-native`.
+  - `ping()` — exercises the `--ping` shortcut and returns the parsed JSON.
+  - `invoke_action(action, **kwargs)` — the surface that Slices 1.5–1.8 wrap with typed per-action functions.
+- **`verify_setup.py`** new probe: "🔌 ReminderKit wrapper" calls `is_available(refresh=True)` and asserts True.
+- **`test_reminderkit_smoke.py`** (6 tests):
+  - missing-helper-path-returns-false-from-is-available
+  - ping-with-missing-helper-raises
+  - invoke-action-success-returns-response-dict (mocked)
+  - invoke-action-error-response-raises-helper-error (mocked exit-1)
+  - invoke-action-payload-shape-via-stdin-capture (asserts wire format)
+  - **live-ping-against-real-helper — PASSED on this checkout.**
+
+### Decided
+- The tag round-trip the S1.4 acceptance bullet originally proposed lives with **Slice 1.7** (`set_tags`). Factoring action-level integration tests with their owning slice keeps each slice independently revertable.
+- Per-call subprocess mode (per S0.6). Long-lived mode is a swap-in upgrade if profiling shows it matters; the JSON protocol stays the same either way.
+
+### Verified
+- `pytest test_reminderkit_smoke.py`: 6 passed, 0 skipped.
+- `make lint && make check-architecture`: green (47 files; 5-public-entry-point reminderkit module under cap 8).
+- `verify_setup.py`: ReminderKit wrapper probe reports PASS.
+
+### Status
+- Phase 1 progress: S1.0 ✅ / S1.1 ✅ / S1.2 ✅ / S1.3 ✅ / S1.4 ✅ — five of nine landed. **Phase 1 is past the halfway mark.** S1.5 (subtask write paths via `create_reminder(parent_reminder_id=...)`, `set_parent`, `get_subtasks`) next.
+
 ## [0.1.23] — 2026-05-28 — Agent: Claude — Slice 1.3 (delete_calendar + update_calendar)
 
 Calendar lifecycle is now complete. Three of the four CRUD operations

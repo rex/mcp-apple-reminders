@@ -180,6 +180,22 @@ def main():
     all_passed = all_passed and native_ok
     print()
 
+    # Check 6b1: ReminderKit Python wrapper availability flag (post-S1.4)
+    print("🔌 Checking ReminderKit wrapper availability flag...")
+    flag_result = run_python(
+        "from mcp_apple_reminders._native.reminderkit import is_available; "
+        "print('yes' if is_available(refresh=True) else 'no')"
+    )
+    flag_ok = flag_result.returncode == 0 and flag_result.stdout.strip() == "yes"
+    flag_msg = (
+        f"REMINDERKIT_HELPER_AVAILABLE={flag_result.stdout.strip()!r}"
+        if flag_result.returncode == 0
+        else flag_result.stderr.strip()
+    )
+    print_status("ReminderKit wrapper", flag_ok, flag_msg)
+    all_passed = all_passed and flag_ok
+    print()
+
     # Check 6b: native helper binaries (post-S0.6 — compiled from borrowed RemCTL sources)
     print("🔨 Checking native helper binaries (rem_eventkit + rem_reminderkit)...")
     native_bin_dir = REPO_ROOT / "src" / "mcp_apple_reminders" / "_native" / "bin"

@@ -27,7 +27,7 @@ Spec `001-visibility-foundation` was retired (archived in `specs/_archive/`) aft
 | # | Phase | Status | Exit criteria |
 |---|---|---|---|
 | 0 | Modernize platform (FastMCP, MCP 1.27+, lifespan, Pydantic, Context logging, native build pipeline) | ✅ done | All 22 existing tools work end-to-end on the new substrate; no surface changes |
-| 1 | P0 capabilities (SQLite reader + calendar lifecycle + ReminderKit helper integration + subtasks + flagged + tags + sections) | 🟡 partial | S1.0 ✅, S1.1 ✅, S1.2 ✅, S1.3 ✅; S1.4-1.8 pending |
+| 1 | P0 capabilities (SQLite reader + calendar lifecycle + ReminderKit helper integration + subtasks + flagged + tags + sections) | 🟡 partial | S1.0 ✅, S1.1 ✅, S1.2 ✅, S1.3 ✅, S1.4 ✅; S1.5-1.8 pending |
 | 2 | MCP protocol primitives (Resources, Prompts, Sampling, Elicitation, progress) | ⏸ pending | Resources surface live views; 4 prompts; sampling proven on one tool |
 | 3 | Feature parity (alarms time + location, recurrence, bulk ops, multi-cal query) | ⏸ pending | Matches FradSer/apple-events feature surface + bonus |
 | 4 | Visibility-plane pilot + cross-cutting (security, kill switches, docs sweep) | ⏸ pending | Agents-<project> bootstrap; SECURITY-REVIEW.md done |

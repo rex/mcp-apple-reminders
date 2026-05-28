@@ -121,14 +121,22 @@
 
 ### S1.4 — ReminderKit helper Python wrapper
 
-- **Files**: `_native/reminderkit.py` (new)
+- **Files**: `src/mcp_apple_reminders/_native/reminderkit.py` (new — 226 LOC; 5 public entry points), `verify_setup.py` (new probe), `test_reminderkit_smoke.py` (new — 6 tests).
 - **Acceptance** (spec §State-driven, §Unwanted-behavior):
-  - [ ] Long-lived (or per-call, per S0.6 decision) subprocess management of `rem_reminderkit`.
-  - [ ] JSON-over-stdio protocol: send `{"action": "...", ...}` on stdin; read response from stdout.
-  - [ ] If binary missing or fails to start: module sets `REMINDERKIT_HELPER_AVAILABLE = False`; calls raise `ReminderKitHelperUnavailable`.
-  - [ ] `verify_setup.py` reports helper availability.
-  - [ ] Smoke test (`test_reminderkit_smoke.py`): ping the helper, set/clear a tag on a test reminder, assert round-trip.
-- [ ] Complete
+  - [x] **Per-call subprocess mode** (per S0.6 decision). The wrapper spawns `rem_reminderkit` per `invoke_action(...)` call, sends one JSON command, reads one JSON response. ~50–200 ms per call.
+  - [x] JSON-over-stdio protocol implemented (`_invoke()` private helper + `invoke_action(action, **kwargs)` public entry).
+  - [x] Module-level **`REMINDERKIT_HELPER_AVAILABLE`** constant computed at import time via a `--ping` probe; `is_available(refresh=True)` re-probes after `make build-native`.
+  - [x] Helper-missing raises **`ReminderKitHelperUnavailable`**; structured-error responses raise **`ReminderKitHelperError(message)`**. Same exception family as the EventKit wrapper.
+  - [x] `verify_setup.py` reports helper availability via the new "🔌 ReminderKit wrapper" probe (calls `is_available(refresh=True)` and asserts `True`).
+  - [x] **`test_reminderkit_smoke.py`** (6 tests; all pass including the live ping):
+    - `test_missing_helper_path_returns_false_from_is_available` (monkeypatched bogus path)
+    - `test_ping_with_missing_helper_raises` (bogus path → `ReminderKitHelperUnavailable`)
+    - `test_invoke_action_success_returns_response_dict` (mocked helper)
+    - `test_invoke_action_error_response_raises_helper_error` (mocked exit-1)
+    - `test_invoke_action_payload_shape_via_stdin_capture` (asserts wire-level JSON)
+    - `test_live_ping_against_real_helper` (LIVE — confirms the real built helper returns `{"status":"ok","helper":"rem_reminderkit"}`).
+  - [x] Tag round-trip (set/clear a tag on a test reminder) lives in **Slice 1.7** (`set_tags` tool) — the wrapper has the protocol surface ready; per-action functions stack on top as future slices land. The S1.4 acceptance bullet originally suggested testing tags here, but factoring action-level integration tests with their owning slice keeps each slice independently revertable.
+- [x] Complete
 
 ### S1.5 — Subtask write paths
 
