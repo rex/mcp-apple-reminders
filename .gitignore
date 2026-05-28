@@ -29,6 +29,7 @@
 .aider.tags.cache.v*
 .claude/logs/
 .claude/serena-initialized
+.claude/session-context.md
 .claude/settings.local.json
 .context7-cache/
 .coverage
