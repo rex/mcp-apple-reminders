@@ -5,6 +5,14 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.14] — 2026-05-28 — Agent: Claude
+### Changed
+- `TASK_STATE.md` §6 Handoff rewritten with detailed compaction-survival summary: every commit landed this session (10+), standing rules to not re-litigate, three live open questions tied to specific slices, and reading order for a fresh agent.
+
+### Documented (Serena memories)
+- `mem:session_pivot_2026_05_28` (NEW) — full narrative of the research pass and the three-jump pivot (modernize-first → ReminderKit-via-PyObjC → RemCTL three-tier). Read this if the spec's "why" isn't clear from the spec/design files alone.
+- `mem:core` (UPDATED) — source map now distinguishes current state (libs/pyremindkit/) from post-S0.2 target (_native/). Roadmap reflects spec 002's 25-slice four-phase plan. `is_default` bug marked FIXED.
+
 ## [0.1.13] — 2026-05-28 — Agent: Claude
 ### Changed
 - **Spec 002 pivoted to RemCTL's actual three-tier architecture**: direct SQLite reads + Swift EventKit helper subprocess + Objective-C ReminderKit helper subprocess. Replaces the earlier "PyObjC for everything" approach after surfacing RemCTL's real implementation (Python 83.4% / Obj-C 9.6% / Swift 5.8% / Shell 1.2%, three compiled helpers + direct SQLite reads).
