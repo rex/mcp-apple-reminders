@@ -34,13 +34,13 @@
 
 ### S0.3 — Pydantic models (+ deeplink verification)
 
-- **Files**: `src/mcp_apple_reminders/models.py` (new), `_native/_internal.py` (add converters)
+- **Files**: `src/mcp_apple_reminders/models.py` (new), `test_models.py` (new). Converters live alongside the models rather than in `_native/_internal.py` to keep the EventKit dependency out of the model module's import graph (gated via `TYPE_CHECKING`).
 - **Acceptance**:
-  - [ ] `models.py` defines Pydantic `Calendar` (6 fields including `deeplink`) and `Reminder` (18 fields including `deeplink`, `section_name`, `parent_reminder_id`, `subtasks`, `tags`).
-  - [ ] Helper `reminder_deeplink(uuid)` and `calendar_deeplink(uuid)` exist and round-trip via `subprocess.run(['open', deeplink])` smoke test (skipped in CI but runnable locally).
-  - [ ] Converter `eventkit_reminder_to_pydantic(ek_reminder) -> Reminder` exists; `calendarItemIdentifier()` correctly populates the `id` and `deeplink` fields.
-  - [ ] Field order locked at end of this slice; CONTRACT FREEZE.
-- [ ] Complete
+  - [x] `models.py` defines Pydantic `Calendar` (6 fields including `deeplink`) and `Reminder` (18 fields including `deeplink`, `section_name`, `parent_reminder_id`, `subtasks`, `tags`). Both `frozen=True` + `extra="forbid"`.
+  - [x] Helper `reminder_deeplink(uuid)` and `calendar_deeplink(uuid)` exist; opt-in `open` round-trip test guards them (skipped unless `REM_DEEPLINK_SMOKE=1`).
+  - [x] Converter `eventkit_reminder_to_pydantic(ek_reminder) -> Reminder` exists and exercises against a real EKReminder; `calendarItemIdentifier()` populates `id` and `deeplink` correctly. `eventkit_calendar_to_pydantic` also added.
+  - [x] Field order locked at end of this slice; **CONTRACT FREEZE** guarded by two regression tests (`test_calendar_field_order_is_canonical`, `test_reminder_field_order_is_canonical`).
+- [x] Complete
 
 ### S0.4 — FastMCP migration
 

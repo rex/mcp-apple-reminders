@@ -47,14 +47,13 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 - Status: ✅ done (commit: pending push)
 - Result: libs/ removed; 5 modules moved (`git mv` preserved history); 7 callers re-imported (`server`, `formatting`, `tools/queries`, 4 test orchestrators); `sys.path` mutations dropped; AGENTS/MAP/Makefile/verify_setup swept.
 
-### Slice 0.3 — Pydantic models  ← NEXT
+### Slice 0.3 — Pydantic models  ✅ DONE — **CONTRACT FREEZE LOCKED**
 
-- Status: ⏸ pending
-- Files: `src/mcp_apple_reminders/models.py` (new), `_native/_internal.py`
-- Depends on: S0.2 ✅
-- Acceptance: see `tasks.md::S0.3`. CONTRACT FREEZE at end of this slice for the Reminder field order.
+- Status: ✅ done (commit: pending push)
+- Files: `src/mcp_apple_reminders/models.py` (new, 203 LOC), `test_models.py` (new, 247 LOC, 10 passed + 1 opt-in skip).
+- Result: Calendar (6 fields) + Reminder (18 fields), `frozen=True`. Deeplink helpers + EventKit→Pydantic converters. Field order guarded by two regression tests — touching it fails the suite.
 
-### Slice 0.4 — FastMCP migration
+### Slice 0.4 — FastMCP migration  ← NEXT
 
 - Status: ⏸ pending
 - Files: `server.py` (rewrite), every `tools/*.py`, new `lifespan.py`

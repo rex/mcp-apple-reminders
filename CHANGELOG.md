@@ -5,6 +5,33 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.17] — 2026-05-28 — Agent: Claude — Slice 0.3 (CONTRACT FREEZE)
+
+### Added
+- **`src/mcp_apple_reminders/models.py`** — Pydantic v2 public schemas for every MCP response surface. Locked field orders (the contract freeze for spec 002):
+  - `Calendar` (6 fields): `id, name, color, is_default, owner, deeplink`.
+  - `Reminder` (18 fields): `id, title, due_date, notes, completed, url, priority, list_id, created_date, modified_date, flagged, parent_reminder_id, subtasks, tags, section_name, completion_date, start_date, deeplink`.
+  - Both `frozen=True` + `extra="forbid"`. ReminderKit-only fields (parent_reminder_id, subtasks, tags, section_name) default to None / [] so EventKit-only paths construct cleanly.
+- Deeplink helpers `reminder_deeplink(uuid)` and `calendar_deeplink(uuid)` (constants `REMINDER_DEEPLINK_SCHEME`, `CALENDAR_DEEPLINK_SCHEME` exported for tests).
+- EventKit converters `eventkit_reminder_to_pydantic(ek_reminder)` and `eventkit_calendar_to_pydantic(ek_calendar, *, is_default, owner=None)`. Both derive the deeplink from `calendarItemIdentifier()` / `calendarIdentifier()`.
+- **`test_models.py`** — 11 tests (10 pass + 1 opt-in skip):
+  - Deeplink helper format
+  - Calendar + Reminder construction with defaults
+  - Pydantic `frozen=True` mutation guard
+  - **Field-order regression tests** (`test_calendar_field_order_is_canonical`, `test_reminder_field_order_is_canonical`) — these are the locking mechanism. Drifting the field order without an ADR fails CI.
+  - Priority validation (ge=0, le=9)
+  - EventKit→Pydantic integration against the real default calendar + a real reminder (skips cleanly if Reminders permission absent or the calendar is empty).
+  - Opt-in `subprocess.run(["open", deeplink])` round-trip guarded by `REM_DEEPLINK_SMOKE=1`.
+
+### Verified
+- `pytest test_models.py`: 10 passed, 1 skipped.
+- `make lint && make check-architecture`: green (`models.py` 203 lines / `test_models.py` 258 lines — both under hard cap 400; `test_models.py` triggers a soft warning at 258).
+- Real-EventKit converter exercises `calendarItemIdentifier()` end-to-end; the asserted `pydantic_r.deeplink` matches `x-apple-reminderkit://REMCDReminder/{id}` exactly.
+
+### Decided
+- Converters live in `models.py` (gated via `TYPE_CHECKING` for EventKit types) rather than in `_native/_internal.py`. Keeps the EventKit dependency out of the public model module's import graph; lets the models be imported from docs-gen, tests, or any non-macOS host without dragging PyObjC.
+- The SQLite half of the deeplink-UUID equivalence (`EKReminder.calendarItemIdentifier() == SQLite ZIDENTIFIER`) is verified at S1.0 when the direct reader lands. EventKit half locked here.
+
 ## [0.1.16] — 2026-05-28 — Agent: Claude — Slice 0.2
 
 ### Changed
