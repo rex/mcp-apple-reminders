@@ -5,6 +5,21 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.15] — 2026-05-28 — Agent: Claude — Slice 0.1
+
+### Changed
+- `pyproject.toml` + `requirements.txt`: pinned `mcp>=1.27,<2` (was `>=0.1.0`), pinned `pyobjc-core>=12.0,<13`, `pyobjc-framework-EventKit>=12.0,<13`, `pyobjc-framework-Foundation>=12.0,<13`. Added explicit `pydantic>=2.10,<3` dep (was transitively pulled by mcp).
+- Installed: mcp 1.24.0 → 1.27.1; pydantic 2.12.5 → 2.13.4.
+
+### Added
+- `verify_setup.py`: three new probes — Pydantic v2 importability, MCP SDK version `>=1.27` (via `importlib.metadata.version`), PyObjC deprecation-warning-free import of `objc + EventKit` on macOS 26.1.
+
+### Verified
+- `verify_setup.py` exits 0 across all checks against the upgraded venv.
+- `./venv/bin/python -m mcp_apple_reminders` starts cleanly (blocks on stdio as expected for an MCP server).
+- `make lint && make check-architecture` green.
+- Pre-existing pytest fixture-resolution errors in `test_workflow_*.py` confirmed unrelated to S0.1 (reproduce on bare `main` via `git stash`). Spawned side task to restore fixtures.
+
 ## [0.1.14] — 2026-05-28 — Agent: Claude
 ### Changed
 - `TASK_STATE.md` §6 Handoff rewritten with detailed compaction-survival summary: every commit landed this session (10+), standing rules to not re-litigate, three live open questions tied to specific slices, and reading order for a fresh agent.

@@ -36,20 +36,17 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 
 ## 2. Slices
 
-### Slice 0.1 — Upgrade `mcp>=1.27` + PyObjC pins  ← NEXT
+### Slice 0.1 — Upgrade `mcp>=1.27` + PyObjC pins  ✅ DONE
 
-- Status: ⏸ pending
-- Owner: unassigned
-- Files (planned edits): `pyproject.toml`, `requirements.txt`, `verify_setup.py`
-- Files (do NOT edit): server.py, tools/, _native/ (touched in S0.2-0.4)
-- Depends on: (none)
-- Acceptance: see `specs/002-modernize-and-foundation/tasks.md::S0.1`.
+- Status: ✅ done (commit: pending push)
+- Files edited: `pyproject.toml`, `requirements.txt`, `verify_setup.py`
+- Result: mcp 1.24.0 → 1.27.1; pyobjc pinned to 12.x; pydantic 2.13.4. All `verify_setup.py` probes green. No deprecation warnings.
 
-### Slice 0.2 — Rename libs/pyremindkit → src/mcp_apple_reminders/_native/
+### Slice 0.2 — Rename libs/pyremindkit → src/mcp_apple_reminders/_native/  ← NEXT
 
 - Status: ⏸ pending
 - Files: many (move + import updates)
-- Depends on: S0.1
+- Depends on: S0.1 ✅
 - Acceptance: see `tasks.md::S0.2`. Tip: do this with git mv for history preservation.
 
 ### Slice 0.3 — Pydantic models

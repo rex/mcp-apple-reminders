@@ -26,9 +26,11 @@ classifiers = [
 ]
 
 dependencies = [
-    "mcp>=0.1.0",
-    "pyobjc-core>=10.0",
-    "pyobjc-framework-EventKit>=10.0",
+    "mcp>=1.27,<2",
+    "pydantic>=2.10,<3",
+    "pyobjc-core>=12.0,<13",
+    "pyobjc-framework-EventKit>=12.0,<13",
+    "pyobjc-framework-Foundation>=12.0,<13",
 ]
 
 [project.optional-dependencies]

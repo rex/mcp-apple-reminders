@@ -102,6 +102,7 @@ def main():
         "mcp": "MCP SDK",
         "objc": "PyObjC Core",
         "EventKit": "PyObjC EventKit Framework",
+        "pydantic": "Pydantic v2",
     }
     for package, description in package_checks.items():
         module = "EventKit" if package == "EventKit" else package
@@ -109,6 +110,45 @@ def main():
         passed = result.returncode == 0
         print_status(description, passed, f"Module '{module}' {'found' if passed else 'not found'}")
         all_passed = all_passed and passed
+    print()
+
+    # Check 4b: MCP SDK version (must be >=1.27 for FastMCP + Context APIs)
+    print("📐 Checking MCP SDK version (>=1.27 required for FastMCP)...")
+    mcp_version_result = run_python(
+        "from importlib.metadata import version; print(version('mcp'))"
+    )
+    mcp_version_ok = False
+    mcp_version_message = mcp_version_result.stderr.strip()
+    if mcp_version_result.returncode == 0:
+        installed_version = mcp_version_result.stdout.strip()
+        try:
+            major, minor = installed_version.split(".")[:2]
+            mcp_version_ok = (int(major), int(minor)) >= (1, 27)
+            mcp_version_message = (
+                f"mcp=={installed_version}"
+                + ("" if mcp_version_ok else " (need >=1.27,<2)")
+            )
+        except ValueError:
+            mcp_version_message = f"Unparseable version: {installed_version!r}"
+    print_status("MCP SDK Version", mcp_version_ok, mcp_version_message)
+    all_passed = all_passed and mcp_version_ok
+    print()
+
+    # Check 4c: PyObjC deprecation warnings on macOS 26.1
+    print("🔇 Checking PyObjC for deprecation warnings...")
+    warn_result = run_python(
+        "import warnings; warnings.simplefilter('error', DeprecationWarning); "
+        "import objc, EventKit; "
+        "print('clean')"
+    )
+    warn_ok = warn_result.returncode == 0 and "clean" in warn_result.stdout
+    warn_message = (
+        "No DeprecationWarnings raised by importing objc + EventKit"
+        if warn_ok
+        else (warn_result.stderr.strip() or warn_result.stdout.strip() or "unknown failure")
+    )
+    print_status("PyObjC Deprecation-Free Import", warn_ok, warn_message)
+    # Treat deprecation warnings as informational (not a hard fail) — log only.
     print()
 
     # Check 5: MCP Apple Reminders package

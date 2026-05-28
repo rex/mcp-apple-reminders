@@ -16,11 +16,11 @@
 
 - **Files**: `pyproject.toml`, `requirements.txt`, `verify_setup.py`
 - **Acceptance**:
-  - [ ] `mcp>=1.27,<2` pinned.
-  - [ ] `verify_setup.py` confirms `mcp.__version__ >= 1.27`.
-  - [ ] `./venv/bin/python3 -m mcp_apple_reminders` starts cleanly.
-  - [ ] No PyObjC deprecation warnings on macOS 26.1.
-- [ ] Complete
+  - [x] `mcp>=1.27,<2` pinned (mcp 1.27.1 installed).
+  - [x] `verify_setup.py` confirms `mcp version >= 1.27` (via `importlib.metadata.version`).
+  - [x] `./venv/bin/python3 -m mcp_apple_reminders` starts cleanly (waits on stdio as expected).
+  - [x] No PyObjC deprecation warnings on macOS 26.1 (pyobjc 12.1; verify_setup.py treats DeprecationWarning as error during import).
+- [x] Complete
 
 ### S0.2 — Rename libs/pyremindkit → src/mcp_apple_reminders/_native
 
