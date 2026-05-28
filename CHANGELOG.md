@@ -5,6 +5,22 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.19] — 2026-05-28 — Agent: Claude — Slice 0.5
+
+### Added (observability)
+- `tools/reminders.py`: `await ctx.info(...)` on create/update/complete/uncomplete/delete; `await ctx.warning(...)` before delete fires; `await ctx.error(...)` on delete failure.
+- `tools/queries.py`: `await ctx.debug(...)` reports match counts on `get_reminders`, `get_overdue_reminders`, `get_today_reminders`; `await ctx.warning(...)` when `search_reminders` finds nothing; `await ctx.info(...)` when `get_next_reminder` returns None.
+- `tools/workflow.py`: `await ctx.info(...)` on every move; `await ctx.warning(...)` when `get_workflow_lists` finds no `Claude-*` lists; `await ctx.error(...)` before the helper raises when a sugar move target is missing.
+
+### Unchanged
+- `tools/calendars.py`: pure read tools — no state changes worth logging at handler level.
+- `lifespan.py`: pre-session `PermissionError`/init-error path keeps writing to `sys.stderr` (correct: no MCP session exists yet to log through `Context`).
+
+### Verified
+- `pytest test_mcp_tools.py test_e2e.py test_models.py`: 15 passed, 1 skipped.
+- `grep -rn 'print(' src/mcp_apple_reminders/tools/`: zero hits.
+- `make lint && make check-architecture`: green.
+
 ## [0.1.18] — 2026-05-28 — Agent: Claude — Slice 0.4 (FastMCP migration)
 
 ### Changed (substrate)

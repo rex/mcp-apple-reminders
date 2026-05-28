@@ -85,6 +85,7 @@ async def get_reminders(
     results = list(bridge.get_reminders(**kwargs))
     if limit and limit > 0:
         results = results[:limit]
+    await ctx.debug(f"get_reminders: {len(results)} match(es) with filters={sorted(kwargs.keys())}")
     return _to_pydantic_list(results)
 
 
@@ -106,6 +107,10 @@ async def search_reminders(query: str, ctx: Context, limit: Optional[int] = None
     results = list(bridge.search_reminders(query))
     if limit and limit > 0:
         results = results[:limit]
+    if not results:
+        await ctx.warning(f"search_reminders({query!r}): no matches")
+    else:
+        await ctx.debug(f"search_reminders({query!r}): {len(results)} match(es)")
     return _to_pydantic_list(results)
 
 
@@ -122,6 +127,7 @@ async def get_next_reminder(ctx: Context) -> Optional[Reminder]:
     bridge = _bridge_from_ctx(ctx)
     native = bridge.get_next_reminder()
     if not native:
+        await ctx.info("get_next_reminder: no upcoming incomplete reminders.")
         return None
     return native_reminder_to_pydantic(native)
 
@@ -143,6 +149,7 @@ async def get_overdue_reminders(ctx: Context, limit: Optional[int] = None) -> li
     results = list(bridge.get_reminders(due_before=datetime.now(), is_completed=False))
     if limit and limit > 0:
         results = results[:limit]
+    await ctx.debug(f"get_overdue_reminders: {len(results)} overdue")
     return _to_pydantic_list(results)
 
 
@@ -167,4 +174,5 @@ async def get_today_reminders(ctx: Context, include_completed: bool = False) -> 
         results = list(bridge.get_reminders(due_after=start_of_day, due_before=end_of_day))
     else:
         results = list(bridge.get_reminders(due_after=start_of_day, due_before=end_of_day, is_completed=False))
+    await ctx.debug(f"get_today_reminders(include_completed={include_completed}): {len(results)} due today")
     return _to_pydantic_list(results)

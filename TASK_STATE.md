@@ -58,14 +58,12 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 - Status: ✅ done (commit: pending push)
 - Files: `server.py` rewritten (50 LOC), `lifespan.py` (new), all 4 `tools/*.py` migrated to `@mcp.tool` decorators, `tools/__init__.py` simplified, `__init__.py` re-export update. All 22 tools register correctly with FastMCP; semantic input schemas preserved; tests + lint + architecture green.
 
-### Slice 0.5 — Context-based logging  ← NEXT
+### Slice 0.5 — Context-based logging  ✅ DONE
 
-- Status: ⏸ pending
-- Files: every `tools/*.py`, server.py
-- Depends on: S0.4
-- Acceptance: see `tasks.md::S0.5`.
+- Status: ✅ done (commit: pending push)
+- Result: 12 ctx.info/warning/error/debug calls across `reminders`, `queries`, `workflow` tool modules. `calendars` (read-only) left untouched. Pre-session permission errors still on stderr in `lifespan.py`.
 
-### Slice 0.6 — Native build pipeline (borrow Swift + Obj-C helpers from RemCTL)
+### Slice 0.6 — Native build pipeline (borrow Swift + Obj-C helpers from RemCTL)  ← NEXT
 
 - Status: ⏸ pending
 - Files: `_native/src/rem_eventkit.swift`, `_native/src/rem_reminderkit.m`, `_native/THIRD_PARTY_NOTICES.md`, `Makefile`, `install.sh`

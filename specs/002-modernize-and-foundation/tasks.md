@@ -56,12 +56,12 @@
 
 ### S0.5 — Context-based logging
 
-- **Files**: every `tools/*.py` handler; `server.py` startup
+- **Files**: `tools/reminders.py`, `tools/queries.py`, `tools/workflow.py`. (`tools/calendars.py` stays read-only; nothing to log.) `lifespan.py` keeps its pre-session `sys.stderr` permission-error path.
 - **Acceptance**:
-  - [ ] Zero `print(..., file=sys.stderr)` calls in `src/mcp_apple_reminders/tools/`.
-  - [ ] Tool handlers use `await ctx.info()` / `warning()` / `error()` / `debug()`.
-  - [ ] Server startup retains its `sys.stderr` permission-error path (cannot route through Context — no session yet).
-- [ ] Complete
+  - [x] Zero `print(..., file=sys.stderr)` calls in `src/mcp_apple_reminders/tools/`.
+  - [x] Tool handlers use `await ctx.info()` (state changes), `ctx.warning()` (empty results, destructive ops about to fire), `ctx.error()` (failed ops), `ctx.debug()` (read counts, filter shape).
+  - [x] Server startup retains its `sys.stderr` permission-error path in `lifespan.py` (no MCP session yet to log through).
+- [x] Complete
 
 ### S0.6 — Native build pipeline (Swift + Obj-C helpers from RemCTL)
 

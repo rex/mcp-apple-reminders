@@ -26,13 +26,16 @@ def _bridge_from_ctx(ctx: Context):
     return ctx.request_context.lifespan_context.bridge
 
 
-def _move_to_named_list(bridge, reminder_id: str, list_name: str) -> Reminder:
+async def _move_to_named_list(bridge, reminder_id: str, list_name: str, ctx: Context) -> Reminder:
     """Shared implementation for the four sugar move handlers."""
     calendars = list(bridge.calendars.search(list_name))
     if not calendars:
+        await ctx.error(f"Move target {list_name!r} not found; create the list in Apple Reminders first.")
         raise ValueError(f"'{list_name}' calendar not found. Please create it in Apple Reminders first.")
     target = calendars[0]
-    return native_reminder_to_pydantic(bridge.move_reminder(reminder_id, target.id))
+    moved = native_reminder_to_pydantic(bridge.move_reminder(reminder_id, target.id))
+    await ctx.info(f"Moved reminder {reminder_id} to {list_name!r}")
+    return moved
 
 
 @mcp.tool(
@@ -47,7 +50,10 @@ def _move_to_named_list(bridge, reminder_id: str, list_name: str) -> Reminder:
 async def get_workflow_lists(ctx: Context) -> list[Calendar]:
     """Enumerate every calendar whose name starts with 'Claude-'."""
     bridge = _bridge_from_ctx(ctx)
-    return [native_calendar_to_pydantic(c) for c in bridge.calendars.search("Claude-")]
+    results = [native_calendar_to_pydantic(c) for c in bridge.calendars.search("Claude-")]
+    if not results:
+        await ctx.warning("No 'Claude-*' workflow lists found. Create them in Apple Reminders first.")
+    return results
 
 
 @mcp.tool(
@@ -65,7 +71,9 @@ async def move_reminder_to_list(reminder_id: str, calendar_id: str, ctx: Context
         calendar_id: The unique identifier of the target calendar/list.
     """
     bridge = _bridge_from_ctx(ctx)
-    return native_reminder_to_pydantic(bridge.move_reminder(reminder_id, calendar_id))
+    moved = native_reminder_to_pydantic(bridge.move_reminder(reminder_id, calendar_id))
+    await ctx.info(f"Moved reminder {reminder_id} to calendar {calendar_id}")
+    return moved
 
 
 @mcp.tool(
@@ -82,7 +90,7 @@ async def move_reminder_on_deck(reminder_id: str, ctx: Context) -> Reminder:
     Args:
         reminder_id: The unique identifier of the reminder to move.
     """
-    return _move_to_named_list(_bridge_from_ctx(ctx), reminder_id, "Claude-On-Deck")
+    return await _move_to_named_list(_bridge_from_ctx(ctx), reminder_id, "Claude-On-Deck", ctx)
 
 
 @mcp.tool(
@@ -99,7 +107,7 @@ async def move_reminder_active(reminder_id: str, ctx: Context) -> Reminder:
     Args:
         reminder_id: The unique identifier of the reminder to move.
     """
-    return _move_to_named_list(_bridge_from_ctx(ctx), reminder_id, "Claude-Active")
+    return await _move_to_named_list(_bridge_from_ctx(ctx), reminder_id, "Claude-Active", ctx)
 
 
 @mcp.tool(
@@ -116,7 +124,7 @@ async def move_reminder_done(reminder_id: str, ctx: Context) -> Reminder:
     Args:
         reminder_id: The unique identifier of the reminder to move.
     """
-    return _move_to_named_list(_bridge_from_ctx(ctx), reminder_id, "Claude-Done")
+    return await _move_to_named_list(_bridge_from_ctx(ctx), reminder_id, "Claude-Done", ctx)
 
 
 @mcp.tool(
@@ -133,4 +141,4 @@ async def move_reminder_blocked(reminder_id: str, ctx: Context) -> Reminder:
     Args:
         reminder_id: The unique identifier of the reminder to move.
     """
-    return _move_to_named_list(_bridge_from_ctx(ctx), reminder_id, "Claude-Waiting")
+    return await _move_to_named_list(_bridge_from_ctx(ctx), reminder_id, "Claude-Waiting", ctx)

@@ -61,7 +61,9 @@ async def create_reminder(
         kwargs["calendar_id"] = calendar_id
 
     bridge = _bridge_from_ctx(ctx)
-    return native_reminder_to_pydantic(bridge.create_reminder(**kwargs))
+    created = native_reminder_to_pydantic(bridge.create_reminder(**kwargs))
+    await ctx.info(f"Created reminder {created.id} in list {created.list_id}: {created.title!r}")
+    return created
 
 
 @mcp.tool(
@@ -109,7 +111,9 @@ async def update_reminder(
         kwargs["is_completed"] = is_completed
 
     bridge = _bridge_from_ctx(ctx)
-    return native_reminder_to_pydantic(bridge.update_reminder(reminder_id, **kwargs))
+    updated = native_reminder_to_pydantic(bridge.update_reminder(reminder_id, **kwargs))
+    await ctx.info(f"Updated reminder {reminder_id}: fields={sorted(kwargs.keys())}")
+    return updated
 
 
 @mcp.tool(
@@ -126,7 +130,9 @@ async def complete_reminder(reminder_id: str, ctx: Context) -> Reminder:
         reminder_id: The unique identifier of the reminder to mark as complete.
     """
     bridge = _bridge_from_ctx(ctx)
-    return native_reminder_to_pydantic(bridge.update_reminder(reminder_id, is_completed=True))
+    result = native_reminder_to_pydantic(bridge.update_reminder(reminder_id, is_completed=True))
+    await ctx.info(f"Completed reminder {reminder_id}")
+    return result
 
 
 @mcp.tool(
@@ -143,7 +149,9 @@ async def uncomplete_reminder(reminder_id: str, ctx: Context) -> Reminder:
         reminder_id: The unique identifier of the reminder to mark as incomplete.
     """
     bridge = _bridge_from_ctx(ctx)
-    return native_reminder_to_pydantic(bridge.update_reminder(reminder_id, is_completed=False))
+    result = native_reminder_to_pydantic(bridge.update_reminder(reminder_id, is_completed=False))
+    await ctx.info(f"Uncompleted reminder {reminder_id}")
+    return result
 
 
 @mcp.tool(
@@ -178,7 +186,12 @@ async def delete_reminder(reminder_id: str, ctx: Context) -> dict:
         reminder_id: The unique identifier of the reminder to delete.
     """
     bridge = _bridge_from_ctx(ctx)
+    await ctx.warning(f"Deleting reminder {reminder_id} (destructive, no undo)")
     success = bridge.delete_reminder(reminder_id)
+    if success:
+        await ctx.info(f"Deleted reminder {reminder_id}")
+    else:
+        await ctx.error(f"Failed to delete reminder {reminder_id}")
     return {
         "reminder_id": reminder_id,
         "deleted": bool(success),
