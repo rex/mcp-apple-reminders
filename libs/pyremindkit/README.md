@@ -1,110 +1,88 @@
-# PyRemindKit
+# pyremindkit (vendored)
 
-A Python package that a simple wrapper over Apple Reminders API
+> **📌 Vendored dependency — agents: do not refactor without consulting `VENDOR.md`. Upstream is at https://github.com/namuan/pyremindkit. Significant divergence from upstream is intentional (refactored into 4 modules for line-limit compliance). Original upstream README preserved as `README.upstream.md`.**
 
-## Features
+Python wrapper around macOS EventKit for reading and writing Apple Reminders.
 
-WIP
+## Status
 
-## Installation
+🟡 Vendored fork · Upstream commit `d960eaa` · Local-mods record: `VENDOR.md`
 
-```shell
-python3 -m pip install git+https://github.com/namuan/pyremindkit
+## Why this exists
+
+The upstream `pyremindkit` is not on PyPI, so it's vendored. The MCP server
+needs a Python surface for EventKit's reminder/calendar operations; this is it.
+
+See `VENDOR.md` for the full upstream-provenance + local-mods narrative.
+
+## Public API
+
+Re-exported from `src/pyremindkit/__init__.py`:
+
+- `RemindKit` — the top-level client. Construct once; pass to handlers.
+- `Reminder` — immutable NamedTuple snapshot of an EventKit reminder.
+- `Priority` — named priority enum (NONE/LOW/MEDIUM/HIGH).
+- `Calendar` — dataclass mirror of an EKCalendar with reminder ops bound to it.
+- `CalendarManager` — accessor surface for the set of calendars.
+
+Do NOT reach into `_internal`, `calendars`, `models`, or `core` directly. Use
+the re-exports.
+
+## Architecture
+
+```
+mcp_apple_reminders.server
+    ↓ (sys.path.insert → import)
+pyremindkit/__init__.py  ←──── re-exports public surface
+    ↓
+core.py::RemindKit  (orchestrator)
+    ↓                ↓
+calendars.py   _internal.py
+(Calendar +    (EventKit glue,
+ Manager)       conversion helpers)
+    ↓                ↓
+models.py (pure value types)
+    ↓
+EventKit / Foundation (PyObjC)
 ```
 
-## Quick Start
+- Depends on: `pyobjc-core`, `pyobjc-framework-EventKit`, stdlib.
+- Depended on by: `mcp_apple_reminders.server`, test scripts at repo root.
 
-### Basic Usage
+## Files
 
-```python
-from datetime import datetime, timedelta
+- `VENDOR.md` — upstream provenance, local-mods record, re-sync procedure.
+- `README.upstream.md` — upstream's original README, preserved verbatim.
+- `src/pyremindkit/__init__.py` — public surface re-exports.
+- `src/pyremindkit/core.py` — `RemindKit` orchestrator. ~230 lines.
+- `src/pyremindkit/calendars.py` — `Calendar` + `CalendarManager`. ~240 lines.
+- `src/pyremindkit/models.py` — `Priority` enum + `Reminder` NamedTuple. ~55 lines, dependency-free.
+- `src/pyremindkit/_internal.py` — EventKit/Foundation glue. ~125 lines. NOT public.
+- `LICENSE`, `setup.py`, `pyproject.toml` — upstream's own packaging metadata. Not used; preserved for diff-ability against upstream.
+- `examples/` — upstream's example scripts. Not exercised; preserved.
 
-from pyremindkit import Priority
-from pyremindkit import RemindKit
+## Invariants
 
-remind = RemindKit()
+- **Public surface is stable.** `__init__.py` exports are a contract; don't remove or rename without coordinating with `mcp_apple_reminders.server` and tests.
+- **`models.py` stays dependency-free.** No EventKit / Foundation imports. Other modules import FROM models, never the reverse.
+- **Permission request happens exactly once per process.** `RemindKit.__init__` calls `_grant_permission`; don't add a second instantiation path.
+- **EventKit values cross the bridge via `_internal`.** Conversions live in `_convert_ek_reminder_to_reminder` and `_save_ek_reminder`. Don't duplicate them in `core.py` or `calendars.py`.
 
-# Get the default calendar
-default_calendar = remind.calendars.get_default()
-print(f"Default calendar: {default_calendar.name}")
+## Common tasks
 
-# List reminders due today or in the past that are incomplete
-print("Incomplete reminders due today or in the past:")
-for r in remind.get_reminders(due_before=datetime.now(), is_completed=False):
-    print(f"- {r.title} (ID: {r.id}, Due: {r.due_date})")
+- **Re-sync with upstream** — follow the procedure in `VENDOR.md`. The flat-file structure has diverged; manual cherry-pick is required.
+- **Add a new EventKit-backed operation** — add a method to `RemindKit` (top-level) or to `Calendar` (calendar-scoped). Use `_save_ek_reminder` for writes; use `_convert_ek_reminder_to_reminder` to surface results.
+- **Fix the `is_default` bug** — `calendars.py::CalendarManager.list()`. Replace `is_default=calendar.isImmutable()` with a comparison against `self._event_store.defaultCalendarForNewReminders().calendarIdentifier()`.
 
-# Create a new reminder
-new_reminder = remind.create_reminder(
-    title="Buy Milk",
-    due_date=datetime.now(),
-    notes="Get some oat milk too!",
-    priority=Priority.HIGH,
-    calendar_id=default_calendar.id,
-)
-print(f"Created reminder: {new_reminder.title} (ID: {new_reminder.id})")
+## Gotchas
 
-# Move the reminder's due date 2 hours into the future
-moved_reminder = remind.update_reminder(
-    new_reminder.id,
-    due_date=datetime.now() + timedelta(hours=2),
-)
-print(f"Moved reminder due date to: {moved_reminder.due_date}")
+- The known bugs are *preserved verbatim* in this refactor. Fixing them is intentional follow-up work, not refactor scope. See `VENDOR.md` + `AGENTS.md §9`.
+- The upstream's `pyproject.toml` and `setup.py` are DEAD METADATA — this fork is not pip-installable. The repo-level `pyproject.toml` (one directory up of `libs/`) drives actual installation.
+- `Reminder` is a `NamedTuple` — fields are positional. Callers that unpack rely on field order; do not reorder.
 
-# Update the reminder's title
-updated_reminder = remind.update_reminder(
-    new_reminder.id,
-    title="Buy Almond Milk Instead",
-    notes="Changed my mind, get almond milk!",
-)
-print(f"Updated reminder title to: {updated_reminder.title}")
-print(f"Updated reminder notes to: {updated_reminder.notes}")
+## Related
 
-# Get a reminder by ID
-retrieved_reminder = remind.get_reminder_by_id(new_reminder.id)
-print(f"Retrieved reminder: {retrieved_reminder.title}")
-
-# Check for the next upcoming reminder
-next_reminder = remind.get_next_reminder()
-print(f"Next upcoming reminder: {next_reminder.title if next_reminder else 'None'}")
-
-# Delete the reminder
-remind.delete_reminder(new_reminder.id)
-print(f"Deleted reminder: {new_reminder.title}")
-
-# Verify the reminder was deleted
-try:
-    remind.get_reminder_by_id(new_reminder.id)
-    print("Error: Reminder still exists!")
-except ValueError:
-    print("Verified: Reminder was successfully deleted")
-```
-
-## Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-### Fork the repository
-* Create your feature branch (git checkout -b feature/AmazingFeature)
-* Commit your changes (git commit -m 'Add some AmazingFeature')
-* Push to the branch (git push origin feature/AmazingFeature)
-* Open a Pull Request
-
-## Development Setup
-
-```shell
-# Clone the repository
-git clone https://github.com/namuan/pyremindkit.git
-cd pyremindkit
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install development dependencies
-pip install -r requirements/requirements-dev.txt
-```
-
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-If you encounter any problems or have suggestions, please open an issue.
+- `VENDOR.md` — upstream sha + local-mods record.
+- `README.upstream.md` — what upstream says.
+- `../../AGENTS.md §9` — the known bugs list.
+- `../../MAP.md` — where this module sits in the larger picture.
