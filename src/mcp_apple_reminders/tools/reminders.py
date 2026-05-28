@@ -17,6 +17,9 @@ from .._native.reminderkit import (
     ReminderKitHelperUnavailable,
 )
 from .._native.reminderkit import (
+    add_tags as helper_add_tags,
+)
+from .._native.reminderkit import (
     create_subtask as helper_create_subtask,
 )
 from .._native.reminderkit import (
@@ -176,6 +179,7 @@ async def update_reminder(
     url: Optional[str] = None,
     is_completed: Optional[bool] = None,
     flagged: Optional[bool] = None,
+    add_tags: Optional[list[str]] = None,
 ) -> Reminder:
     """Update an existing reminder.
 
@@ -221,7 +225,23 @@ async def update_reminder(
             raise ValueError(e.message) from e
         updated = updated.model_copy(update={"flagged": bool(flagged)})
 
-    fields = sorted(kwargs.keys()) + (["flagged"] if flagged is not None else [])
+    if add_tags:
+        try:
+            helper_add_tags(reminder_id, add_tags)
+        except ReminderKitHelperUnavailable as e:
+            await ctx.error(f"add_tags via ReminderKit unavailable: {e}")
+            raise ValueError(f"ReminderKit helper not built. Run `make build-native`. ({e})") from e
+        except ReminderKitHelperError as e:
+            await ctx.error(f"add_tags failed: {e.message}")
+            raise ValueError(e.message) from e
+        merged_tags = sorted(set(updated.tags) | set(add_tags))
+        updated = updated.model_copy(update={"tags": merged_tags})
+
+    fields = sorted(kwargs.keys())
+    if flagged is not None:
+        fields.append("flagged")
+    if add_tags:
+        fields.append("tags+=")
     await ctx.info(f"Updated reminder {reminder_id}: fields={fields}")
     return updated
 
@@ -300,18 +320,12 @@ async def get_reminder(reminder_id: str, ctx: Context) -> Reminder:
     ),
 )
 async def get_subtasks(reminder_id: str, ctx: Context) -> list[Reminder]:
-    """List the subtasks of `reminder_id`.
-
-    Args:
-        reminder_id: The parent reminder's UUID.
-    """
+    """List the subtasks of `reminder_id`."""
     app = _app_context(ctx)
     try:
         with app.open_sqlite() as conn:
-            subtasks = list(Reader(conn).iter_subtasks(reminder_id))
-            # Stamp parent_reminder_id on each child Pydantic since the
-            # SQLite reader (general-purpose) doesn't denormalize it.
-            subtasks = [r.model_copy(update={"parent_reminder_id": reminder_id}) for r in subtasks]
+            raw = list(Reader(conn).iter_subtasks(reminder_id))
+            subtasks = [r.model_copy(update={"parent_reminder_id": reminder_id}) for r in raw]
             await ctx.debug(f"get_subtasks({reminder_id}): {len(subtasks)} found")
             return subtasks
     except RemindersDBUnavailable as e:

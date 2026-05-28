@@ -5,6 +5,38 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.27] — 2026-05-28 — Agent: Claude — Slice 1.7 (tags + tag filter)
+
+Tag writes and tag filtering both land. Live-verified end-to-end.
+
+### Added
+- `_native/reminderkit.py::add_tags(reminder_id, tags)` — wraps the Obj-C `add_tags` action. **Additive only** — the underlying helper action does not support removal/replacement; documented in the docstring. Replacement semantics will land in a follow-up patch that extends the helper with a `clear_tags` action.
+- `_native/sqlite.py`: every reminder read now includes a correlated subquery that does `GROUP_CONCAT(h.ZNAME, ',')` across `ZREMCDOBJECT` ↔ `ZREMCDHASHTAGLABEL`. The Pydantic `Reminder.tags` field is now populated on every SQLite read. Cheap per row because `ZREMCDOBJECT.ZREMINDER3` is indexed.
+- `_native/sqlite.py::Reader.iter_reminders(tags=[…])` — new keyword. Translates to a `r.Z_PK IN (SELECT DISTINCT o.ZREMINDER3 FROM ZREMCDOBJECT o JOIN ZREMCDHASHTAGLABEL h ON o.ZHASHTAGLABEL = h.Z_PK WHERE h.ZNAME IN (…))` WHERE clause.
+- `tools/reminders.py::update_reminder(..., add_tags=None)` — when set, invokes `helper_add_tags(reminder_id, add_tags)` after any EventKit update. Returned Pydantic's `tags` is merged: `sorted(set(existing) | set(add_tags))`.
+- `tools/queries.py::get_reminders(..., tags=None)` — forwards to `Reader.iter_reminders(tags=…)`.
+- `test_tags.py` (5 tests):
+  - `test_add_tags_requires_id`
+  - `test_add_tags_rejects_empty_tag_list`
+  - `test_iter_reminders_with_unknown_tag_filter_returns_empty`
+  - `test_iter_reminders_with_no_tag_filter_populates_tags_field`
+  - **`test_live_tags_and_filter_round_trip`** — creates a reminder, adds two tags via the helper, polls SQLite until they appear, then asserts `iter_reminders(tags=["urgent-s17"])` returns the reminder. **PASSED.**
+
+### Decided
+- Parameter is named `add_tags` (not `tags=`) to be honest about additive-only semantics. Replacing the tag set requires a follow-up helper extension; documented in the slice 1.7 acceptance bullet.
+
+### Changed (architecture-gate hygiene)
+- Trimmed sqlite.py docstring (the schema details pulled into `docs/SQLITE_SCHEMA.md` so the Python file stays under the 400-line hard limit).
+- Trimmed reminders.py `get_subtasks` docstring (margin restored under the 400-line cap).
+- New file: `docs/SQLITE_SCHEMA.md` — schema notes + Apple-epoch + permissions + the UUID-equivalence contract + the concurrency note about why `immutable=1` was dropped.
+
+### Verified
+- `pytest test_tags.py test_sqlite_reader.py test_set_flagged.py test_subtasks.py test_reminderkit_smoke.py test_eventkit_wrapper.py test_models.py`: 50 passed, 7 skipped (4 opt-in live tests already ran green earlier).
+- `make lint && make check-architecture`: green (50 files; all under hard cap; module shape green).
+
+### Status
+- Phase 1 progress: S1.0–S1.7 done ✅, **eight of nine**. Only **S1.8 (`assign_section`)** remains to complete Phase 1.
+
 ## [0.1.26] — 2026-05-28 — Agent: Claude — Slice 1.6 (set_flagged)
 
 Quick slice — the wrappers were already in place. Live-verified.

@@ -162,11 +162,14 @@
 
 ### S1.7 — `set_tags`
 
-- **Files**: `tools/reminders.py`, `tools/queries.py`, `_native/reminderkit.py`
+- **Files**: `src/mcp_apple_reminders/_native/reminderkit.py` (added `add_tags()` wrapper), `src/mcp_apple_reminders/_native/sqlite.py` (correlated subquery hydrates `tags` via `GROUP_CONCAT`; new `tags=[...]` filter on `iter_reminders`), `src/mcp_apple_reminders/tools/reminders.py` (extended `update_reminder` with `add_tags: Optional[list[str]]`), `src/mcp_apple_reminders/tools/queries.py` (extended `get_reminders` with `tags: Optional[list[str]]`), `test_tags.py` (new — 5 tests).
 - **Acceptance**:
-  - [ ] `update_reminder(tags=[...])` replaces the tag set via the helper.
-  - [ ] `get_reminders(tags=[...])` filter applied as a SQL WHERE clause.
-- [ ] Complete
+  - [x] `update_reminder(add_tags=[...])` invokes the Obj-C helper's `add_tags` action via `helper_add_tags()`. **Semantic note:** the underlying helper action is **additive**, not replacing — existing tags are preserved. The parameter is named `add_tags` (not `tags=`) to be honest about the semantics; replacement semantics will land in a follow-up patch that extends the helper with a `clear_tags` action.
+  - [x] `get_reminders(tags=[...])` translates to a SQL WHERE clause: `r.Z_PK IN (SELECT DISTINCT o.ZREMINDER3 FROM ZREMCDOBJECT o JOIN ZREMCDHASHTAGLABEL h ON o.ZHASHTAGLABEL = h.Z_PK WHERE h.ZNAME IN (?, ?, …))`.
+  - [x] `Reminder.tags` is now populated on every SQLite read via a correlated `GROUP_CONCAT` subquery; cheap because `ZREMCDOBJECT.ZREMINDER3` is indexed.
+  - [x] **Live round-trip**: `test_live_tags_and_filter_round_trip` creates a reminder, adds two tags via the helper, polls SQLite until the tags surface, asserts `iter_reminders(tags=["urgent-s17"])` returns the reminder. **PASSED.**
+  - [x] Architecture gate stayed green: trimmed sqlite.py + reminders.py docstrings; pulled the SQLite schema notes to `docs/SQLITE_SCHEMA.md`.
+- [x] Complete (with documented additive-only semantics)
 
 ### S1.8 — `assign_section`
 

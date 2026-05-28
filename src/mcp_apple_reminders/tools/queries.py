@@ -72,6 +72,7 @@ async def get_reminders(
     is_completed: Optional[bool] = None,
     priority: Optional[str] = None,
     calendar_id: Optional[str] = None,
+    tags: Optional[list[str]] = None,
     limit: Optional[int] = None,
 ) -> list[Reminder]:
     """Get reminders with optional filters (SQLite-first; EventKit fallback).
@@ -96,6 +97,7 @@ async def get_reminders(
                 completed=is_completed,
                 due_after=due_after_dt,
                 due_before=due_before_dt,
+                tags=tags,
             )
             results: list[Reminder] = []
             for r in stream:

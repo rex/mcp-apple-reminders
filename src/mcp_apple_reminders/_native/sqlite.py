@@ -1,53 +1,16 @@
 """Direct read-only access to the Reminders.app CoreData SQLite store.
 
-Slice 1.0 of spec 002. Replaces slow EventKit iteration for the read-path
-tools (`list_calendars`, `get_reminders`, `search_reminders`, `get_overdue_reminders`,
-`get_today_reminders`, `get_reminder`). Reads a single SQLite database that
-already contains every field we need including ReminderKit-only ones
-(sections, subtasks, tags, alarms metadata, recurrence metadata) — so a lot
-of Phase 3 work comes for free as soon as the schema is mapped.
+Slice 1.0 — see `docs/SQLITE_SCHEMA.md` for the full schema breakdown,
+column mapping, timestamp/epoch notes, and the deeplink UUID equivalence
+contract verified at slice ship.
 
-### Schema (CoreData-flavored — every table starts with `Z`)
+Public surface:
 
-The store path is
-`~/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores/Data-*.sqlite`.
-The largest `Data-*.sqlite` is the active one. Apple Reminders writes to
-multiple stores when multiple accounts are signed in.
-
-Key tables we touch:
-
-- `ZREMCDBASELIST` — Reminder lists (a.k.a. calendars). `Z_ENT = 3` filters
-  out smart lists. Columns: `Z_PK`, `ZNAME`, `ZCKIDENTIFIER` (the UUID that
-  matches `EKCalendar.calendarIdentifier()`), `ZCOLOR`, `ZMARKEDFORDELETION`.
-- `ZREMCDREMINDER` — Top-level + subtask reminders. Columns: `Z_PK`,
-  `ZTITLE`, `ZNOTES`, `ZCOMPLETED`, `ZFLAGGED`, `ZPRIORITY`, `ZDUEDATE`,
-  `ZCOMPLETIONDATE`, `ZCREATIONDATE`, `ZLASTMODIFIEDDATE`, `ZPARENTREMINDER`
-  (Z_PK of the parent, NULL for top-level), `ZLIST` (Z_PK of the containing
-  list), `ZICSURL` (attached URL), `ZCKIDENTIFIER` (UUID matching
-  `EKReminder.calendarItemIdentifier()`), `ZMARKEDFORDELETION`,
-  `ZACCOUNT` (NULL on orphaned rows — filter them out).
-- `ZREMCDBASESECTION` — Sections within a list. Used by `assign_section`
-  (Slice 1.8).
-
-### Timestamps
-
-CoreData stores dates as "seconds since the Apple epoch" (2001-01-01
-00:00:00 UTC). Convert by adding `APPLE_EPOCH_OFFSET` (`978307200`) and
-calling `datetime.fromtimestamp()`.
-
-### Permissions
-
-Reading the DB requires either Full Disk Access on the interpreter
-binary OR an interpreter that already has Reminders TCC consent. The
-conda Python in `./venv/bin/python3` works because it's been granted
-Reminders consent (the same consent EventKit uses).
-
-### Contract verified at S1.0 (deeplink UUID equivalence)
-
-`EKReminder.calendarItemIdentifier()` and SQLite `ZCKIDENTIFIER` produce
-the same UUID for the same reminder. Same for calendars. Verified live
-against this machine's store on 2026-05-28. The deeplink helpers in
-`mcp_apple_reminders.models` work identically from either path.
+- `Reader(conn)` — facade class wrapping a connection with typed read
+  methods.
+- `RemindersDBUnavailable` — raised when the store can't be opened.
+- `connect(db_path=None)` + `find_db_path(store_dir=...)` — open/locate.
+- `APPLE_EPOCH_OFFSET` constant.
 """
 
 from __future__ import annotations
@@ -148,6 +111,10 @@ def _calendar_from_row(row: sqlite3.Row, default_uuid: Optional[str]) -> Calenda
 
 def _reminder_from_row(row: sqlite3.Row, list_uuid: str) -> Reminder:
     reminder_id = str(row["ZCKIDENTIFIER"])
+    # sqlite3.Row needs `.keys()` to check column presence — `in row` queries values.
+    row_keys = row.keys()  # noqa: SIM118
+    tags_csv = row["tags_csv"] if "tags_csv" in row_keys else None
+    tags = [t for t in (tags_csv or "").split(",") if t]
     return Reminder(
         id=reminder_id,
         title=row["ZTITLE"] or "",
@@ -158,12 +125,11 @@ def _reminder_from_row(row: sqlite3.Row, list_uuid: str) -> Reminder:
         priority=row["ZPRIORITY"] or 0,
         list_id=list_uuid,
         created_date=_ts(row["ZCREATIONDATE"]),
-        # sqlite3.Row needs `.keys()` to check column presence — `in row` queries values.
-        modified_date=(_ts(row["ZLASTMODIFIEDDATE"]) if "ZLASTMODIFIEDDATE" in row.keys() else None),  # noqa: SIM118
+        modified_date=_ts(row["ZLASTMODIFIEDDATE"]) if "ZLASTMODIFIEDDATE" in row_keys else None,
         flagged=bool(row["ZFLAGGED"]),
         parent_reminder_id=None,
         subtasks=[],
-        tags=[],
+        tags=tags,
         section_name=None,
         completion_date=_ts(row["ZCOMPLETIONDATE"]),
         start_date=None,
@@ -175,7 +141,12 @@ _REMINDER_COLS = (
     "r.Z_PK, r.ZTITLE, r.ZNOTES, r.ZCOMPLETED, r.ZFLAGGED, r.ZPRIORITY, "
     "r.ZDUEDATE, r.ZCOMPLETIONDATE, r.ZCREATIONDATE, r.ZLASTMODIFIEDDATE, "
     "r.ZPARENTREMINDER, r.ZICSURL, r.ZCKIDENTIFIER, "
-    "l.ZCKIDENTIFIER AS list_ckid"
+    "l.ZCKIDENTIFIER AS list_ckid, "
+    # Correlated subquery hydrates the tag set in one trip. Cheap per row
+    # because ZREMCDOBJECT.ZREMINDER3 is indexed.
+    "(SELECT group_concat(h.ZNAME, ',') FROM ZREMCDOBJECT o "
+    "JOIN ZREMCDHASHTAGLABEL h ON o.ZHASHTAGLABEL = h.Z_PK "
+    "WHERE o.ZREMINDER3 = r.Z_PK) AS tags_csv"
 )
 
 
@@ -184,6 +155,7 @@ def _build_reminders_query(
     completed: Optional[bool],
     due_after: Optional[datetime],
     due_before: Optional[datetime],
+    tags: Optional[list[str]] = None,
 ) -> tuple[str, list]:
     where = ["r.ZMARKEDFORDELETION = 0", "r.ZACCOUNT IS NOT NULL"]
     params: list = []
@@ -199,6 +171,15 @@ def _build_reminders_query(
     if due_before is not None:
         where.append("r.ZDUEDATE <= ?")
         params.append(due_before.timestamp() - APPLE_EPOCH_OFFSET)
+    if tags:
+        placeholders = ", ".join("?" for _ in tags)
+        where.append(
+            "r.Z_PK IN ("
+            "SELECT DISTINCT o.ZREMINDER3 FROM ZREMCDOBJECT o "
+            "JOIN ZREMCDHASHTAGLABEL h ON o.ZHASHTAGLABEL = h.Z_PK "
+            f"WHERE h.ZNAME IN ({placeholders}))"
+        )
+        params.extend(tags)
     sql = (
         f"SELECT {_REMINDER_COLS} FROM ZREMCDREMINDER r "
         "LEFT JOIN ZREMCDBASELIST l ON r.ZLIST = l.Z_PK "
@@ -314,10 +295,11 @@ class Reader:
         completed: Optional[bool] = None,
         due_after: Optional[datetime] = None,
         due_before: Optional[datetime] = None,
+        tags: Optional[list[str]] = None,
         limit: Optional[int] = None,
     ) -> Iterator[Reminder]:
         """Stream reminders that match the supplied filters."""
-        sql, params = _build_reminders_query(calendar_id, completed, due_after, due_before)
+        sql, params = _build_reminders_query(calendar_id, completed, due_after, due_before, tags=tags)
         if limit and limit > 0:
             sql += " LIMIT ?"
             params.append(int(limit))

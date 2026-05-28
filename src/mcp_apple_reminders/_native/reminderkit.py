@@ -218,6 +218,32 @@ def invoke_action(action: str, **kwargs: Any) -> dict:
     return _invoke(payload)
 
 
+def add_tags(reminder_id: str, tags: list[str]) -> dict:
+    """Append tags to a reminder via the Obj-C `add_tags` action.
+
+    NOTE: the underlying helper action is **additive**. Existing tags are
+    preserved; this just adds the new ones. To "replace" the tag set
+    callers must currently use Reminders.app to remove the old tags;
+    a `clear_tags` helper action will land in a follow-up patch.
+
+    Args:
+        reminder_id: The reminder's UUID.
+        tags: One or more tag names (without the leading `#`). The helper
+            rejects empty lists.
+
+    Raises:
+        ValueError: `reminder_id` is blank or `tags` is empty.
+        ReminderKitHelperUnavailable: helper missing.
+        ReminderKitHelperError: helper returned a structured error.
+    """
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    cleaned = [t for t in (tags or []) if t and t.strip()]
+    if not cleaned:
+        raise ValueError("tags is required and must contain at least one non-empty value")
+    return _invoke({"action": "add_tags", "id": reminder_id, "tags": cleaned})
+
+
 def set_flagged(reminder_id: str, flagged: bool) -> dict:
     """Set the flagged flag on a reminder via the Obj-C `set_flagged` action.
 
@@ -270,6 +296,7 @@ __all__ = [
     "REMINDERKIT_HELPER_AVAILABLE",
     "ReminderKitHelperError",
     "ReminderKitHelperUnavailable",
+    "add_tags",
     "create_subtask",
     "invoke_action",
     "is_available",
