@@ -14,8 +14,17 @@ version; tracked as a P0 capability gap (Slices 1.2, 1.3).
 
 from __future__ import annotations
 
+from typing import Optional
+
 from mcp.server.fastmcp import Context
 
+from .._native.eventkit import (
+    EventKitHelperError,
+    EventKitHelperUnavailable,
+)
+from .._native.eventkit import (
+    create_calendar as helper_create_calendar,
+)
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import AppContext
 from ..models import Calendar, native_calendar_to_pydantic
@@ -112,6 +121,59 @@ async def search_calendars(query: str, ctx: Context) -> list[Calendar]:
     except RemindersDBUnavailable as e:
         await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
         return [native_calendar_to_pydantic(c) for c in app.bridge.calendars.search(query)]
+
+
+@mcp.tool(
+    name="create_calendar",
+    description=(
+        "Create a new reminder calendar (list) in Apple Reminders. The name "
+        "must be unique among existing non-deleted lists. Optional color "
+        "argument accepts a named palette token (e.g. 'red', 'blue', 'orange', "
+        "'green', 'yellow', 'purple', 'brown', 'gray'). Returns the new "
+        "calendar with its deeplink. Backed by the Swift EventKit helper "
+        "(_native/bin/rem_eventkit)."
+    ),
+)
+async def create_calendar(name: str, ctx: Context, color: Optional[str] = None) -> Calendar:
+    """Create a new reminder list via the Swift EventKit helper.
+
+    Args:
+        name: The list name (must be unique among existing non-deleted lists).
+        color: Optional named-palette token. Optional.
+    """
+    if not name or not name.strip():
+        raise ValueError("name is required and must be non-empty")
+
+    app = _app_context(ctx)
+
+    # Duplicate-name guard: query the SQLite reader (fast) before invoking
+    # the helper. Fall back to a calendar-list scan if SQLite is unavailable.
+    try:
+        with app.open_sqlite() as conn:
+            existing = Reader(conn).get_calendar_by_name(name)
+    except RemindersDBUnavailable:
+        existing = next(
+            (c for c in app.bridge.calendars.list() if c.name == name),
+            None,
+        )
+    if existing is not None:
+        raise ValueError(
+            f"A calendar named {name!r} already exists. " f"Pick a unique name or update the existing one."
+        )
+
+    try:
+        created = helper_create_calendar(name, color=color)
+    except EventKitHelperUnavailable as e:
+        await ctx.error(f"EventKit helper unavailable: {e}")
+        raise ValueError(
+            f"EventKit helper binary not built. Run `make build-native` from the project root. ({e})"
+        ) from e
+    except EventKitHelperError as e:
+        await ctx.error(f"create_calendar failed: {e.message}")
+        raise ValueError(e.message) from e
+
+    await ctx.info(f"Created calendar {created.id} ({name!r})")
+    return created
 
 
 @mcp.tool(

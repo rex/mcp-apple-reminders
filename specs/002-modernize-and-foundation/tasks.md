@@ -98,13 +98,14 @@
 
 ### S1.2 — `create_calendar`
 
-- **Files**: `_native/eventkit.py` (Python wrapper for the Swift helper), `tools/calendars.py`
+- **Files**: `src/mcp_apple_reminders/_native/eventkit.py` (new; Python wrapper for the Swift helper subprocess: `_invoke()` + `create_calendar()`), `src/mcp_apple_reminders/tools/calendars.py` (new `create_calendar` `@mcp.tool` with SQLite-backed duplicate-name guard + helper invocation), `test_eventkit_wrapper.py` (new; 7 tests: 6 unit + 1 opt-in live).
 - **Acceptance** (spec §Event-driven, §Optional):
-  - [ ] `create_calendar` dispatches to `rem_eventkit` subprocess with a JSON request.
-  - [ ] Returns the new `Calendar` (with `deeplink`).
-  - [ ] Duplicate-name handling: helper returns structured error; Python wrapper raises `ValueError`.
-  - [ ] Color argument honored (named palette or hex).
-- [ ] Complete
+  - [x] `create_calendar` dispatches to `rem_eventkit` subprocess via `_invoke(payload={"action":"create_list","title":...,"color":...})`. Per-call subprocess mode (the S0.6 decision).
+  - [x] Returns the new `Calendar` Pydantic model with `deeplink` populated from `calendarItemIdentifier()`. Verified live: created and deleted a real list end-to-end via the helper.
+  - [x] Duplicate-name handling at the tool level: tool queries `Reader.get_calendar_by_name` (SQLite-fast) before invoking the helper; collision raises `ValueError(f"A calendar named {name!r} already exists. …")`. If SQLite is unavailable, falls back to an EventKit list scan.
+  - [x] Color argument honored: passed through as `color` field in the JSON payload. Test `test_color_argument_is_passed_to_helper` captures the stdin and asserts the wire format.
+  - [x] Failure modes covered: missing binary → `EventKitHelperUnavailable` re-raised as a clear "run `make build-native`" `ValueError`; structured helper errors → `EventKitHelperError(message)` re-raised as `ValueError(message)`.
+- [x] Complete
 
 ### S1.3 — `delete_calendar` + `update_calendar`
 

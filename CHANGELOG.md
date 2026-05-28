@@ -5,6 +5,40 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.22] — 2026-05-28 — Agent: Claude — Slice 1.2 (create_calendar)
+
+The first write tool that goes through the Swift EventKit helper subprocess.
+End-to-end-verified live: an `REM-TEST-AUTODELETE-S12` list was created in
+the user's Reminders.app and cleaned up via the helper's `delete_list`
+action, all within a pytest run.
+
+### Added
+- **`src/mcp_apple_reminders/_native/eventkit.py`** (new) — Python wrapper around `_native/bin/rem_eventkit`. Per-call subprocess mode (per S0.6 decision). Sends JSON on stdin, reads JSON on stdout. Public surface: `create_calendar()`, exceptions `EventKitHelperUnavailable` and `EventKitHelperError`, `DEFAULT_HELPER_PATH` constant. Helper-not-built and structured-error paths cleanly distinguished.
+- **`tools/calendars.py::create_calendar`** (`@mcp.tool`) — the 23rd tool. Takes `name` + optional `color`; returns the new `Calendar` Pydantic model with deeplink. Order of operations:
+  1. Blank-name guard → `ValueError`.
+  2. **Duplicate-name guard** via SQLite `Reader.get_calendar_by_name` (sub-ms); falls back to an EventKit list scan when SQLite is unavailable.
+  3. `helper_create_calendar(name, color)` invokes the Swift helper.
+  4. `EventKitHelperUnavailable` → `ValueError` with the "run `make build-native`" hint.
+  5. `EventKitHelperError` → `ValueError` carrying the helper's own message.
+  6. Success → `ctx.info(...)` + return Pydantic Calendar.
+- **`test_eventkit_wrapper.py`** (new) — 7 tests (6 unit + 1 opt-in live):
+  - `test_missing_helper_raises_unavailable`
+  - `test_blank_title_raises_value_error`
+  - `test_success_response_returns_calendar_with_deeplink` (mocked helper)
+  - `test_error_response_raises_helper_error_with_message` (mocked exit-1 helper)
+  - `test_non_json_stdout_raises_helper_error`
+  - `test_color_argument_is_passed_to_helper` — captures stdin and asserts the wire-level JSON shape (`action`, `title`, `color`)
+  - `test_live_create_and_cleanup_round_trip` (guarded by `REM_LIVE_HELPER=1`) — creates `REM-TEST-AUTODELETE-S12` and cleans up via the helper's `delete_list`. **Confirmed passing live on this checkout.**
+
+### Verified
+- `pytest test_sqlite_reader.py test_mcp_tools.py test_e2e.py test_models.py test_eventkit_wrapper.py`: 31 passed, 2 skipped (the 2 opt-in live tests).
+- `REM_LIVE_HELPER=1 pytest test_eventkit_wrapper.py::test_live_create_and_cleanup_round_trip`: PASSED — round-trip actually works.
+- `await mcp.list_tools()`: 23 tools registered (was 22; `create_calendar` is new).
+- `make lint && make check-architecture`: green.
+
+### Status
+- Phase 1 progress: S1.0 ✅, S1.1 ✅, S1.2 ✅ — three of nine slices landed. S1.3 (`delete_calendar` + `update_calendar`) and S1.4 (ReminderKit helper Python wrapper) next.
+
 ## [0.1.21] — 2026-05-28 — Agent: Claude — Slice 1.0 (SQLite reader)
 
 ### Added (read path)
