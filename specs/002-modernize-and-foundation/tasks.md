@@ -152,11 +152,13 @@
 
 ### S1.6 — `set_flagged`
 
-- **Files**: `tools/reminders.py`, `_native/reminderkit.py`
+- **Files**: `src/mcp_apple_reminders/_native/reminderkit.py` (added `set_flagged()` wrapper), `src/mcp_apple_reminders/tools/reminders.py` (extended `create_reminder` and `update_reminder` with `flagged: Optional[bool]`), `test_set_flagged.py` (new — 2 tests).
 - **Acceptance**:
-  - [ ] `create_reminder(flagged=true)` and `update_reminder(... flagged=...)` set the flag via the helper.
-  - [ ] `Reminder.flagged` field surfaces correctly (from SQLite read).
-- [ ] Complete
+  - [x] `create_reminder(flagged=true)` invokes `helper_set_flagged(created.id, True)` after the EventKit create; result Pydantic stamped with the post-write flag value.
+  - [x] `update_reminder(... flagged=...)` invokes `helper_set_flagged(reminder_id, flagged)` after any EventKit update (or skips the EventKit call entirely if only `flagged` changed). Result Pydantic stamped.
+  - [x] `Reminder.flagged` field surfaces correctly from SQLite read (was already wired in S1.0 — SQLite `ZFLAGGED` → Pydantic `flagged`).
+  - [x] **Live round-trip**: `test_live_set_and_clear_flag` creates a test list + reminder, flips the flag via the helper, polls SQLite until the change is visible, clears it, polls again. **PASSED.**
+- [x] Complete
 
 ### S1.7 — `set_tags`
 

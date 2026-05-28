@@ -19,6 +19,9 @@ from .._native.reminderkit import (
 from .._native.reminderkit import (
     create_subtask as helper_create_subtask,
 )
+from .._native.reminderkit import (
+    set_flagged as helper_set_flagged,
+)
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..formatting import parse_datetime, parse_priority
 from ..lifespan import AppContext
@@ -51,6 +54,7 @@ async def create_reminder(
     url: Optional[str] = None,
     calendar_id: Optional[str] = None,
     parent_reminder_id: Optional[str] = None,
+    flagged: Optional[bool] = None,
 ) -> Reminder:
     """Create a new reminder. If `parent_reminder_id` is set, creates a subtask.
 
@@ -135,6 +139,21 @@ async def create_reminder(
         kwargs["calendar_id"] = calendar_id
 
     created = native_reminder_to_pydantic(app.bridge.create_reminder(**kwargs))
+
+    # Post-create flagged: ReminderKit private API. Skip if not requested.
+    if flagged is not None:
+        try:
+            helper_set_flagged(created.id, flagged)
+        except ReminderKitHelperUnavailable as e:
+            await ctx.error(f"set_flagged via ReminderKit unavailable: {e}")
+            raise ValueError(f"ReminderKit helper not built. Run `make build-native`. ({e})") from e
+        except ReminderKitHelperError as e:
+            await ctx.error(f"set_flagged failed: {e.message}")
+            raise ValueError(e.message) from e
+        # Re-stamp the Pydantic with the flag we just set (the bridge return
+        # predates the helper write).
+        created = created.model_copy(update={"flagged": bool(flagged)})
+
     await ctx.info(f"Created reminder {created.id} in list {created.list_id}: {created.title!r}")
     return created
 
@@ -156,6 +175,7 @@ async def update_reminder(
     priority: Optional[str] = None,
     url: Optional[str] = None,
     is_completed: Optional[bool] = None,
+    flagged: Optional[bool] = None,
 ) -> Reminder:
     """Update an existing reminder.
 
@@ -184,8 +204,25 @@ async def update_reminder(
         kwargs["is_completed"] = is_completed
 
     bridge = _bridge_from_ctx(ctx)
-    updated = native_reminder_to_pydantic(bridge.update_reminder(reminder_id, **kwargs))
-    await ctx.info(f"Updated reminder {reminder_id}: fields={sorted(kwargs.keys())}")
+    # Only invoke EventKit update if there are EventKit-side changes.
+    if kwargs:
+        updated = native_reminder_to_pydantic(bridge.update_reminder(reminder_id, **kwargs))
+    else:
+        updated = native_reminder_to_pydantic(bridge.get_reminder_by_id(reminder_id))
+
+    if flagged is not None:
+        try:
+            helper_set_flagged(reminder_id, flagged)
+        except ReminderKitHelperUnavailable as e:
+            await ctx.error(f"set_flagged via ReminderKit unavailable: {e}")
+            raise ValueError(f"ReminderKit helper not built. Run `make build-native`. ({e})") from e
+        except ReminderKitHelperError as e:
+            await ctx.error(f"set_flagged failed: {e.message}")
+            raise ValueError(e.message) from e
+        updated = updated.model_copy(update={"flagged": bool(flagged)})
+
+    fields = sorted(kwargs.keys()) + (["flagged"] if flagged is not None else [])
+    await ctx.info(f"Updated reminder {reminder_id}: fields={fields}")
     return updated
 
 

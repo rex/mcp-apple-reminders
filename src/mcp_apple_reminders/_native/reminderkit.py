@@ -218,6 +218,23 @@ def invoke_action(action: str, **kwargs: Any) -> dict:
     return _invoke(payload)
 
 
+def set_flagged(reminder_id: str, flagged: bool) -> dict:
+    """Set the flagged flag on a reminder via the Obj-C `set_flagged` action.
+
+    Args:
+        reminder_id: The reminder's UUID.
+        flagged: True to flag, False to clear.
+
+    Raises:
+        ValueError: `reminder_id` is blank.
+        ReminderKitHelperUnavailable: helper missing.
+        ReminderKitHelperError: helper returned a structured error.
+    """
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    return _invoke({"action": "set_flagged", "id": reminder_id, "flagged": bool(flagged)})
+
+
 def create_subtask(parent_id: str, title: str, **extras: Any) -> dict:
     """Create one new subtask under the given parent via `add_subtasks`.
 
@@ -257,4 +274,5 @@ __all__ = [
     "invoke_action",
     "is_available",
     "ping",
+    "set_flagged",
 ]

@@ -5,6 +5,26 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.26] — 2026-05-28 — Agent: Claude — Slice 1.6 (set_flagged)
+
+Quick slice — the wrappers were already in place. Live-verified.
+
+### Added
+- `_native/reminderkit.py::set_flagged(reminder_id, flagged)` — wraps the Obj-C `set_flagged` action.
+- `tools/reminders.py::create_reminder(..., flagged=None)` — when set, invokes `helper_set_flagged(created.id, flagged)` after the EventKit create. Result Pydantic stamped with the post-write flag value.
+- `tools/reminders.py::update_reminder(..., flagged=None)` — when set, invokes `helper_set_flagged(reminder_id, flagged)` after any EventKit update (or skips the EventKit call entirely if only `flagged` changed). Result Pydantic stamped.
+- `test_set_flagged.py` (2 tests, 1 unit + 1 opt-in live):
+  - `test_set_flagged_requires_id`
+  - `test_live_set_and_clear_flag` — flips the flag on/off on a real reminder, polls SQLite until visible. **PASSED.**
+
+### Verified
+- `pytest test_set_flagged.py test_subtasks.py test_reminderkit_smoke.py test_eventkit_wrapper.py test_sqlite_reader.py test_models.py`: 40 passed, 5 skipped.
+- `make lint && make check-architecture`: green.
+- `await mcp.list_tools()`: still 27 tools (flagged is a parameter, not a new tool).
+
+### Status
+- Phase 1 progress: S1.0–S1.6 done ✅, **seven of nine**. S1.7 (`set_tags` + tag filter on `get_reminders`) and S1.8 (`assign_section`) remain — both straight-line work that follows the same `helper_set_*` pattern.
+
 ## [0.1.25] — 2026-05-28 — Agent: Claude — Slice 1.5 (subtasks)
 
 Subtasks land end-to-end. The Reminders app's "Make subtask" UI is now
