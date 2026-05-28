@@ -57,9 +57,13 @@ env/
 htmlcov/
 lib/
 lib64/
-# NOTE: `libs/` (plural) is intentionally NOT ignored — this repo uses it
-# for the vendored `pyremindkit` package. Only `lib/` and `lib64/` (Python
-# build artifacts) are ignored.
+# NOTE: `libs/` (plural) was retired in slice 0.2 — pyremindkit moved into
+# `src/mcp_apple_reminders/_native/`. Only `lib/` and `lib64/` (Python build
+# artifacts) are ignored here.
+
+# Native helper build outputs (compiled in slice 0.6 by `make build-native`).
+# Sources live in `_native/src/`; binaries land in `_native/bin/`.
+src/mcp_apple_reminders/_native/bin/
 local_config.json
 parts/
 pip-wheel-metadata/

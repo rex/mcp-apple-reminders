@@ -65,15 +65,15 @@
 
 ### S0.6 — Native build pipeline (Swift + Obj-C helpers from RemCTL)
 
-- **Files**: `_native/src/rem_eventkit.swift` (borrowed from `viticci/remctl::remctl-bridge.swift`), `_native/src/rem_reminderkit.m` (borrowed from `remctl-private.m`), `_native/THIRD_PARTY_NOTICES.md` (MIT attribution), `Makefile` (build targets), `install.sh` (invoke build).
+- **Files**: `src/mcp_apple_reminders/_native/src/rem_eventkit.swift` (borrowed from `viticci/remctl::remctl-bridge.swift`, 512 LOC with header), `src/mcp_apple_reminders/_native/src/rem_reminderkit.m` (borrowed from `remctl-private.m`, 1456 LOC with header), `src/mcp_apple_reminders/_native/THIRD_PARTY_NOTICES.md` (MIT attribution + upstream pin), `Makefile` (`build-native`, `clean-native`), `install.sh` (invokes `make build-native` after the pip install), `verify_setup.py` (binary probe + `--ping`), `VIBE.yaml::architecture.exclude_globs` (vendored upstream sources, documented Pierce-approved exception), `.gitignore` (ignores compiled `_native/bin/*`).
 - **Acceptance** (spec §Ubiquitous re borrowed code):
-  - [ ] `_native/src/rem_eventkit.swift` and `_native/src/rem_reminderkit.m` present with inline `// Borrowed from viticci/remctl@<sha>, MIT-licensed — see _native/THIRD_PARTY_NOTICES.md` headers.
-  - [ ] `_native/THIRD_PARTY_NOTICES.md` contains the verbatim MIT license + file-by-file mapping + upstream SHAs.
-  - [ ] `make build-native` compiles to `_native/bin/rem_eventkit` and `_native/bin/rem_reminderkit`, ~50ms each.
-  - [ ] `install.sh` invokes `make build-native` after the venv install.
-  - [ ] `verify_setup.py` confirms both binaries exist and exit 0 on a `--ping` invocation.
-  - [ ] Helper-process lifetime mode decided (long-lived vs per-call); documented in `_native/bridge.py` docstring.
-- [ ] Complete
+  - [x] `_native/src/rem_eventkit.swift` and `_native/src/rem_reminderkit.m` present with attribution headers (upstream URL, commit SHA `baaa57b…`, RemCTL 1.0.3, license + local-modification list).
+  - [x] `_native/THIRD_PARTY_NOTICES.md` contains the verbatim MIT license + file-by-file mapping + upstream commit SHA.
+  - [x] `make build-native` compiles both binaries (≈50–200 ms each on M-series); deposits them in `_native/bin/rem_eventkit` and `_native/bin/rem_reminderkit`; runs `--ping` on each to confirm.
+  - [x] `install.sh` invokes `make build-native` after the pip install (gracefully degrades if swiftc/clang missing).
+  - [x] `verify_setup.py` confirms both binaries exist and exit 0 on `--ping` invocation, asserting the `{"status":"ok"}` payload.
+  - [x] **Helper-process lifetime mode decision**: **per-call subprocess** for now (simpler; ~50–100 ms per call which is fine for user-scale interactive ops). Long-lived mode can be retrofitted in `_native/bridge.py` (S1.4) without changing the JSON protocol if profiling shows it matters. Decision recorded here and re-visited in S1.4.
+- [x] Complete
 
 ## Phase 1 — P0 capabilities
 

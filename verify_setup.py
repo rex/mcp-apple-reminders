@@ -180,6 +180,37 @@ def main():
     all_passed = all_passed and native_ok
     print()
 
+    # Check 6b: native helper binaries (post-S0.6 — compiled from borrowed RemCTL sources)
+    print("🔨 Checking native helper binaries (rem_eventkit + rem_reminderkit)...")
+    native_bin_dir = REPO_ROOT / "src" / "mcp_apple_reminders" / "_native" / "bin"
+    for helper in ("rem_eventkit", "rem_reminderkit"):
+        binary = native_bin_dir / helper
+        if not binary.exists():
+            print_status(
+                helper,
+                False,
+                f"{binary} missing — run `make build-native`.",
+            )
+            all_passed = False
+            continue
+        # Probe with --ping (added by S0.6 local patch — see THIRD_PARTY_NOTICES.md).
+        try:
+            ping = subprocess.run(
+                [str(binary), "--ping"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            ok = ping.returncode == 0 and '"status":"ok"' in ping.stdout
+            msg = ping.stdout.strip() if ok else (ping.stderr.strip() or "no output")
+            print_status(helper, ok, msg)
+            all_passed = all_passed and ok
+        except (subprocess.TimeoutExpired, OSError) as e:
+            print_status(helper, False, f"--ping invocation failed: {e}")
+            all_passed = False
+    print()
+
     # Check 7: Claude Desktop configuration
     print("⚙️  Checking Claude Desktop configuration...")
     claude_configured = config_contains(CLAUDE_CONFIG, "mcp_apple_reminders")

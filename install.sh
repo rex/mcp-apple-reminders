@@ -52,6 +52,7 @@ echo ""
 
 # Activate virtual environment
 echo "🔧 Activating virtual environment..."
+# shellcheck source=/dev/null
 source venv/bin/activate
 
 # Upgrade pip
@@ -68,6 +69,24 @@ echo ""
 echo "📦 Installing mcp-apple-reminders..."
 python -m pip install -e . --quiet
 echo "✓ Package installed"
+echo ""
+
+# Build the native EventKit + ReminderKit helpers (borrowed from viticci/remctl
+# MIT — see src/mcp_apple_reminders/_native/THIRD_PARTY_NOTICES.md). Requires
+# Xcode CLI tools (swiftc + clang).
+if command -v swiftc >/dev/null 2>&1 && command -v clang >/dev/null 2>&1; then
+    echo "🔨 Building native helpers (rem_eventkit + rem_reminderkit)..."
+    if command -v make >/dev/null 2>&1 && make build-native >/dev/null 2>&1; then
+        echo "✓ Native helpers compiled"
+    else
+        echo "⚠️  make build-native failed — Reminders writes that need the helpers will degrade."
+        echo "   Run \`make build-native\` manually after install to see the compiler error."
+    fi
+else
+    echo "⚠️  swiftc / clang not found — Xcode CLI tools missing."
+    echo "   Install with: xcode-select --install"
+    echo "   Then run: make build-native"
+fi
 echo ""
 
 echo "✅ Installation complete!"

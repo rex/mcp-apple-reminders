@@ -5,6 +5,39 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.20] — 2026-05-28 — Agent: Claude — Slice 0.6 (Phase 0 complete)
+
+### Added (native build pipeline — borrowed from viticci/remctl @ baaa57b, MIT)
+- **`src/mcp_apple_reminders/_native/src/rem_eventkit.swift`** — Swift / EventKit JSON-over-stdio helper. Borrowed verbatim from `viticci/remctl::remctl-bridge.swift`. Will back `create_calendar`, `delete_calendar`, `update_calendar`, alarms, recurrence in slices 1.2 / 1.3 / 3.1–3.3.
+- **`src/mcp_apple_reminders/_native/src/rem_reminderkit.m`** — Obj-C / ReminderKit (private framework) JSON-over-stdio helper. Borrowed verbatim from `viticci/remctl::remctl-private.m`. Will back subtasks, set_flagged, set_tags, assign_section in slices 1.4–1.8.
+- **`src/mcp_apple_reminders/_native/THIRD_PARTY_NOTICES.md`** — verbatim upstream MIT license + file-by-file mapping + upstream commit SHA + full description of the two local modifications (attribution header block, `--ping` argv shortcut). Re-sync instructions documented.
+- **`Makefile::build-native`** — `swiftc` for the Swift helper, `clang -F/System/Library/PrivateFrameworks` for the Obj-C helper. Output goes to `_native/bin/{rem_eventkit,rem_reminderkit}`. Also runs `--ping` on each binary at end of build for sanity. New companion target `clean-native`.
+- **`install.sh`**: invokes `make build-native` after the pip install. Degrades gracefully (warns, doesn't fail) if `swiftc` or `clang` are missing.
+- **`verify_setup.py`**: probes each binary via `--ping` and asserts the `{"status":"ok","helper":"<name>"}` payload.
+
+### Changed (policy — Pierce-approved exception)
+- **`VIBE.yaml::architecture.exclude_globs`** gains `src/mcp_apple_reminders/_native/src/*.swift` and `*.m` with explicit documentation that these are vendored upstream sources (not grandfathered project code). Approved 2026-05-28 per the spec 002 borrow plan. Re-sync flow + audit trail live in `_native/THIRD_PARTY_NOTICES.md`.
+- **`.gitignore`** ignores compiled `_native/bin/` artifacts.
+
+### Decided (S0.6 design point)
+- **Per-call subprocess mode** for the helper binaries. Each tool invocation spawns the helper, pipes one JSON command, reads one JSON response, exits. ≈50–200 ms per call, acceptable for user-scale interactive ops. The long-lived mode (one persistent helper subprocess, multiplexed) is a swap-in upgrade — same JSON protocol — that can land in `_native/bridge.py` at S1.4 if profiling shows it matters.
+
+### Verified
+- `make build-native`: both binaries compile clean, --ping returns ok for both.
+- `verify_setup.py`: all probes green (including the two new binary probes).
+- `pytest test_mcp_tools.py test_e2e.py test_models.py`: 15 passed, 1 skipped.
+- `make lint && make check-architecture`: green (vendored upstream sources excluded; 41 Python files scanned).
+
+### Status
+- **Phase 0 substrate is COMPLETE.** All six slices (S0.1–S0.6) have landed:
+  - S0.1 `mcp>=1.27` + PyObjC pins
+  - S0.2 rename `libs/pyremindkit` → `_native`
+  - S0.3 Pydantic models (CONTRACT FREEZE)
+  - S0.4 FastMCP migration (all 22 tools)
+  - S0.5 Context logging
+  - S0.6 native build pipeline
+- **Phase 1 starts next at Slice 1.0** (direct SQLite reader).
+
 ## [0.1.19] — 2026-05-28 — Agent: Claude — Slice 0.5
 
 ### Added (observability)

@@ -175,6 +175,30 @@ start:
 	@echo "$(CYAN)Starting production server on port $(PORT)...$(RESET)"
 	@echo "$(YELLOW)  (stub — overlay a lang-* skill to fill this in; run 'make help-stack')$(RESET)"
 
+## build-native: Compile the borrowed Swift EventKit + Obj-C ReminderKit helpers
+build-native:
+	@echo "$(CYAN)Compiling _native/src/rem_eventkit.swift (Swift / EventKit)...$(RESET)"
+	@mkdir -p src/mcp_apple_reminders/_native/bin
+	@swiftc -O \
+	    -framework EventKit -framework Foundation \
+	    -o src/mcp_apple_reminders/_native/bin/rem_eventkit \
+	    src/mcp_apple_reminders/_native/src/rem_eventkit.swift
+	@echo "$(CYAN)Compiling _native/src/rem_reminderkit.m (Obj-C / private ReminderKit)...$(RESET)"
+	@clang -fobjc-arc -O \
+	    -F/System/Library/PrivateFrameworks \
+	    -framework Foundation -framework AppKit -framework ReminderKit \
+	    -o src/mcp_apple_reminders/_native/bin/rem_reminderkit \
+	    src/mcp_apple_reminders/_native/src/rem_reminderkit.m
+	@echo "$(GREEN)Native helpers built into src/mcp_apple_reminders/_native/bin/.$(RESET)"
+	@src/mcp_apple_reminders/_native/bin/rem_eventkit --ping
+	@src/mcp_apple_reminders/_native/bin/rem_reminderkit --ping
+
+## clean-native: Remove the compiled native helpers (forces rebuild on next `make build-native`)
+clean-native:
+	@rm -f src/mcp_apple_reminders/_native/bin/rem_eventkit
+	@rm -f src/mcp_apple_reminders/_native/bin/rem_reminderkit
+	@echo "$(GREEN)Removed src/mcp_apple_reminders/_native/bin/ binaries.$(RESET)"
+
 ## lint: Run ruff (lint) + black (format check) on first-party code
 lint:
 	@echo "$(CYAN)Running ruff check...$(RESET)"

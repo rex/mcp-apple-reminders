@@ -84,6 +84,15 @@ architecture:
   exclude_globs:
     - "**/*.generated.*"
     - "**/node_modules/**"
+    # Vendored upstream sources from viticci/remctl (MIT). Borrowed verbatim
+    # in slice 0.6 with attribution headers + a minimal --ping argv patch.
+    # See src/mcp_apple_reminders/_native/THIRD_PARTY_NOTICES.md for the
+    # MIT license, upstream pin (commit baaa57b…, RemCTL 1.0.3), and the
+    # full description of local modifications. NOT grandfathered project
+    # code — these are third-party files we re-sync from upstream.
+    # Pierce-approved exception, 2026-05-28, recorded in spec 002 design.md.
+    - "src/mcp_apple_reminders/_native/src/*.swift"
+    - "src/mcp_apple_reminders/_native/src/*.m"
   max_lines_per_file:
     soft: 250    # warning only — refactor trigger
     hard: 400    # blocking failure

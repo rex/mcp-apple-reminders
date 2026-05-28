@@ -26,7 +26,7 @@ Spec `001-visibility-foundation` was retired (archived in `specs/_archive/`) aft
 
 | # | Phase | Status | Exit criteria |
 |---|---|---|---|
-| 0 | Modernize platform (FastMCP, MCP 1.27+, lifespan, Pydantic, Context logging) | ⏸ pending | All 22 existing tools work end-to-end on the new substrate; no surface changes |
+| 0 | Modernize platform (FastMCP, MCP 1.27+, lifespan, Pydantic, Context logging, native build pipeline) | ✅ done | All 22 existing tools work end-to-end on the new substrate; no surface changes |
 | 1 | P0 capabilities (SQLite reader + calendar lifecycle + ReminderKit helper integration + subtasks + flagged + tags + sections) | 🟡 partial | S1.1 done (117cc8a); S1.0 + S1.2-1.8 pending |
 | 2 | MCP protocol primitives (Resources, Prompts, Sampling, Elicitation, progress) | ⏸ pending | Resources surface live views; 4 prompts; sampling proven on one tool |
 | 3 | Feature parity (alarms time + location, recurrence, bulk ops, multi-cal query) | ⏸ pending | Matches FradSer/apple-events feature surface + bonus |
@@ -63,12 +63,15 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 - Status: ✅ done (commit: pending push)
 - Result: 12 ctx.info/warning/error/debug calls across `reminders`, `queries`, `workflow` tool modules. `calendars` (read-only) left untouched. Pre-session permission errors still on stderr in `lifespan.py`.
 
-### Slice 0.6 — Native build pipeline (borrow Swift + Obj-C helpers from RemCTL)  ← NEXT
+### Slice 0.6 — Native build pipeline (borrow Swift + Obj-C helpers from RemCTL)  ✅ DONE
 
-- Status: ⏸ pending
-- Files: `_native/src/rem_eventkit.swift`, `_native/src/rem_reminderkit.m`, `_native/THIRD_PARTY_NOTICES.md`, `Makefile`, `install.sh`
-- Depends on: S0.5
-- Acceptance: see `tasks.md::S0.6`. Borrows from `viticci/remctl` (MIT) with attribution.
+- Status: ✅ done (commit: pending push)
+- Files: `_native/src/rem_eventkit.swift` (Swift, 512 LOC), `_native/src/rem_reminderkit.m` (Obj-C, 1456 LOC), `_native/THIRD_PARTY_NOTICES.md`, Makefile `build-native`/`clean-native`, install.sh hook, verify_setup probe, VIBE.yaml vendor-source exclusion, .gitignore bin/.
+- Result: both helpers compile + ping clean on macOS 26.1. Decision: per-call subprocess mode (revisit at S1.4 if profiling shows it matters).
+
+### Phase 0 — ✅ COMPLETE (all six substrate slices landed)
+
+Phase 1 next. **S1.0** is the first phase-1 slice — direct SQLite reader.
 
 ### Slice 1.0 — Direct SQLite reader (NEW — first slice of Phase 1 after 1.1)
 
