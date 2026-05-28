@@ -1,101 +1,111 @@
-# TASK_STATE — 001-visibility-foundation
+# TASK_STATE — 002-modernize-and-foundation
 
 > Source of truth for in-flight work. Humans and agents both write here.
 > Committed to the repo. Survives sessions, machines, context compactions.
 >
-> Spec: `specs/001-visibility-foundation/spec.md` ·
-> Plan: `specs/001-visibility-foundation/plan.md`
+> Spec: `specs/002-modernize-and-foundation/spec.md` ·
+> Plan: `specs/002-modernize-and-foundation/plan.md` ·
+> Tasks: `specs/002-modernize-and-foundation/tasks.md`
 > Branch: `main` (trunk-strategy — all work commits directly to main, no feature branches) ·
-> Owner (human): @pierce · Last update: 2026-05-28 by Claude (retrofit /retrofit session)
+> Owner (human): @pierce · Last update: 2026-05-28 by Claude (post-research re-plan)
 
 ## 0. TL;DR for a fresh agent session
 
-The repo just finished its brownfield retrofit (PRs 1-5). The first feature
-spec, `001-visibility-foundation`, captures the P0 capability work needed to
-pilot the agent-visibility-plane protocol: fix the `is_default` bug, add
-`create_calendar`, add subtasks (parent-reminder + `get_subtasks` + `set_parent`).
-**Next action: pick up Slice 1.1** — fix `is_default` in
-`libs/pyremindkit/src/pyremindkit/calendars.py::CalendarManager.list()`. Do
-NOT touch `models.py` until S1.3 (it's the contract-freeze slice).
+Spec `001-visibility-foundation` was retired (archived in `specs/_archive/`) after a research pass against gold-standard MCP servers and Apple's current EventKit / ReminderKit reality. The successor spec — **`002-modernize-and-foundation`** — is much bigger: modernize the substrate to FastMCP + MCP 1.27+, bind the private ReminderKit framework via PyObjC for subtasks / flagged / tags, add Resources / Prompts / Sampling / Elicitation, ship calendar lifecycle + alarms + recurrence + bulk ops, and pilot the agent visibility-plane on top. **Next action: pick up Slice 0.1** — bump `mcp>=1.27` and PyObjC pins in `pyproject.toml`. Slice 1.1 (is_default fix) is already complete from the original spec; preserved in commit `117cc8a`.
 
 ## Standing user directives
 
-- Subtasks must land in Phase 1 (Pierce-explicit, 2026-05-28). Already scoped that way.
+- Subtasks must land in Phase 1 (Pierce-explicit, 2026-05-28). Now backed by ReminderKit private API (Pierce-explicit, 2026-05-28).
 - No grandfathering ever — bring files into compliance via refactor, not exclude_globs.
-- Interactive autonomy mode — stop and ask between meaningful steps.
+- All four phases (modernize + P0 + MCP primitives + feature parity + visibility-plane) — Pierce-explicit "all four phases", 2026-05-28.
+- ALL subagents run on Opus (Pierce-explicit, 2026-05-28, global preference — see `mem:global/agent_model_policy`).
+- Modernize-first ordering — Phase 0 happens before any new capability work (Pierce-explicit, 2026-05-28).
+- Interactive autonomy — stop and ask between meaningful steps.
 
 ## 1. Phases
 
 | # | Phase | Status | Exit criteria |
 |---|---|---|---|
-| 1 | P0 capabilities (is_default + create_calendar + subtasks) | ⏸ pending | All 4 slices below acceptance-bullet-checked; integration smoke test green |
-| 2 | P1 capabilities (delete/update calendar, flagged, bulk ops, multi-cal query) | ⏸ pending | Tasks expanded at Phase 1 close |
-| 3 | P2 capabilities (recurrence, alarms — time + location) | ⏸ pending | — |
-| 4 | P3 + visibility-plane pilot | ⏸ pending | — |
+| 0 | Modernize platform (FastMCP, MCP 1.27+, lifespan, Pydantic, Context logging) | ⏸ pending | All 22 existing tools work end-to-end on the new substrate; no surface changes |
+| 1 | P0 capabilities (calendar lifecycle + ReminderKit bindings + subtasks + flagged + tags) | 🟡 partial | S1.1 done (117cc8a); S1.2-1.7 pending |
+| 2 | MCP protocol primitives (Resources, Prompts, Sampling, Elicitation, progress) | ⏸ pending | Resources surface live views; 4 prompts; sampling proven on one tool |
+| 3 | Feature parity (alarms time + location, recurrence, bulk ops, multi-cal query) | ⏸ pending | Matches FradSer/apple-events feature surface + bonus |
+| 4 | Visibility-plane pilot + cross-cutting (security, kill switches, docs sweep) | ⏸ pending | Agents-<project> bootstrap; SECURITY-REVIEW.md done |
 
 Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 
 ## 2. Slices
 
-### Slice 1.1 — Fix `is_default` in `CalendarManager.list()`
+### Slice 0.1 — Upgrade `mcp>=1.27` + PyObjC pins  ← NEXT
 
-- Status: ✅ done
-- Owner: Claude (Sonnet 4.6, 2026-05-28)
-- Files (planned edits): `libs/pyremindkit/src/pyremindkit/calendars.py`, `test_crud_calendars.py`, `AGENTS.md` (§9 update), `mem:core` (remove bug note)
-- Files (do NOT edit): `models.py`, `_internal.py` (out of scope for S1.1; S1.3 owns model changes)
+- Status: ⏸ pending
+- Owner: unassigned
+- Files (planned edits): `pyproject.toml`, `requirements.txt`, `verify_setup.py`
+- Files (do NOT edit): server.py, tools/, _native/ (touched in S0.2-0.4)
 - Depends on: (none)
-- Acceptance (EARS):
-  - [x] The `is_default` field shall be `True` for exactly one calendar in `list_calendars` output — the one returned by `EKEventStore.defaultCalendarForNewReminders()`. (spec §Ubiquitous)
-  - [x] Test: extend `test_calendar_operations` to assert exactly one `is_default == True` and matches `get_default().id`.
-  - [x] `make check-architecture` green.
-  - [x] AGENTS.md §9 gotcha bullet removed; `mem:core` updated (Serena unavailable in session — note preserved in §6 Handoff).
+- Acceptance: see `specs/002-modernize-and-foundation/tasks.md::S0.1`.
 
-### Slice 1.2 — `CalendarManager.create()` + `create_calendar` MCP tool  ← NEXT
+### Slice 0.2 — Rename libs/pyremindkit → src/mcp_apple_reminders/_native/
 
 - Status: ⏸ pending
-- Files (planned edits): `libs/pyremindkit/src/pyremindkit/calendars.py`, `src/mcp_apple_reminders/tools/calendars.py`, `test_crud_calendars.py`
-- Files (do NOT edit): `models.py`
-- Depends on: S1.1
-- Acceptance: see `specs/001-visibility-foundation/tasks.md::S1.2`.
+- Files: many (move + import updates)
+- Depends on: S0.1
+- Acceptance: see `tasks.md::S0.2`. Tip: do this with git mv for history preservation.
 
-### Slice 1.3 — `Reminder` parent / subtasks fields + converter wiring
-
-- Status: ⏸ pending
-- Files (planned edits): `libs/pyremindkit/src/pyremindkit/models.py` (CONTRACT FREEZE), `libs/pyremindkit/src/pyremindkit/_internal.py`, `src/mcp_apple_reminders/formatting.py`, `test_crud_reminders.py`
-- Files (do NOT edit): `calendars.py`, `core.py` (S1.4 extends them)
-- Depends on: S1.2
-- Acceptance: see `specs/001-visibility-foundation/tasks.md::S1.3`. Verify PyObjC binding presence FIRST; if missing, switch to notes-prefix fallback and update the spec's "Decided in design.md" line.
-
-### Slice 1.4 — `create_reminder(parent_reminder_id)` + `get_subtasks` + `set_parent`
+### Slice 0.3 — Pydantic models
 
 - Status: ⏸ pending
-- Files (planned edits): `libs/pyremindkit/src/pyremindkit/core.py`, `libs/pyremindkit/src/pyremindkit/calendars.py`, `src/mcp_apple_reminders/tools/reminders.py`, `src/mcp_apple_reminders/tools/queries.py`, new `test_subtasks.py`
-- Files (do NOT edit): `models.py` (FROZEN after S1.3)
-- Depends on: S1.3
-- Acceptance: see `specs/001-visibility-foundation/tasks.md::S1.4`.
+- Files: `src/mcp_apple_reminders/models.py` (new), `_native/_internal.py`
+- Depends on: S0.2
+- Acceptance: see `tasks.md::S0.3`. CONTRACT FREEZE at end of this slice for the Reminder field order.
+
+### Slice 0.4 — FastMCP migration
+
+- Status: ⏸ pending
+- Files: `server.py` (rewrite), every `tools/*.py`, new `lifespan.py`
+- Depends on: S0.3
+- Acceptance: see `tasks.md::S0.4`. THE BIGGEST SLICE — may need split mid-execution.
+
+### Slice 0.5 — Context-based logging
+
+- Status: ⏸ pending
+- Files: every `tools/*.py`, server.py
+- Depends on: S0.4
+- Acceptance: see `tasks.md::S0.5`.
+
+### Slices 1.1-4.5 — see tasks.md
+
+(Detailed acceptance criteria for all remaining 17 slices live in `specs/002-modernize-and-foundation/tasks.md`. TASK_STATE here tracks active phase + slice; the full catalog is one indirection away.)
 
 ## 3. Blockers / open questions
 
-- PyObjC binding presence for `setParentReminder_` / `parentReminder` / `subtasks` — must be verified in S1.3 before contracts freeze. If missing, the notes-prefix fallback becomes the primary path and the warning is removed.
+- **ReminderKit binding ergonomics** — PyObjC pattern verified at S1.4 implementation time. Reference: `BRO3886/rem` Swift CLI (uses the same private framework) and `xybp888/iOS-Header/.../ReminderKit.framework/` (header dump).
+- **REMReminder.parentIdentifier vs subtasks signature** — verify at S1.5. Header dump shows enough to bind.
+- **Sampling-driven `triage_brain_dump` UX** — sync vs async return shape — decided at S2.5.
 
 ## 4. Recent decisions (append-only, newest first)
 
-- 2026-05-28 — S1.1 landed: `is_default` bug fixed by comparing `calendarIdentifier()` against `defaultCalendarForNewReminders()` in `CalendarManager.list()`. AGENTS.md §9 gotcha removed. Test 6 added to `test_calendar_operations`. Serena MCP tools were unavailable during this session; edits done via Bash/Python/Edit on non-code files.
-- 2026-05-28 — Subtasks scoped into Phase 1 (Pierce explicit, "absolute must"). Decided in /retrofit session.
-- 2026-05-28 — Phase 1 contracts freeze at S1.3 (models.py field order). After that, `models.py` is touch-only-with-ADR.
-- 2026-05-28 — Slug `001-visibility-foundation` chosen (vs `001-vp-foundation` or `001-p0-capabilities`). More legible to future agents.
-- 2026-05-28 — Color encoding picked: 8-named-palette + custom hex string. EventKit takes NSColor; conversion happens at the EventKit boundary.
+- 2026-05-28 — Spec 001 retired, replaced by spec 002 (`modernize-and-foundation`). Scope materially expanded after research found (a) public EventKit lacks subtasks/tags, (b) ReminderKit private framework exists and works on macOS 26.1, (c) MCP Python SDK at 1.27.1 with FastMCP + Resources + Prompts + Sampling + Elicitation, (d) competitor `FradSer/apple-events` ships full feature set in 533 commits.
+- 2026-05-28 — Subtask backend: **ReminderKit private API via PyObjC** (Pierce-explicit, post-verification that the framework exists at `/System/Library/PrivateFrameworks/ReminderKit.framework`).
+- 2026-05-28 — Scope: **all four phases** (Pierce-explicit). ~22 slices, ~2-3 weeks realistic.
+- 2026-05-28 — Modernize-first ordering (Pierce-explicit).
+- 2026-05-28 — ALL agents run on Opus (Pierce-explicit, global). Cross-cutting work to bake into agentic-skeleton.
+- 2026-05-28 — Slice 1.1 (is_default fix) preserved across the re-plan; status `✅ done` (commit 117cc8a).
+- 2026-05-28 — Subtasks scoped into Phase 1 (Pierce explicit, "absolute must").
+- 2026-05-28 — Phase 0.3 (Pydantic models) is the contract-freeze point — `Reminder` field order locked after.
 
 ## 5. Next actions (ordered)
 
-1. Pick up **Slice 1.1** (`is_default` fix) — single-file change in `calendars.py`, ~30 LOC including test extension.
-2. After S1.1 lands and pushes, pick up **Slice 1.2** (`create_calendar`).
-3. Before starting **Slice 1.3**, verify PyObjC `setParentReminder_` binding presence with a 5-line REPL probe. Update the spec's "Decided in design.md" open-question line based on the result.
-4. After **Slice 1.3** contracts freeze, pick up **Slice 1.4** (the meaty subtask wiring).
-5. When Phase 1 is done, expand Phase 2 tasks in `tasks.md`.
+1. Pick up **Slice 0.1** (upgrade `mcp>=1.27`). Smallest possible kickoff — version pin + verify-setup probe.
+2. **Slice 0.2** (rename `libs/pyremindkit` → `src/mcp_apple_reminders/_native`). Mostly mechanical with `git mv` + import updates.
+3. **Slice 0.3** (Pydantic models). CONTRACT FREEZE point.
+4. **Slice 0.4** (FastMCP migration). The big one. May split mid-execution.
+5. **Slice 0.5** (Context logging) — cleanup pass.
+6. Then Phase 1 begins with S1.2 (`create_calendar`).
+7. After Phase 1 lands, expand Phase 2 tasks if needed (currently fully enumerated).
+8. After Phase 2, plan Phase 3 in detail (currently sketched).
+9. Phase 4 last (visibility-plane pilot is the payoff).
 
 ## 6. Handoff note (fill when ending a session)
 
-2026-05-28 (Claude Sonnet 4.6, S1.1 session): Slice 1.1 complete — `is_default` bug fixed in `CalendarManager.list()`, test extended, AGENTS.md gotcha bullet removed, VERSION bumped to 0.1.9. Serena MCP tools were NOT available in this session (tool not found errors); all code edits were done via Bash python3 inline scripts. Next agent: pick up Slice 1.2 — `CalendarManager.create()` + `create_calendar` MCP tool. Check if Serena is available at session start before touching code files. Note: `mem:core` Serena memory was NOT updated (Serena unavailable); the next agent should update it if Serena is available.
-
-2026-05-28 (Claude, retrofit /retrofit session): Repo retrofit complete (PRs 1-5 landed on `chore/seed-agents-md`). Spec written, no implementation started. Next agent: read `AGENTS.md`, then this file's §0 and Slice 1.1, then `specs/001-visibility-foundation/spec.md` for the requirements + `design.md` for the approach. Run `./venv/bin/python3 verify_setup.py` first to confirm the environment is intact, then start S1.1.
+2026-05-28 (Claude, /retrofit → research → re-plan session): Repo retrofit complete and merged to main. Spec 002 replaces spec 001 after gold-standard research surfaced significant new opportunities (FastMCP, MCP 1.27+, ReminderKit private API for subtasks/flagged/tags, competitor feature surface). Next agent: read this file's §0 + Slice 0.1, read `specs/002-modernize-and-foundation/spec.md` and `design.md`, then start S0.1 (`mcp>=1.27` upgrade). `verify_setup.py` is the safety net — run it after each substrate change. Slice 1.1 is preserved as already-done; don't re-do it.

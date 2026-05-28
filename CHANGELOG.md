@@ -5,6 +5,20 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.12] — 2026-05-28 — Agent: Claude
+### Added
+- `specs/002-modernize-and-foundation/{spec,design,plan,tasks}.md` — new 4-phase spec replacing the archived `001-visibility-foundation` after gold-standard research surfaced significant scope expansion (FastMCP, MCP 1.27+, ReminderKit private API for subtasks/flagged/tags, MCP Resources/Prompts/Sampling/Elicitation, alarms, recurrence, bulk ops, visibility-plane pilot).
+- `mem:global/agent_model_policy` (Serena global memory) — Pierce-explicit: ALL subagents run on Opus, always.
+
+### Changed
+- `specs/001-visibility-foundation/` → `specs/_archive/001-visibility-foundation/` (preserves the original planning artifacts; `README.md` explains the retirement reason).
+- `TASK_STATE.md`, `PROGRESS.md` — updated to point at spec 002. Phase 0 / Slice 0.1 is next. Slice 1.1 (is_default) preserved as already-done in commit 117cc8a.
+
+### Research findings
+- Public EventKit (macOS 26.1) does NOT expose subtasks / tags / sections. Those live in `/System/Library/PrivateFrameworks/ReminderKit.framework`.
+- MCP Python SDK current PyPI version: 1.27.1. Current pin (`mcp>=0.1.0`) is ancient.
+- Competitor `FradSer/mcp-server-apple-events` (122★, 533 commits, TypeScript+Swift) covers subtasks + alarms + recurrence + tags + 4 prompts. The bar.
+
 ## [0.1.11] — 2026-05-28 — Agent: Claude
 ### Changed
 - _(fill in — what changed in this version)_
