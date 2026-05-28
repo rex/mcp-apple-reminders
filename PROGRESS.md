@@ -1,7 +1,7 @@
 # PROGRESS
 
 - **Project**: mcp-apple-reminders (python-mcp; macOS-only EventKit MCP server)
-- **Active branch**: `chore/seed-agents-md` (retrofit + first feature spec; will merge to main when PRs 1-5 are reviewed)
+- **Active branch**: `main` (trunk strategy — Pierce explicit 2026-05-28: no feature-branch dance, commits land on main directly)
 - **Active feature spec**: `specs/001-visibility-foundation/`
 - **Active TASK_STATE**: `TASK_STATE.md` (Phase 1 / Slice 1.1 ← NEXT)
 - **Last session**: 2026-05-28 (Claude, /retrofit run — PRs 1-4 landed, PR5 pending)

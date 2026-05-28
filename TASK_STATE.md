@@ -5,7 +5,7 @@
 >
 > Spec: `specs/001-visibility-foundation/spec.md` ·
 > Plan: `specs/001-visibility-foundation/plan.md`
-> Branch: `chore/seed-agents-md` (will switch to feature branch when Phase 1 implementation starts) ·
+> Branch: `main` (trunk-strategy — all work commits directly to main, no feature branches) ·
 > Owner (human): @pierce · Last update: 2026-05-28 by Claude (retrofit /retrofit session)
 
 ## 0. TL;DR for a fresh agent session

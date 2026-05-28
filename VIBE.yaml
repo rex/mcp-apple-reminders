@@ -27,6 +27,9 @@ project:
   # Short stable id for the dominant stack (e.g. python-fastapi,
   # nextjs-prisma, react-vite, node-cli). Composable skills key off this.
   stack: python-mcp
+  # Trunk strategy: agents commit directly to main, no feature branches.
+  # Pierce-explicit (2026-05-28) to avoid PR-review overhead on a sole-author repo.
+  branch_strategy: trunk
 
   # Append-only decision log. Use IDs that survive across docs.
   # Uncomment + edit the entry below when you record your first decision.
@@ -101,7 +104,7 @@ security:
   # forbidden = pre-commit hooks reject any committed secret.
   # allowed-with-warning = only if the repo intentionally checks in
   # encrypted secrets (SOPS / age / sealed-secrets).
-  secrets_in_files: forbidden
+  secrets_in_files: forbidden  # pragma: allowlist secret  (key name, not a real secret)
 
 versioning:
   # Brownfield repos may already have a versioning scheme. Set this to

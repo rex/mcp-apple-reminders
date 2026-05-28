@@ -5,6 +5,11 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.8] — 2026-05-28 — Agent: Claude
+### Changed
+- Adopted trunk-strategy: `VIBE.yaml::project.branch_strategy: trunk`. Pierce-explicit (2026-05-28) — sole-author repo, no PR review dance. All work commits directly to `main`.
+- `TASK_STATE.md` and `PROGRESS.md` updated to reflect the trunk-strategy and the now-deleted `chore/seed-agents-md` feature branch (retrofit + first spec landed; branch was merged fast-forward into main and deleted both locally and on origin).
+
 ## [0.1.7] — 2026-05-28 — Agent: Claude
 ### Added
 - `make lint` now runs `ruff check` + `black --check` against `src/`, `libs/pyremindkit/src/`, `test_*.py`, and `test_support/`. Stub eliminated.
