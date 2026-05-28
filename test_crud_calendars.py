@@ -78,9 +78,7 @@ def test_calendar_operations(rk, results):
     if calendars and default_cal:
         try:
             default_matches = [cal for cal in calendars if cal.is_default]
-            assert len(default_matches) == 1, (
-                f"Expected exactly 1 default calendar, got {len(default_matches)}"
-            )
+            assert len(default_matches) == 1, f"Expected exactly 1 default calendar, got {len(default_matches)}"
             assert default_matches[0].id == default_cal.id, (
                 f"Default calendar id mismatch: list()={default_matches[0].id!r} "
                 f"vs get_default()={default_cal.id!r}"
