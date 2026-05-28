@@ -12,13 +12,19 @@ from typing import Optional
 
 from mcp.server.fastmcp import Context
 
+from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..formatting import parse_datetime, parse_priority
+from ..lifespan import AppContext
 from ..models import Reminder, native_reminder_to_pydantic
 from ..server import mcp
 
 
 def _bridge_from_ctx(ctx: Context):
     return ctx.request_context.lifespan_context.bridge
+
+
+def _app_context(ctx: Context) -> AppContext:
+    return ctx.request_context.lifespan_context
 
 
 @mcp.tool(
@@ -163,13 +169,22 @@ async def uncomplete_reminder(reminder_id: str, ctx: Context) -> Reminder:
     ),
 )
 async def get_reminder(reminder_id: str, ctx: Context) -> Reminder:
-    """Get a reminder by its unique ID.
+    """Get a reminder by its unique ID. SQLite-first; EventKit fallback.
 
     Args:
         reminder_id: The unique identifier of the reminder.
     """
-    bridge = _bridge_from_ctx(ctx)
-    return native_reminder_to_pydantic(bridge.get_reminder_by_id(reminder_id))
+    app = _app_context(ctx)
+    try:
+        with app.open_sqlite() as conn:
+            cached = Reader(conn).get_reminder_by_id(reminder_id)
+            if cached is not None:
+                return cached
+            # SQLite open succeeded but no row matched — fall through to
+            # EventKit so callers get a uniform error path.
+    except RemindersDBUnavailable as e:
+        await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
+    return native_reminder_to_pydantic(app.bridge.get_reminder_by_id(reminder_id))
 
 
 @mcp.tool(

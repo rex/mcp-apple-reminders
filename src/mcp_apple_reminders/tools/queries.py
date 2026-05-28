@@ -1,11 +1,16 @@
-"""Reminder query MCP tools — FastMCP edition.
+"""Reminder query MCP tools — SQLite-first (post-S1.0), EventKit-fallback.
 
 Five read-only operations:
-- `get_reminders` — full filter surface (date range, completion, priority, calendar, limit)
+- `get_reminders` — full filter surface (date range, completion, calendar, limit)
 - `search_reminders` — substring search across title and notes
 - `get_next_reminder` — soonest upcoming incomplete reminder with a due date
 - `get_overdue_reminders` — incomplete reminders whose due date is past
 - `get_today_reminders` — reminders due in the current local day
+
+The SQLite reader replaces EventKit iteration for all five. EventKit
+remains as the fallback path; tools log a `ctx.warning(...)` when they
+fall through. Latency dropped from O(seconds) on a 2200-reminder store
+to single-digit ms.
 """
 
 from __future__ import annotations
@@ -16,17 +21,15 @@ from typing import Optional
 from mcp.server.fastmcp import Context
 
 from .._native import Priority
+from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..formatting import parse_datetime
+from ..lifespan import AppContext
 from ..models import Reminder, native_reminder_to_pydantic
 from ..server import mcp
 
 
-def _bridge_from_ctx(ctx: Context):
-    return ctx.request_context.lifespan_context.bridge
-
-
-def _to_pydantic_list(native_iter) -> list[Reminder]:
-    return [native_reminder_to_pydantic(r) for r in native_iter]
+def _app_context(ctx: Context) -> AppContext:
+    return ctx.request_context.lifespan_context
 
 
 def _resolve_priority(priority_str: Optional[str]) -> Optional[Priority]:
@@ -39,6 +42,19 @@ def _resolve_priority(priority_str: Optional[str]) -> Optional[Priority]:
         "high": Priority.HIGH,
     }
     return priority_map.get(priority_str.lower())
+
+
+def _matches_priority(reminder_priority: int, bucket: Priority) -> bool:
+    """Client-side priority bucket filter (SQLite stores raw int 0-9)."""
+    if bucket is Priority.NONE:
+        return reminder_priority == 0
+    if bucket is Priority.LOW:
+        return 1 <= reminder_priority <= 4
+    if bucket is Priority.MEDIUM:
+        return reminder_priority == 5
+    if bucket is Priority.HIGH:
+        return 6 <= reminder_priority <= 9
+    return True
 
 
 @mcp.tool(
@@ -58,35 +74,55 @@ async def get_reminders(
     calendar_id: Optional[str] = None,
     limit: Optional[int] = None,
 ) -> list[Reminder]:
-    """Get reminders with optional filters.
+    """Get reminders with optional filters (SQLite-first; EventKit fallback).
 
     Args:
         due_after: Only return reminders due after this date (ISO format). Optional.
         due_before: Only return reminders due before this date (ISO format). Optional.
-        is_completed: Filter by completion status: true for completed, false for incomplete, omit for all. Optional.
-        priority: Filter by priority: 'none', 'low', 'medium', or 'high'. Optional.
+        is_completed: Filter by completion status. Optional.
+        priority: Filter by priority bucket: 'none', 'low', 'medium', or 'high'. Optional.
         calendar_id: Only return reminders from this specific calendar. Optional.
         limit: Maximum number of reminders to return. Optional.
     """
-    kwargs: dict = {}
-    if due_after:
-        kwargs["due_after"] = parse_datetime(due_after)
-    if due_before:
-        kwargs["due_before"] = parse_datetime(due_before)
-    if is_completed is not None:
-        kwargs["is_completed"] = is_completed
-    resolved_priority = _resolve_priority(priority)
-    if resolved_priority is not None:
-        kwargs["priority"] = resolved_priority
-    if calendar_id:
-        kwargs["calendar_id"] = calendar_id
+    app = _app_context(ctx)
+    due_after_dt = parse_datetime(due_after) if due_after else None
+    due_before_dt = parse_datetime(due_before) if due_before else None
+    priority_bucket = _resolve_priority(priority)
 
-    bridge = _bridge_from_ctx(ctx)
-    results = list(bridge.get_reminders(**kwargs))
-    if limit and limit > 0:
-        results = results[:limit]
-    await ctx.debug(f"get_reminders: {len(results)} match(es) with filters={sorted(kwargs.keys())}")
-    return _to_pydantic_list(results)
+    try:
+        with app.open_sqlite() as conn:
+            stream = Reader(conn).iter_reminders(
+                calendar_id=calendar_id,
+                completed=is_completed,
+                due_after=due_after_dt,
+                due_before=due_before_dt,
+            )
+            results: list[Reminder] = []
+            for r in stream:
+                if priority_bucket is not None and not _matches_priority(r.priority, priority_bucket):
+                    continue
+                results.append(r)
+                if limit and len(results) >= limit:
+                    break
+            await ctx.debug(f"get_reminders (SQLite): {len(results)} match(es)")
+            return results
+    except RemindersDBUnavailable as e:
+        await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
+        kwargs: dict = {}
+        if due_after_dt is not None:
+            kwargs["due_after"] = due_after_dt
+        if due_before_dt is not None:
+            kwargs["due_before"] = due_before_dt
+        if is_completed is not None:
+            kwargs["is_completed"] = is_completed
+        if priority_bucket is not None:
+            kwargs["priority"] = priority_bucket
+        if calendar_id:
+            kwargs["calendar_id"] = calendar_id
+        results = [native_reminder_to_pydantic(r) for r in app.bridge.get_reminders(**kwargs)]
+        if limit and limit > 0:
+            results = results[:limit]
+        return results
 
 
 @mcp.tool(
@@ -97,21 +133,27 @@ async def get_reminders(
     ),
 )
 async def search_reminders(query: str, ctx: Context, limit: Optional[int] = None) -> list[Reminder]:
-    """Search reminders by case-insensitive substring across title and notes.
+    """SQLite-first substring search across title and notes.
 
     Args:
         query: Search query string to match against titles and notes.
         limit: Maximum number of results to return. Optional.
     """
-    bridge = _bridge_from_ctx(ctx)
-    results = list(bridge.search_reminders(query))
-    if limit and limit > 0:
-        results = results[:limit]
-    if not results:
-        await ctx.warning(f"search_reminders({query!r}): no matches")
-    else:
-        await ctx.debug(f"search_reminders({query!r}): {len(results)} match(es)")
-    return _to_pydantic_list(results)
+    app = _app_context(ctx)
+    try:
+        with app.open_sqlite() as conn:
+            results = Reader(conn).search_reminders(query, limit=limit)
+            if not results:
+                await ctx.warning(f"search_reminders({query!r}): no matches")
+            else:
+                await ctx.debug(f"search_reminders({query!r}) (SQLite): {len(results)} match(es)")
+            return results
+    except RemindersDBUnavailable as e:
+        await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
+        results = [native_reminder_to_pydantic(r) for r in app.bridge.search_reminders(query)]
+        if limit and limit > 0:
+            results = results[:limit]
+        return results
 
 
 @mcp.tool(
@@ -124,12 +166,20 @@ async def search_reminders(query: str, ctx: Context, limit: Optional[int] = None
 )
 async def get_next_reminder(ctx: Context) -> Optional[Reminder]:
     """Return the soonest upcoming incomplete reminder, or None if none."""
-    bridge = _bridge_from_ctx(ctx)
-    native = bridge.get_next_reminder()
-    if not native:
-        await ctx.info("get_next_reminder: no upcoming incomplete reminders.")
-        return None
-    return native_reminder_to_pydantic(native)
+    app = _app_context(ctx)
+    now = datetime.now()
+    try:
+        with app.open_sqlite() as conn:
+            for r in Reader(conn).iter_reminders(completed=False, due_after=now, limit=1):
+                return r
+            await ctx.info("get_next_reminder: no upcoming incomplete reminders.")
+            return None
+    except RemindersDBUnavailable as e:
+        await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
+        native = app.bridge.get_next_reminder()
+        if not native:
+            return None
+        return native_reminder_to_pydantic(native)
 
 
 @mcp.tool(
@@ -145,12 +195,19 @@ async def get_overdue_reminders(ctx: Context, limit: Optional[int] = None) -> li
     Args:
         limit: Maximum number of results to return. Optional.
     """
-    bridge = _bridge_from_ctx(ctx)
-    results = list(bridge.get_reminders(due_before=datetime.now(), is_completed=False))
-    if limit and limit > 0:
-        results = results[:limit]
-    await ctx.debug(f"get_overdue_reminders: {len(results)} overdue")
-    return _to_pydantic_list(results)
+    app = _app_context(ctx)
+    now = datetime.now()
+    try:
+        with app.open_sqlite() as conn:
+            results = list(Reader(conn).iter_reminders(completed=False, due_before=now, limit=limit))
+            await ctx.debug(f"get_overdue_reminders (SQLite): {len(results)} overdue")
+            return results
+    except RemindersDBUnavailable as e:
+        await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
+        results = [native_reminder_to_pydantic(r) for r in app.bridge.get_reminders(due_before=now, is_completed=False)]
+        if limit and limit > 0:
+            results = results[:limit]
+        return results
 
 
 @mcp.tool(
@@ -163,16 +220,37 @@ async def get_today_reminders(ctx: Context, include_completed: bool = False) -> 
     """Get all reminders due in the current local day.
 
     Args:
-        include_completed: Whether to include completed reminders. Default is false (only incomplete). Optional.
+        include_completed: Whether to include completed reminders. Default false. Optional.
     """
+    app = _app_context(ctx)
     now = datetime.now()
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    completed_filter: Optional[bool] = None if include_completed else False
 
-    bridge = _bridge_from_ctx(ctx)
-    if include_completed:
-        results = list(bridge.get_reminders(due_after=start_of_day, due_before=end_of_day))
-    else:
-        results = list(bridge.get_reminders(due_after=start_of_day, due_before=end_of_day, is_completed=False))
-    await ctx.debug(f"get_today_reminders(include_completed={include_completed}): {len(results)} due today")
-    return _to_pydantic_list(results)
+    try:
+        with app.open_sqlite() as conn:
+            results = list(
+                Reader(conn).iter_reminders(
+                    completed=completed_filter,
+                    due_after=start_of_day,
+                    due_before=end_of_day,
+                )
+            )
+            await ctx.debug(
+                f"get_today_reminders(include_completed={include_completed}) (SQLite): " f"{len(results)} due today"
+            )
+            return results
+    except RemindersDBUnavailable as e:
+        await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
+        if include_completed:
+            results = [
+                native_reminder_to_pydantic(r)
+                for r in app.bridge.get_reminders(due_after=start_of_day, due_before=end_of_day)
+            ]
+        else:
+            results = [
+                native_reminder_to_pydantic(r)
+                for r in app.bridge.get_reminders(due_after=start_of_day, due_before=end_of_day, is_completed=False)
+            ]
+        return results

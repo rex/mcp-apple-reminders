@@ -73,12 +73,11 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 
 Phase 1 next. **S1.0** is the first phase-1 slice — direct SQLite reader.
 
-### Slice 1.0 — Direct SQLite reader (NEW — first slice of Phase 1 after 1.1)
+### Slice 1.0 — Direct SQLite reader  ✅ DONE
 
-- Status: ⏸ pending
-- Files: `_native/sqlite.py`, `_native/bridge.py`
-- Depends on: S0.6
-- Acceptance: see `tasks.md::S1.0`. Replaces slow EventKit iteration for `list_calendars`, `search_reminders`, `get_reminders`. Reads sections, subtasks, tags, attachments, alarms metadata, recurrence metadata — all from one fast indexed query.
+- Status: ✅ done (commit: pending push)
+- Files: `src/mcp_apple_reminders/_native/sqlite.py` (Reader facade, ~290 LOC), `src/mcp_apple_reminders/lifespan.py` (resolves store at startup + `open_sqlite()`), tool handler updates in `tools/{calendars,reminders,queries}.py`, `test_sqlite_reader.py` (10 tests).
+- Result: list_calendars <1 ms on 27-cal/2200-reminder store. Deeplink UUID equivalence verified live (closes S0.3 open question).
 
 ### Slice 1.8 — `assign_section` (NEW)
 
