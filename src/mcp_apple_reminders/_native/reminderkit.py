@@ -218,11 +218,42 @@ def invoke_action(action: str, **kwargs: Any) -> dict:
     return _invoke(payload)
 
 
+def create_subtask(parent_id: str, title: str, **extras: Any) -> dict:
+    """Create one new subtask under the given parent via `add_subtasks`.
+
+    The subtask inherits the parent's list automatically — there's no separate
+    list_id to pass. Additional kwargs flow through to the helper's
+    per-subtask spec dict (e.g. `priority`).
+
+    Args:
+        parent_id: The parent reminder's UUID (matches
+            `EKReminder.calendarItemIdentifier()` and SQLite `ZCKIDENTIFIER`).
+        title: The subtask title.
+        **extras: Per-subtask metadata flowed into the spec dict.
+
+    Returns:
+        The helper's response dict, which carries the new subtask's id and url
+        under `subtasks[0]` of the response payload.
+
+    Raises:
+        ReminderKitHelperUnavailable: helper missing.
+        ReminderKitHelperError: helper returned a structured error.
+        ValueError: title or parent_id blank.
+    """
+    if not parent_id or not parent_id.strip():
+        raise ValueError("parent_id is required and must be non-empty")
+    if not title or not title.strip():
+        raise ValueError("title is required and must be non-empty")
+    spec: dict[str, Any] = {"title": title, **extras}
+    return _invoke({"action": "add_subtasks", "id": parent_id, "subtasks": [spec]})
+
+
 __all__ = [
     "DEFAULT_HELPER_PATH",
     "REMINDERKIT_HELPER_AVAILABLE",
     "ReminderKitHelperError",
     "ReminderKitHelperUnavailable",
+    "create_subtask",
     "invoke_action",
     "is_available",
     "ping",

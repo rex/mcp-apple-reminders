@@ -12,10 +12,17 @@ from typing import Optional
 
 from mcp.server.fastmcp import Context
 
+from .._native.reminderkit import (
+    ReminderKitHelperError,
+    ReminderKitHelperUnavailable,
+)
+from .._native.reminderkit import (
+    create_subtask as helper_create_subtask,
+)
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..formatting import parse_datetime, parse_priority
 from ..lifespan import AppContext
-from ..models import Reminder, native_reminder_to_pydantic
+from ..models import Reminder, native_reminder_to_pydantic, reminder_deeplink
 from ..server import mcp
 
 
@@ -43,17 +50,78 @@ async def create_reminder(
     priority: Optional[str] = None,
     url: Optional[str] = None,
     calendar_id: Optional[str] = None,
+    parent_reminder_id: Optional[str] = None,
 ) -> Reminder:
-    """Create a new reminder.
+    """Create a new reminder. If `parent_reminder_id` is set, creates a subtask.
+
+    Subtasks inherit the parent's list automatically. Passing both
+    `parent_reminder_id` and `calendar_id` that don't match the parent's
+    list raises ValueError.
 
     Args:
         title: The title/name of the reminder.
-        due_date: ISO format datetime string (e.g., '2024-01-15T14:30:00'). Optional.
-        notes: Additional notes or description for the reminder. Optional.
-        priority: Priority level: 'none', 'low', 'medium', 'high', or integer 0-9. Default is 'none'. Optional.
-        url: URL to associate with the reminder. Optional.
-        calendar_id: ID of the calendar (list) to add the reminder to. If not specified, uses the default calendar. Optional.
+        due_date: ISO format datetime string. Optional.
+        notes: Additional notes. Optional.
+        priority: 'none', 'low', 'medium', 'high', or integer 0-9. Optional.
+        url: URL to associate. Optional.
+        calendar_id: Calendar ID. If not specified, uses the default. Optional.
+        parent_reminder_id: When set, route through the ReminderKit helper
+            and create a subtask under this parent. Subtask inherits the
+            parent's calendar. Optional.
     """
+    app = _app_context(ctx)
+
+    if parent_reminder_id:
+        # Subtask path — ReminderKit private API.
+        # Resolve parent + its list via SQLite for the calendar mismatch check.
+        parent_list_id: Optional[str] = None
+        try:
+            with app.open_sqlite() as conn:
+                parent = Reader(conn).get_reminder_by_id(parent_reminder_id)
+                if parent is None:
+                    raise ValueError(f"Parent reminder {parent_reminder_id!r} not found.")
+                parent_list_id = parent.list_id
+        except RemindersDBUnavailable:
+            # If SQLite is unavailable, skip the upfront sanity check — the
+            # ReminderKit helper itself will fail with a clear error if the
+            # parent doesn't exist.
+            await ctx.warning("SQLite read path unavailable; cannot pre-check parent existence/calendar.")
+
+        if calendar_id and parent_list_id and calendar_id != parent_list_id:
+            raise ValueError(
+                f"calendar_id {calendar_id!r} doesn't match the parent reminder's "
+                f"calendar {parent_list_id!r}. Subtasks always live in the parent's list."
+            )
+
+        try:
+            response = helper_create_subtask(parent_reminder_id, title)
+        except ReminderKitHelperUnavailable as e:
+            await ctx.error(f"ReminderKit helper unavailable: {e}")
+            raise ValueError(f"ReminderKit helper not built. Run `make build-native`. ({e})") from e
+        except ReminderKitHelperError as e:
+            await ctx.error(f"create subtask failed: {e.message}")
+            raise ValueError(e.message) from e
+
+        # Extract the new subtask's UUID + url.
+        subtask_meta = (response.get("subtasks") or [{}])[0]
+        new_id = str(subtask_meta.get("id") or "")
+        if not new_id:
+            raise ValueError(f"ReminderKit helper succeeded but did not return a subtask id: {response!r}")
+
+        # Build the Pydantic — the helper doesn't echo every field, so we
+        # fall back to a freshly-constructed Reminder. Downstream callers
+        # who want the canonical view can `get_reminder(new_id)`.
+        created = Reminder(
+            id=new_id,
+            title=title,
+            list_id=parent_list_id or "",
+            parent_reminder_id=parent_reminder_id,
+            deeplink=reminder_deeplink(new_id),
+        )
+        await ctx.info(f"Created subtask {new_id} under {parent_reminder_id} ({title!r})")
+        return created
+
+    # Top-level reminder — EventKit path (existing behavior).
     kwargs: dict = {"title": title}
     if due_date:
         kwargs["due_date"] = parse_datetime(due_date)
@@ -66,8 +134,7 @@ async def create_reminder(
     if calendar_id:
         kwargs["calendar_id"] = calendar_id
 
-    bridge = _bridge_from_ctx(ctx)
-    created = native_reminder_to_pydantic(bridge.create_reminder(**kwargs))
+    created = native_reminder_to_pydantic(app.bridge.create_reminder(**kwargs))
     await ctx.info(f"Created reminder {created.id} in list {created.list_id}: {created.title!r}")
     return created
 
@@ -185,6 +252,68 @@ async def get_reminder(reminder_id: str, ctx: Context) -> Reminder:
     except RemindersDBUnavailable as e:
         await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
     return native_reminder_to_pydantic(app.bridge.get_reminder_by_id(reminder_id))
+
+
+@mcp.tool(
+    name="get_subtasks",
+    description=(
+        "Get the subtasks of a reminder. Returns a list of Reminder objects "
+        "whose parent_reminder_id is the supplied id. Reads from the SQLite "
+        "cache (sub-millisecond). Empty list if the parent has no subtasks."
+    ),
+)
+async def get_subtasks(reminder_id: str, ctx: Context) -> list[Reminder]:
+    """List the subtasks of `reminder_id`.
+
+    Args:
+        reminder_id: The parent reminder's UUID.
+    """
+    app = _app_context(ctx)
+    try:
+        with app.open_sqlite() as conn:
+            subtasks = list(Reader(conn).iter_subtasks(reminder_id))
+            # Stamp parent_reminder_id on each child Pydantic since the
+            # SQLite reader (general-purpose) doesn't denormalize it.
+            subtasks = [r.model_copy(update={"parent_reminder_id": reminder_id}) for r in subtasks]
+            await ctx.debug(f"get_subtasks({reminder_id}): {len(subtasks)} found")
+            return subtasks
+    except RemindersDBUnavailable as e:
+        await ctx.warning(f"SQLite read path unavailable ({e}); cannot list subtasks.")
+        return []
+
+
+@mcp.tool(
+    name="set_parent",
+    description=(
+        "Reassign or detach a reminder's parent. Pass new_parent_id to "
+        "make the reminder a subtask of another reminder, or omit it to "
+        "detach (promote to a top-level reminder). DEFERRED — this action "
+        "requires extending the borrowed Obj-C helper with a `set_parent` "
+        "action and will land in a follow-up patch. Tracked in the slice "
+        "1.5 changelog entry."
+    ),
+)
+async def set_parent(
+    reminder_id: str,
+    ctx: Context,
+    new_parent_id: Optional[str] = None,
+) -> dict:
+    """Reassign or detach the parent of a reminder. Deferred — see description.
+
+    Args:
+        reminder_id: The reminder whose parent is changing.
+        new_parent_id: New parent's UUID, or omit to detach. Optional.
+    """
+    await ctx.error(
+        "set_parent: not yet implemented — the borrowed Obj-C ReminderKit "
+        "helper does not expose a parent-reassignment action. Tracked for a "
+        "follow-up patch that extends the helper."
+    )
+    raise ValueError(
+        "set_parent is not yet implemented. Use `create_reminder(parent_reminder_id=...)` "
+        "to create a new subtask under a parent; deletion of the original is a "
+        "manual cleanup until the helper gains a set_parent action."
+    )
 
 
 @mcp.tool(

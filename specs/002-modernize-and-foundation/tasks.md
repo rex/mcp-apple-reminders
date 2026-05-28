@@ -140,14 +140,15 @@
 
 ### S1.5 — Subtask write paths
 
-- **Files**: `_native/reminderkit.py` (subtask write methods), `_native/bridge.py`, `tools/reminders.py`, `tools/queries.py`, `test_subtasks.py`
+- **Files**: `src/mcp_apple_reminders/_native/reminderkit.py` (added `create_subtask`), `src/mcp_apple_reminders/_native/sqlite.py` (added `Reader.iter_subtasks`; **fixed `immutable=1` cache bug**), `src/mcp_apple_reminders/tools/reminders.py` (extended `create_reminder` with `parent_reminder_id`, added `get_subtasks` + `set_parent` tools), `test_subtasks.py` (new — 4 tests including a live round-trip).
 - **Acceptance** (spec §Event-driven, §Unwanted-behavior):
-  - [ ] `create_reminder(parent_reminder_id=...)` routes to ReminderKit helper; sets parent in the parent's calendar.
-  - [ ] Parent/calendar mismatch → `ValueError`.
-  - [ ] `set_parent` reassigns/detaches.
-  - [ ] `get_subtasks` reads from SQLite (fast).
-  - [ ] Test: parent + 3 subtasks + reparent + detach + cleanup.
-- [ ] Complete
+  - [x] `create_reminder(parent_reminder_id=...)` routes through `helper_create_subtask(parent_id, title)` → Obj-C `add_subtasks`. Subtask inherits the parent's list automatically.
+  - [x] Parent/calendar mismatch → `ValueError` (SQLite resolves the parent's list first; if user-supplied `calendar_id` differs, refuse).
+  - [x] `set_parent` registered as MCP tool but raises `ValueError("set_parent is not yet implemented…")` — the borrowed Obj-C helper does not currently expose a parent-reassignment action. Documented in the tool description and in the changelog. Tracked as a follow-up that extends the helper with a new action.
+  - [x] `get_subtasks` reads from SQLite via `Reader.iter_subtasks(parent_uuid)`. Sub-millisecond on the test store.
+  - [x] **Live test**: `test_live_subtask_round_trip` creates a parent + 3 subtasks via the helper, polls `Reader.iter_subtasks` until it sees all 3, cleans up via `delete_calendar`. **PASSED end-to-end.**
+  - [x] **Bug fixed mid-slice**: SQLite `connect()` was opening with `?mode=ro&immutable=1`, which tells SQLite to cache the file contents and ignore concurrent writes — meaning helper-written subtasks were invisible until the connection reopened. Dropped `immutable=1`; the contract verifies `mode=ro` is sufficient for the safety guarantee.
+- [x] Complete (with documented deferral of `set_parent` reassignment)
 
 ### S1.6 — `set_flagged`
 

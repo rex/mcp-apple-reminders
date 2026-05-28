@@ -5,6 +5,40 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.25] — 2026-05-28 — Agent: Claude — Slice 1.5 (subtasks)
+
+Subtasks land end-to-end. The Reminders app's "Make subtask" UI is now
+mirrored by an MCP-callable tool. Live-verified: a parent reminder + 3
+subtasks created via the helper, all three round-tripping through the
+SQLite reader.
+
+### Added (write path)
+- **`_native/reminderkit.py::create_subtask(parent_id, title, **extras)`** — wraps the Obj-C helper's `add_subtasks` action with proper input validation.
+- **`tools/reminders.py::create_reminder(..., parent_reminder_id=None)`** — when set, routes through `create_subtask` instead of the EventKit `create_reminder` path. Subtask inherits the parent's list automatically. Pre-flight: resolve the parent via SQLite; if user-supplied `calendar_id` doesn't match the parent's list, refuse with `ValueError`.
+- **`tools/reminders.py::set_parent(reminder_id, new_parent_id=None)`** — `@mcp.tool` exposed but **deferred**. The borrowed Obj-C helper does not currently expose a parent-reassignment action; calling the tool raises `ValueError("set_parent is not yet implemented…")` with a clear pointer to the workaround (create + manually delete). Tracked as a follow-up that extends the helper with a new `set_parent` action.
+
+### Added (read path)
+- **`_native/sqlite.py::Reader.iter_subtasks(parent_uuid)`** — resolves the parent's `Z_PK` then streams children whose `ZPARENTREMINDER` matches. Sub-millisecond. Reader's public count is unchanged (methods don't count toward the module-shape gate).
+- **`tools/reminders.py::get_subtasks(reminder_id)`** — `@mcp.tool` that reads via `iter_subtasks` and stamps `parent_reminder_id=reminder_id` onto each Pydantic child (the general-purpose reader doesn't denormalize that field).
+
+### Fixed (mid-slice bug)
+- **SQLite reader was invisible to concurrent helper writes.** `connect()` opened with `?mode=ro&immutable=1`. The `immutable=1` flag tells SQLite to assume the file never changes and aggressively cache contents — so helper-written subtasks didn't appear in the reader until a fresh process started. Dropped `immutable=1`; `mode=ro` alone is sufficient for the write-refusal guarantee. The fix is what made the live S1.5 round-trip green.
+
+### Test
+- **`test_subtasks.py`** (4 tests, 3 pass + 1 opt-in live):
+  - `test_create_subtask_requires_parent_id`
+  - `test_create_subtask_requires_title`
+  - `test_iter_subtasks_unknown_parent_yields_empty`
+  - **`test_live_subtask_round_trip`** (guarded by `REM_LIVE_HELPER=1`) — creates a test list + parent reminder + 3 subtasks via the helper, polls `iter_subtasks` until all 3 are visible, cleans up via `delete_calendar`. **PASSED.**
+
+### Verified
+- `pytest test_sqlite_reader.py test_mcp_tools.py test_e2e.py test_models.py test_eventkit_wrapper.py test_reminderkit_smoke.py test_subtasks.py`: 44 passed, 4 skipped.
+- `await mcp.list_tools()`: 27 tools registered (was 25; `get_subtasks` + `set_parent` are new).
+- `make lint && make check-architecture`: green.
+
+### Status
+- Phase 1 progress: S1.0–S1.5 done ✅, **six of nine**. S1.6 (`set_flagged`) and S1.7 (`set_tags` + tag filter) are now mechanically straightforward — they both follow the same `invoke_action(...)` pattern as `create_subtask`.
+
 ## [0.1.24] — 2026-05-28 — Agent: Claude — Slice 1.4 (ReminderKit Python wrapper)
 
 The Obj-C ReminderKit (private-framework) helper now has its Python skin.

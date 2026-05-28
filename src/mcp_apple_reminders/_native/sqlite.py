@@ -103,13 +103,18 @@ def find_db_path(store_dir: Path = DEFAULT_STORE_PATH) -> Path:
 def connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
     """Open a read-only connection to the Reminders SQLite store.
 
-    Uses URI form (`file:...?mode=ro&immutable=1`) so SQLite refuses any
-    write — defense in depth on top of the CoreData store-coordinator lock.
+    Uses URI form (`file:...?mode=ro`) so SQLite refuses any write —
+    defense in depth on top of the CoreData store-coordinator lock.
+    `immutable=1` is intentionally NOT set: it would tell SQLite to assume
+    the file never changes and cache the contents, which prevents the
+    reader from seeing writes that the ReminderKit helper just made
+    against the live store. With plain `mode=ro` we re-read the file
+    state on each query.
     Sets `row_factory = sqlite3.Row` for column-name access.
     """
     path = db_path or find_db_path()
     try:
-        conn = sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     except sqlite3.OperationalError as e:
         raise RemindersDBUnavailable(f"Could not open {path}: {e}") from e
     conn.row_factory = sqlite3.Row
@@ -329,6 +334,31 @@ class Reader:
             (reminder_id,),
         ).fetchone()
         return _reminder_from_row(row, str(row["list_ckid"] or "")) if row else None
+
+    def iter_subtasks(self, parent_uuid: str) -> Iterator[Reminder]:
+        """Stream the subtasks of the reminder identified by `parent_uuid`.
+
+        Subtasks are stored as `ZREMCDREMINDER` rows whose `ZPARENTREMINDER`
+        column matches the parent's `Z_PK`. We resolve the parent's `Z_PK`
+        first, then issue the WHERE clause against that integer.
+        """
+        parent_row = self._conn.execute(
+            "SELECT Z_PK FROM ZREMCDREMINDER "
+            "WHERE lower(ZCKIDENTIFIER) = lower(?) AND ZMARKEDFORDELETION = 0 LIMIT 1",
+            (parent_uuid,),
+        ).fetchone()
+        if not parent_row:
+            return
+        parent_pk = parent_row["Z_PK"]
+        cur = self._conn.execute(
+            f"SELECT {_REMINDER_COLS} FROM ZREMCDREMINDER r "
+            "LEFT JOIN ZREMCDBASELIST l ON r.ZLIST = l.Z_PK "
+            "WHERE r.ZPARENTREMINDER = ? AND r.ZMARKEDFORDELETION = 0 AND r.ZACCOUNT IS NOT NULL "
+            "ORDER BY r.Z_PK",
+            (parent_pk,),
+        )
+        for row in cur:
+            yield _reminder_from_row(row, str(row["list_ckid"] or ""))
 
     def search_reminders(self, query: str, *, limit: Optional[int] = None) -> list[Reminder]:
         """Case-insensitive substring search across `ZTITLE` and `ZNOTES`."""
