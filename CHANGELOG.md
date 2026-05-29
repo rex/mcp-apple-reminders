@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.41] — 2026-05-29 — Agent: Claude
+### Changed
+- _(fill in — what changed in this version)_
+
 ## [0.1.40] — 2026-05-28 — Agent: Claude — typecheck gate fixes
 
 Stop-hook surfaced three mypy errors that previous slices had not exercised.

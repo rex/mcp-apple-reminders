@@ -66,6 +66,13 @@ Slices:
 - [ ] **S4.4** — `docs/SECURITY-REVIEW.md` per OWASP MCP guide. Per-tool kill-switch flag map. (~60 LOC + docs)
 - [ ] **S4.5** — README + MAP.md + AGENTS.md sweep. Tool catalog auto-generated. (~docs)
 
+### Phase 5 — List-group support (added by ADR 0001, 2026-05-28)
+
+**Exit criteria**: `create_group`, `list_groups`, and `move_list_to_group` tools live end-to-end. `Calendar` model surfaces `is_group` + `parent_group_id`. `list_calendars` defaults to filtering groups out (opt-in `include_groups=True` to include).
+
+Slices:
+- [ ] **S5.1** — List-group support: read side (`Reader.list_groups`, `Reader.iter_lists_in_group`, `Calendar.is_group` / `parent_group_id` Pydantic fields), helper extension (one new Obj-C action in the borrowed `rem_reminderkit.m`, documented as a new local modification in `THIRD_PARTY_NOTICES.md`), three new MCP tools, `list_calendars(include_groups=False)` filter, live round-trip test. (~150 LOC across helper + wrappers + tools + tests)
+
 ## Slice discipline
 
 - Each slice ≤150 LOC diff. S0.4, S0.6, S1.0 are the upper bound — call out for review; may split.

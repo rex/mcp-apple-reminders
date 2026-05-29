@@ -329,9 +329,32 @@
   - [⏸] README.md capability matrix not yet swept — the project README is currently a thin "what this is" pointer. A user-facing README rewrite is a follow-up; the auto-generated catalog at `docs/TOOLS.md` is the authoritative surface.
 - [x] Complete (with documented README-rewrite follow-up)
 
+## Phase 5 — List-group support (ADR 0001, 2026-05-28)
+
+### S5.1 — List-group support (read + write)
+
+- **Files** (planned):
+  - `src/mcp_apple_reminders/_native/sqlite.py::Reader.list_groups` + `Reader.iter_lists_in_group` + `Reader.list_calendars(include_groups=False)` filter.
+  - `src/mcp_apple_reminders/models.py::Calendar` — add `is_group: bool = False` and `parent_group_id: Optional[str] = None` at the tail (post-S0.3-freeze additive, defaults preserve construction compatibility).
+  - `src/mcp_apple_reminders/_native/src/rem_reminderkit.m` — extend with **one new action** `create_group` (and optionally `move_list_to_group`). Documented as a new local modification in `_native/THIRD_PARTY_NOTICES.md`.
+  - `src/mcp_apple_reminders/_native/reminderkit.py::create_group(name)` and `::move_list_to_group(list_id, group_id_or_none)` wrappers.
+  - `src/mcp_apple_reminders/tools/groups.py` (new) — three new MCP tools: `create_group(name)`, `list_groups()`, `move_list_to_group(list_id, group_id)`. Detach by passing `group_id=None`.
+  - `src/mcp_apple_reminders/tools/calendars.py::list_calendars` — add the `include_groups: bool = False` arg + forward to the Reader.
+  - `test_groups.py` (new) — unit (mocked) + live round-trip (`REM_LIVE_HELPER=1`) that creates a `REM-TEST-GROUP-S51` group, moves a child list under it, verifies via `Reader.iter_lists_in_group`, then cleans up.
+- **Acceptance**:
+  - [ ] `Calendar.is_group` is `True` exactly for `ZISGROUP=1` rows; `parent_group_id` is the parent group's `ZCKIDENTIFIER` (resolved by joining `ZPARENTLIST → Z_PK → ZCKIDENTIFIER`).
+  - [ ] `list_calendars()` (default) excludes group rows. `list_calendars(include_groups=True)` includes them.
+  - [ ] `create_group("X")` creates a group and returns the new `Calendar` with `is_group=True`.
+  - [ ] `move_list_to_group(list_uuid, group_uuid)` sets the child list's `ZPARENTLIST` to the group's `Z_PK`. `move_list_to_group(list_uuid, None)` detaches the list (clears `ZPARENTLIST`).
+  - [ ] `list_groups()` returns every `is_group=True` calendar.
+  - [ ] Live round-trip passes end-to-end.
+  - [ ] `_native/THIRD_PARTY_NOTICES.md` updated with the new `create_group` action as an explicit local modification.
+  - [ ] All gates green; `make typecheck` green.
+- [ ] Complete
+
 ## Done when
 
-- [ ] All Phase 0–4 acceptance bullets checked.
+- [ ] All Phase 0–5 acceptance bullets checked.
 - [ ] `make check-if-the-agent-can-consider-this-task-completed` green.
 - [ ] No open blockers in `TASK_STATE.md §3`.
 - [ ] `mem:core` reflects three-tier layout + SQLite read path + helper subprocesses.

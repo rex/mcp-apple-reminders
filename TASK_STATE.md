@@ -31,6 +31,7 @@ Spec `001-visibility-foundation` was retired (archived in `specs/_archive/`) aft
 | 2 | MCP protocol primitives (Resources, Prompts, Sampling, Elicitation, progress) | ✅ done | All 5 slices: S2.1 ✅, S2.2 ✅, S2.3 ✅, S2.4 ✅, S2.5 ✅ |
 | 3 | Feature parity (alarms time + location, recurrence, bulk ops, multi-cal query) | ✅ done | All 6 slices done (S3.1 ✅, S3.2 ✅, S3.3 ✅, S3.4 ✅, S3.5 ✅, S3.6 ✅) |
 | 4 | Visibility-plane pilot + cross-cutting (security, kill switches, docs sweep) | ✅ done (4/5; S4.2 stretch deferred) | Agents-<project> bootstrap shipped (S4.1); SECURITY-REVIEW.md done (S4.4); docs/TOOLS.md auto-generated (S4.5); streamable HTTP opt-in (S4.3); S4.2 TodoWrite mirror is a stretch goal — deferred for a future iteration where Claude Code's TodoWrite hook surface becomes hookable. |
+| 5 | List-group support — ADR 0001 (2026-05-28) addendum to spec 002 | ⏸ pending | Reverse-engineered Reminders.app group schema (`ZISGROUP=1` + `ZPARENTLIST`); one slice (S5.1) covers read + write + Pydantic + Obj-C helper extension + live test. |
 
 Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 
@@ -71,7 +72,12 @@ Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 
 ### Phase 0 — ✅ COMPLETE (all six substrate slices landed)
 
-Phase 1 next. **S1.0** is the first phase-1 slice — direct SQLite reader.
+### Slice 5.1 — List-group support  ← NEXT (per ADR 0001)
+
+- Status: ⏸ pending
+- Files (planned): `_native/sqlite.py`, `models.py` (tail-append `is_group` + `parent_group_id`), `_native/src/rem_reminderkit.m` (new local mod — `create_group` action), `_native/reminderkit.py` (`create_group` + `move_list_to_group` wrappers), `tools/groups.py` (new), `tools/calendars.py::list_calendars(include_groups=False)`, `test_groups.py` (new).
+- Depends on: S4.5 ✅ (spec 002 finale; this is the first post-spec-002 slice).
+- Acceptance: see `tasks.md::S5.1`.
 
 ### Slice 1.0 — Direct SQLite reader  ✅ DONE
 
