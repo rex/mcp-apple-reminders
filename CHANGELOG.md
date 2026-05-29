@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.70] — 2026-05-29 — Agent: Claude
+### Changed
+- Regenerate capability catalog to include the reminders://appearance resource
+
 ## [0.1.69] — 2026-05-29 — Agent: Claude
 ### Added
 - Add reminders://appearance resource: authoritative 10-color Reminders palette (name+hex, mirrors helper makeREMColor) + SF-Symbol/emoji icon guidance so clients can discover valid color/symbol values for the appearance tools
