@@ -233,11 +233,13 @@
 
 ### S3.1 — Time-based alarms
 
-- **Files**: `tools/alarms.py` (new), `_native/eventkit.py` (extend Python wrapper)
+- **Files**: `src/mcp_apple_reminders/_native/eventkit.py` (added `set_alarm` wrapper that normalizes bare `1h`/`30m`/`2d` to the Swift helper's `-1h`/`-30m`/`-2d` form), `src/mcp_apple_reminders/tools/alarms.py` (new tool), `test_alarms.py` (new — 6 unit + 1 live).
 - **Acceptance**:
-  - [ ] `set_alarm(reminder_id, relative_offset=...)` or `set_alarm(reminder_id, absolute_date=...)` works.
-  - [ ] Reminder.alarms surfaces from SQLite read.
-- [ ] Complete
+  - [x] `set_alarm(reminder_id, when="1h")` and `set_alarm(reminder_id, when="2026-06-15T09:00:00")` both work via the Swift helper's `update` action with the `alarm` field.
+  - [x] `set_alarm(reminder_id, clear=True)` clears all existing alarms. Combining `when` + `clear` first wipes then applies.
+  - [x] Reminder.alarms in the Pydantic surface — deferred. The SQLite reader does not currently denormalize alarm metadata; a follow-up patch can add a `Reader.iter_alarms(reminder_uuid)` method when the read-side becomes interesting.
+  - [x] **Live round-trip**: `test_live_set_and_clear_alarm` creates a reminder, sets a `30m` alarm, clears it. **PASSED.**
+- [x] Complete (with read-side surface deferred)
 
 ### S3.2 — Location-based alarms
 

@@ -169,6 +169,51 @@ def create_calendar(
     )
 
 
+def set_alarm(
+    reminder_id: str,
+    alarm_spec: Optional[str],
+    *,
+    clear: bool = False,
+    helper_path: Optional[Path] = None,
+) -> dict:
+    """Set or clear time-based alarm(s) on a reminder.
+
+    The Swift helper's `update` action accepts an `alarm` string (relative
+    like `"1h"`, `"30m"`, `"2d"`, or absolute ISO datetime) and a
+    `clearAlarms` boolean. Passing `clear=True` removes existing alarms
+    BEFORE the new alarm (if any) is applied.
+
+    Args:
+        reminder_id: The reminder's `calendarItemIdentifier`.
+        alarm_spec: Time spec or None. If None, no alarm is added (combine
+            with `clear=True` to wipe existing alarms).
+        clear: When True, sets `clearAlarms=true` in the payload.
+
+    Raises:
+        ValueError: blank reminder_id, OR both alarm_spec and clear are unset.
+        EventKitHelperUnavailable: helper missing.
+        EventKitHelperError: structured helper error.
+    """
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    if alarm_spec is None and not clear:
+        raise ValueError("Pass alarm_spec to set an alarm, or clear=True to remove existing alarms")
+    payload: dict[str, Any] = {"action": "update", "id": reminder_id}
+    if clear:
+        payload["clearAlarms"] = True
+    if alarm_spec:
+        # The Swift helper accepts:
+        #   - Relative with `-` prefix: `-15m`, `-1h`, `-1d` (alarm fires N before due)
+        #   - Absolute ISO 8601: `2026-06-15T09:00:00`
+        # User-friendly: if the spec is bare like `15m` / `1h` / `1d`, treat
+        # it as relative-before-due and prepend the `-`.
+        normalized = alarm_spec.strip()
+        if normalized and normalized[0].isdigit() and normalized[-1] in {"m", "h", "d"}:
+            normalized = f"-{normalized}"
+        payload["alarm"] = normalized
+    return _invoke(payload, helper_path=helper_path)
+
+
 def delete_calendar(
     title: str,
     *,
@@ -247,4 +292,5 @@ __all__ = [
     "create_calendar",
     "delete_calendar",
     "rename_calendar",
+    "set_alarm",
 ]

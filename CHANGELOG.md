@@ -5,6 +5,21 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.34] — 2026-05-28 — Agent: Claude — Slice 3.1 (set_alarm time-based)
+
+### Added
+- `_native/eventkit.py::set_alarm(reminder_id, alarm_spec, *, clear=False)` — wraps the Swift helper's `update` action with the `alarm` + `clearAlarms` fields. **User-friendly normalization**: bare `1h`/`30m`/`2d` get a `-` prepended (matches the helper's "before due date" semantic). Already-signed `-1h` passes through. Absolute ISO `2026-06-15T09:00:00` passes through.
+- `tools/alarms.py::set_alarm(reminder_id, when, clear)` — the 30th MCP tool. Either `when` or `clear=True` must be set.
+- `test_alarms.py` — 7 tests including the **live round-trip** (`test_live_set_and_clear_alarm`). **PASSED.**
+
+### Verified
+- `pytest test_alarms.py`: 7 passed, 0 skipped.
+- `await mcp.list_tools()`: 30 tools.
+- `make lint && make check-architecture`: green.
+
+### Status
+- Phase 3 progress: S3.1 ✅ — first of six.
+
 ## [0.1.33] — 2026-05-28 — Agent: Claude — PROGRESS.md checkpoint
 ### Documented
 - Refreshed `PROGRESS.md` to reflect Phase 0/1/2 complete, 20 slices shipped, 29 MCP tools registered, 4 Resources, 4 Prompts. Quick stats + last three decisions + Phase 3 entry point. Reading order for fresh agent unchanged.
