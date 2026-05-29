@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.62] — 2026-05-29 — Agent: Claude
+### Added
+- Add CL-2 capability-expansion plan (grounded slice plan for ~16 stranded helper capabilities + recurrence/alarm read-back + protocol polish)
+
 ## [0.1.61] — 2026-05-29 — Agent: Claude
 ### Added
 - Add scripts/gen_tools_doc.py + make gen-tools-doc target: regenerate docs/TOOLS.md (exhaustive capability catalog) from the live FastMCP server with full per-tool parameters; catalog refreshed to 41 tools / 5 resources / 4 prompts (was stale at 37 with no params)
