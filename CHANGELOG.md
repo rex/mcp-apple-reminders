@@ -5,6 +5,12 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.47] — 2026-05-29 — Agent: Claude — PROGRESS.md compaction checkpoint
+
+### Documented
+- Refreshed `PROGRESS.md` to reflect the post-S5.1 / post-`delete_group` state. Captures: 41 tools, all 5 phases done (S4.2 stretch deferred), audit captured at `docs/audits/2026-05-29-post-spec-002-cleanup-audit/`, two proposed follow-up streams (CL-1 cleanup, CL-2 capability extensions), and the S5.1 `setParentListID:` reverse-engineering finding promoted to standing-rules ("Do NOT use setParentOwnerID: for group-parent semantics").
+- Session preparing for context compaction. PROGRESS + TASK_STATE + audit + ADR are sufficient handoff state for a fresh agent.
+
 ## [0.1.46] — 2026-05-29 — Agent: Claude — S5.1 cleanup + `delete_group`
 
 Pierce opened Reminders.app and found 4 orphaned `REM-TEST-GROUP-S51` empty
