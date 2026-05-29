@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.50] — 2026-05-29 — Agent: Claude
+### Removed
+- Remove 10 stale root markdown docs + relocate MAP.md to docs/MAP.md
+
 ## [0.1.49] — 2026-05-29 — Agent: Claude
 ### Removed
 - Remove redundant requirements.txt + AGENTS.md.pre-retrofit (deps resolve from pyproject editable install)
