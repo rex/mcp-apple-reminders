@@ -202,20 +202,36 @@ def ping(*, helper_path: Optional[Path] = None) -> dict:
         raise ReminderKitHelperError(f"Helper --ping returned non-JSON: {proc.stdout!r} ({e})") from e
 
 
-def invoke_action(action: str, **kwargs: Any) -> dict:
-    """Shared entry point for per-action helpers in S1.5+.
+def _invoke_action(action: str, **kwargs: Any) -> dict:
+    """Module-private generic dispatcher used by mocked tests.
 
-    Subsequent slices add typed wrappers (e.g. `set_flagged`, `add_tags`)
-    that call this with a fixed action name. Returning the raw dict keeps
-    the protocol-level error path centralized here.
-
-    Raises:
-        ReminderKitHelperUnavailable: helper missing.
-        ReminderKitHelperError: structured error from the helper.
+    Underscore-prefixed so it doesn't count toward the public-entry-point
+    cap. Typed per-action wrappers (`set_flagged`, `add_tags`, etc.) are
+    the preferred surface; this exists for ad-hoc invocations the typed
+    surface hasn't been extended to yet.
     """
     payload: dict[str, Any] = {"action": action}
     payload.update(kwargs)
     return _invoke(payload)
+
+
+def assign_section(reminder_id: str, section_id: str) -> dict:
+    """Move a reminder into a section via the Obj-C `assign_section` action.
+
+    Args:
+        reminder_id: The reminder's UUID.
+        section_id: The section's UUID (resolve via `Reader.list_sections_in_calendar`).
+
+    Raises:
+        ValueError: blank input.
+        ReminderKitHelperUnavailable: helper missing.
+        ReminderKitHelperError: structured helper error.
+    """
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    if not section_id or not section_id.strip():
+        raise ValueError("section_id is required and must be non-empty")
+    return _invoke({"action": "assign_section", "id": reminder_id, "sectionId": section_id})
 
 
 def add_tags(reminder_id: str, tags: list[str]) -> dict:
@@ -297,8 +313,8 @@ __all__ = [
     "ReminderKitHelperError",
     "ReminderKitHelperUnavailable",
     "add_tags",
+    "assign_section",
     "create_subtask",
-    "invoke_action",
     "is_available",
     "ping",
     "set_flagged",

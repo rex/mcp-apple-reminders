@@ -24,10 +24,13 @@ from mcp_apple_reminders._native.reminderkit import (
     DEFAULT_HELPER_PATH,
     ReminderKitHelperError,
     ReminderKitHelperUnavailable,
-    invoke_action,
+    _invoke_action,
     is_available,
     ping,
 )
+
+# Expose the module-private dispatcher under its old test-only alias.
+invoke_action = _invoke_action
 
 # ---------------------------------------------------------------------------
 # Availability detection

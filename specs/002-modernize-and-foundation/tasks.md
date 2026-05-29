@@ -173,12 +173,14 @@
 
 ### S1.8 — `assign_section`
 
-- **Files**: `tools/reminders.py`, `_native/reminderkit.py`
+- **Files**: `src/mcp_apple_reminders/_native/reminderkit.py` (added `assign_section()` wrapper for the Obj-C `assign_section` action), `src/mcp_apple_reminders/_native/sqlite.py` (added `Reader.list_sections_in_calendar` + `Reader.get_section_name`; `get_reminder_by_id` now populates section_name), `src/mcp_apple_reminders/tools/sections.py` (new — houses `get_subtasks`, `set_parent`, `assign_section`), `test_assign_section.py` (new — 5 tests including live).
+- **Architecture refactor**: pulled SQLite helpers to `_native/_sqlite_helpers.py` and section/subtask tools to `tools/sections.py` to keep both source files under the 400-line hard cap. Renamed module-level `invoke_action` → `_invoke_action` so the reminderkit module stayed under the 8-public-entry-point cap.
 - **Acceptance**:
-  - [ ] `assign_section(reminder_id, section_name)` moves the reminder via helper.
-  - [ ] `Reminder.section_name` surfaces correctly (from SQLite read).
-  - [ ] If section doesn't exist in the calendar, error message lists existing sections.
-- [ ] Complete
+  - [x] `assign_section(reminder_id, section_name)` resolves the section name to a section UUID via `Reader.list_sections_in_calendar`, then invokes `helper_assign_section(reminder_id, section_id)`.
+  - [x] `Reminder.section_name` surfaces correctly from SQLite read: `Reader.get_reminder_by_id` parses the parent list's `ZMEMBERSHIPSOFREMINDERSINSECTIONSASDATA` JSON blob to resolve the section membership.
+  - [x] If the section doesn't exist, the error message lists every existing section: `ValueError("Section {name!r} not found in calendar {list_id!r}. Existing sections: …")`.
+  - [x] **Live round-trip**: `test_live_assign_section_round_trip` creates a list + reminder, calls the helper's `add_section_and_assign`, polls SQLite until `get_section_name` returns the new name, asserts the section also appears in `list_sections_in_calendar`. **PASSED.**
+- [x] Complete — **Phase 1 closes here.**
 
 ## Phase 2 — MCP protocol primitives
 

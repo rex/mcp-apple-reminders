@@ -20,10 +20,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterator, Optional
 
-from ..models import Calendar, Reminder, calendar_deeplink, reminder_deeplink
-
-# CoreData timestamps are seconds since 2001-01-01 00:00:00 UTC.
-APPLE_EPOCH_OFFSET = 978_307_200
+from ..models import Calendar, Reminder
+from ._sqlite_helpers import (
+    _REMINDER_COLS,
+    APPLE_EPOCH_OFFSET,
+    _build_reminders_query,
+    _calendar_from_row,
+    _reminder_from_row,
+)
 
 DEFAULT_STORE_PATH = (
     Path.home() / "Library" / "Group Containers" / "group.com.apple.reminders" / "Container_v1" / "Stores"
@@ -88,104 +92,6 @@ def connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
 # Private converters (underscore-prefixed; not part of the module's
 # public-entry-point count enforced by `make check-architecture`).
 # ---------------------------------------------------------------------------
-
-
-def _ts(value: Optional[float]) -> Optional[datetime]:
-    """Convert a CoreData timestamp (or None) to a naive local datetime."""
-    if value is None:
-        return None
-    return datetime.fromtimestamp(value + APPLE_EPOCH_OFFSET)
-
-
-def _calendar_from_row(row: sqlite3.Row, default_uuid: Optional[str]) -> Calendar:
-    cal_id = str(row["ZCKIDENTIFIER"])
-    return Calendar(
-        id=cal_id,
-        name=row["ZNAME"] or "",
-        color=str(row["ZCOLOR"] or ""),
-        is_default=(cal_id == default_uuid),
-        owner=None,
-        deeplink=calendar_deeplink(cal_id),
-    )
-
-
-def _reminder_from_row(row: sqlite3.Row, list_uuid: str) -> Reminder:
-    reminder_id = str(row["ZCKIDENTIFIER"])
-    # sqlite3.Row needs `.keys()` to check column presence — `in row` queries values.
-    row_keys = row.keys()  # noqa: SIM118
-    tags_csv = row["tags_csv"] if "tags_csv" in row_keys else None
-    tags = [t for t in (tags_csv or "").split(",") if t]
-    return Reminder(
-        id=reminder_id,
-        title=row["ZTITLE"] or "",
-        due_date=_ts(row["ZDUEDATE"]),
-        notes=row["ZNOTES"],
-        completed=bool(row["ZCOMPLETED"]),
-        url=row["ZICSURL"],
-        priority=row["ZPRIORITY"] or 0,
-        list_id=list_uuid,
-        created_date=_ts(row["ZCREATIONDATE"]),
-        modified_date=_ts(row["ZLASTMODIFIEDDATE"]) if "ZLASTMODIFIEDDATE" in row_keys else None,
-        flagged=bool(row["ZFLAGGED"]),
-        parent_reminder_id=None,
-        subtasks=[],
-        tags=tags,
-        section_name=None,
-        completion_date=_ts(row["ZCOMPLETIONDATE"]),
-        start_date=None,
-        deeplink=reminder_deeplink(reminder_id),
-    )
-
-
-_REMINDER_COLS = (
-    "r.Z_PK, r.ZTITLE, r.ZNOTES, r.ZCOMPLETED, r.ZFLAGGED, r.ZPRIORITY, "
-    "r.ZDUEDATE, r.ZCOMPLETIONDATE, r.ZCREATIONDATE, r.ZLASTMODIFIEDDATE, "
-    "r.ZPARENTREMINDER, r.ZICSURL, r.ZCKIDENTIFIER, "
-    "l.ZCKIDENTIFIER AS list_ckid, "
-    # Correlated subquery hydrates the tag set in one trip. Cheap per row
-    # because ZREMCDOBJECT.ZREMINDER3 is indexed.
-    "(SELECT group_concat(h.ZNAME, ',') FROM ZREMCDOBJECT o "
-    "JOIN ZREMCDHASHTAGLABEL h ON o.ZHASHTAGLABEL = h.Z_PK "
-    "WHERE o.ZREMINDER3 = r.Z_PK) AS tags_csv"
-)
-
-
-def _build_reminders_query(
-    calendar_id: Optional[str],
-    completed: Optional[bool],
-    due_after: Optional[datetime],
-    due_before: Optional[datetime],
-    tags: Optional[list[str]] = None,
-) -> tuple[str, list]:
-    where = ["r.ZMARKEDFORDELETION = 0", "r.ZACCOUNT IS NOT NULL"]
-    params: list = []
-    if calendar_id is not None:
-        where.append("lower(l.ZCKIDENTIFIER) = lower(?)")
-        params.append(calendar_id)
-    if completed is not None:
-        where.append("r.ZCOMPLETED = ?")
-        params.append(1 if completed else 0)
-    if due_after is not None:
-        where.append("r.ZDUEDATE >= ?")
-        params.append(due_after.timestamp() - APPLE_EPOCH_OFFSET)
-    if due_before is not None:
-        where.append("r.ZDUEDATE <= ?")
-        params.append(due_before.timestamp() - APPLE_EPOCH_OFFSET)
-    if tags:
-        placeholders = ", ".join("?" for _ in tags)
-        where.append(
-            "r.Z_PK IN ("
-            "SELECT DISTINCT o.ZREMINDER3 FROM ZREMCDOBJECT o "
-            "JOIN ZREMCDHASHTAGLABEL h ON o.ZHASHTAGLABEL = h.Z_PK "
-            f"WHERE h.ZNAME IN ({placeholders}))"
-        )
-        params.extend(tags)
-    sql = (
-        f"SELECT {_REMINDER_COLS} FROM ZREMCDREMINDER r "
-        "LEFT JOIN ZREMCDBASELIST l ON r.ZLIST = l.Z_PK "
-        f"WHERE {' AND '.join(where)} ORDER BY r.ZDUEDATE NULLS LAST, r.Z_PK"
-    )
-    return sql, params
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +213,10 @@ class Reader:
             yield _reminder_from_row(row, str(row["list_ckid"] or ""))
 
     def get_reminder_by_id(self, reminder_id: str) -> Optional[Reminder]:
-        """Look up a reminder by its `ZCKIDENTIFIER` UUID."""
+        """Look up a reminder by its `ZCKIDENTIFIER` UUID.
+
+        Populates `section_name` via the parent list's membership blob.
+        """
         row = self._conn.execute(
             f"SELECT {_REMINDER_COLS} FROM ZREMCDREMINDER r "
             "LEFT JOIN ZREMCDBASELIST l ON r.ZLIST = l.Z_PK "
@@ -315,7 +224,62 @@ class Reader:
             "ORDER BY r.Z_PK DESC LIMIT 1",
             (reminder_id,),
         ).fetchone()
-        return _reminder_from_row(row, str(row["list_ckid"] or "")) if row else None
+        if not row:
+            return None
+        base = _reminder_from_row(row, str(row["list_ckid"] or ""))
+        section_name = self.get_section_name(reminder_id)
+        return base.model_copy(update={"section_name": section_name}) if section_name else base
+
+    def list_sections_in_calendar(self, calendar_uuid: str) -> list[tuple[str, str]]:
+        """Return `[(section_id, section_name), …]` for the given list."""
+        rows = self._conn.execute(
+            "SELECT s.ZCKIDENTIFIER AS sid, s.ZDISPLAYNAME AS sname "
+            "FROM ZREMCDBASESECTION s "
+            "JOIN ZREMCDBASELIST l ON s.ZLIST = l.Z_PK "
+            "WHERE lower(l.ZCKIDENTIFIER) = lower(?) AND s.ZMARKEDFORDELETION = 0 "
+            "AND s.ZDISPLAYNAME IS NOT NULL "
+            "ORDER BY s.Z_PK",
+            (calendar_uuid,),
+        ).fetchall()
+        return [(str(r["sid"]), str(r["sname"])) for r in rows]
+
+    def get_section_name(self, reminder_uuid: str) -> Optional[str]:
+        """Resolve a reminder's section_name via the parent list's membership blob.
+
+        Section memberships live in `ZREMCDBASELIST.ZMEMBERSHIPSOFREMINDERSINSECTIONSASDATA`
+        as a JSON document keyed by reminder UUID. Returns None if the
+        reminder is unsectioned or the blob is empty.
+        """
+        import json
+
+        row = self._conn.execute(
+            "SELECT l.Z_PK, l.ZMEMBERSHIPSOFREMINDERSINSECTIONSASDATA AS blob "
+            "FROM ZREMCDREMINDER r JOIN ZREMCDBASELIST l ON r.ZLIST = l.Z_PK "
+            "WHERE lower(r.ZCKIDENTIFIER) = lower(?) AND r.ZMARKEDFORDELETION = 0 "
+            "LIMIT 1",
+            (reminder_uuid,),
+        ).fetchone()
+        if not row or not row["blob"]:
+            return None
+        try:
+            data = json.loads(row["blob"])
+        except (TypeError, json.JSONDecodeError):
+            return None
+        membership = next(
+            (m for m in data.get("memberships", []) if m.get("memberID") == reminder_uuid),
+            None,
+        )
+        if not membership:
+            return None
+        group_id = membership.get("groupID")
+        if not group_id:
+            return None
+        section_row = self._conn.execute(
+            "SELECT ZDISPLAYNAME FROM ZREMCDBASESECTION "
+            "WHERE lower(ZCKIDENTIFIER) = lower(?) AND ZMARKEDFORDELETION = 0 LIMIT 1",
+            (group_id,),
+        ).fetchone()
+        return str(section_row["ZDISPLAYNAME"]) if section_row else None
 
     def iter_subtasks(self, parent_uuid: str) -> Iterator[Reminder]:
         """Stream the subtasks of the reminder identified by `parent_uuid`.

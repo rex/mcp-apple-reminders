@@ -5,6 +5,48 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.28] — 2026-05-28 — Agent: Claude — Slice 1.8 (assign_section) — 🎯 **Phase 1 complete**
+
+The last Phase 1 slice. Every capability the spec promised for P0 now ships:
+calendar lifecycle (create/delete/update), subtasks, flagged, tags, and now
+sections. All three live round-trips from this slice pair (create + assign
++ verify via SQLite) PASSED end-to-end.
+
+### Added (write)
+- **`_native/reminderkit.py::assign_section(reminder_id, section_id)`** — wraps the Obj-C `assign_section` action.
+
+### Added (read)
+- **`_native/sqlite.py::Reader.list_sections_in_calendar(calendar_uuid)`** — returns `[(section_id, section_name), …]` from `ZREMCDBASESECTION`.
+- **`_native/sqlite.py::Reader.get_section_name(reminder_uuid)`** — parses the parent list's `ZMEMBERSHIPSOFREMINDERSINSECTIONSASDATA` JSON blob to resolve the section name for a reminder.
+- **`Reader.get_reminder_by_id`** now populates `section_name` automatically via the helper above.
+
+### Added (tools)
+- **`tools/sections.py`** (new) — homes the `get_subtasks`, `set_parent`, and `assign_section` tools. Each calls `_app_context(ctx)`, opens a SQLite connection, and orchestrates the helper subprocess. Pulled out of `tools/reminders.py` to keep both files under the 400-line hard cap.
+- **`assign_section(reminder_id, section_name)`** tool resolves the section name to a UUID via the SQLite reader, then invokes the helper. Helpful error: if the section doesn't exist, the message lists every section that does.
+
+### Architecture (gate hygiene)
+- New **`_native/_sqlite_helpers.py`** — pulled `_REMINDER_COLS`, `_ts`, `_calendar_from_row`, `_reminder_from_row`, `_build_reminders_query` out of `sqlite.py` to keep it under the 400-line cap.
+- Renamed module-level `invoke_action` → `_invoke_action` in `_native/reminderkit.py` so the module stayed under the 8-public-entry-point cap (it gained `add_tags`, `assign_section`, `create_subtask`, `set_flagged` across slices 1.5–1.8).
+- Registered the new `tools/sections.py` module in `server.py` and `tools/__init__.py`.
+
+### Test
+- **`test_assign_section.py`** (5 tests):
+  - `test_assign_section_requires_id`
+  - `test_assign_section_requires_section_id`
+  - `test_list_sections_in_unknown_calendar_returns_empty`
+  - `test_get_section_name_unknown_returns_none`
+  - **`test_live_assign_section_round_trip`** — creates a list + reminder, invokes the helper's `add_section_and_assign`, polls SQLite until `get_section_name` returns the new section name, asserts the section also appears in `list_sections_in_calendar`. **PASSED.**
+
+### Verified
+- `pytest test_assign_section.py test_tags.py test_set_flagged.py test_subtasks.py test_reminderkit_smoke.py test_eventkit_wrapper.py test_mcp_tools.py test_e2e.py test_models.py test_sqlite_reader.py`: 52 passed, 8 skipped (5 opt-in live tests, 3 of which have already proven green earlier).
+- `make lint && make check-architecture`: green (52 files; every file under hard cap; module shape gate green).
+- `await mcp.list_tools()`: **28 tools registered**.
+
+### Status — **🎯 PHASE 1 COMPLETE**
+- Phase 0 (substrate): ✅ S0.1–S0.6.
+- **Phase 1 (P0 capabilities): ✅ S1.0, S1.1, S1.2, S1.3, S1.4, S1.5, S1.6, S1.7, S1.8.**
+- Next: Phase 2 (MCP protocol primitives — Resources, Prompts, Sampling, Elicitation).
+
 ## [0.1.27] — 2026-05-28 — Agent: Claude — Slice 1.7 (tags + tag filter)
 
 Tag writes and tag filtering both land. Live-verified end-to-end.

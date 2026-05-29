@@ -312,62 +312,6 @@ async def get_reminder(reminder_id: str, ctx: Context) -> Reminder:
 
 
 @mcp.tool(
-    name="get_subtasks",
-    description=(
-        "Get the subtasks of a reminder. Returns a list of Reminder objects "
-        "whose parent_reminder_id is the supplied id. Reads from the SQLite "
-        "cache (sub-millisecond). Empty list if the parent has no subtasks."
-    ),
-)
-async def get_subtasks(reminder_id: str, ctx: Context) -> list[Reminder]:
-    """List the subtasks of `reminder_id`."""
-    app = _app_context(ctx)
-    try:
-        with app.open_sqlite() as conn:
-            raw = list(Reader(conn).iter_subtasks(reminder_id))
-            subtasks = [r.model_copy(update={"parent_reminder_id": reminder_id}) for r in raw]
-            await ctx.debug(f"get_subtasks({reminder_id}): {len(subtasks)} found")
-            return subtasks
-    except RemindersDBUnavailable as e:
-        await ctx.warning(f"SQLite read path unavailable ({e}); cannot list subtasks.")
-        return []
-
-
-@mcp.tool(
-    name="set_parent",
-    description=(
-        "Reassign or detach a reminder's parent. Pass new_parent_id to "
-        "make the reminder a subtask of another reminder, or omit it to "
-        "detach (promote to a top-level reminder). DEFERRED — this action "
-        "requires extending the borrowed Obj-C helper with a `set_parent` "
-        "action and will land in a follow-up patch. Tracked in the slice "
-        "1.5 changelog entry."
-    ),
-)
-async def set_parent(
-    reminder_id: str,
-    ctx: Context,
-    new_parent_id: Optional[str] = None,
-) -> dict:
-    """Reassign or detach the parent of a reminder. Deferred — see description.
-
-    Args:
-        reminder_id: The reminder whose parent is changing.
-        new_parent_id: New parent's UUID, or omit to detach. Optional.
-    """
-    await ctx.error(
-        "set_parent: not yet implemented — the borrowed Obj-C ReminderKit "
-        "helper does not expose a parent-reassignment action. Tracked for a "
-        "follow-up patch that extends the helper."
-    )
-    raise ValueError(
-        "set_parent is not yet implemented. Use `create_reminder(parent_reminder_id=...)` "
-        "to create a new subtask under a parent; deletion of the original is a "
-        "manual cleanup until the helper gains a set_parent action."
-    )
-
-
-@mcp.tool(
     name="delete_reminder",
     description=(
         "Permanently delete a reminder. This action cannot be undone. The "

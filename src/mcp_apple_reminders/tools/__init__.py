@@ -18,6 +18,6 @@ Layout:
 from __future__ import annotations
 
 # Re-export the per-category modules so callers can introspect what's wired up.
-from . import calendars, queries, reminders, workflow
+from . import calendars, queries, reminders, sections, workflow
 
-__all__ = ["calendars", "queries", "reminders", "workflow"]
+__all__ = ["calendars", "queries", "reminders", "sections", "workflow"]
