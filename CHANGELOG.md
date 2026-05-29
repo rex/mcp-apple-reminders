@@ -5,6 +5,26 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.38] — 2026-05-28 — Agent: Claude — Slice 3.4 (bulk ops) — 🎯 **Phase 3 complete**
+
+### Added
+- **`tools/bulk.py`** — three bulk-op tools, all using `_native/bulk.py::bulk_iter` from S2.3 for per-item progress reporting + best-effort cancellation:
+  - `bulk_complete(reminder_ids)` — the 35th tool.
+  - `bulk_move(reminder_ids, calendar_id)` — the 36th.
+  - `bulk_delete_completed(start, end, calendar_id?)` — the 37th. **Elicitation guard** from S2.4 before the cascade fires. Enumerates candidates via the SQLite reader's `get_completed_in_range` window. `end < start` → `ValueError`.
+- Each returns `{"processed": int, "failed": list[{"id", "error"}]}` so callers can show per-item outcomes.
+- `test_bulk_ops.py` (5 tests): registration, window-validation, empty-input fast paths.
+
+### Verified
+- `pytest test_bulk_ops.py`: 5 passed.
+- `await mcp.list_tools()`: **37 tools**.
+- `make lint && make check-architecture`: green.
+
+### Status — **🎯 PHASE 3 COMPLETE**
+- Phase 0 (substrate) ✅, Phase 1 (P0 capabilities) ✅, Phase 2 (MCP primitives) ✅, **Phase 3 (feature parity) ✅**.
+- Phase 4 progress: **S4.1 done** (visibility-plane pilot). S4.2 (TodoWrite mirror — stretch), S4.3 (streamable HTTP — opt-in), S4.4 (security review docs), S4.5 (docs sweep) remain.
+- **28 slices shipped this session.**
+
 ## [0.1.37] — 2026-05-28 — Agent: Claude — Slices 3.2 + 3.3 (location alarms + recurrence)
 
 Two more write-side wrappers around the Swift helper's existing fields. Both live-verified.

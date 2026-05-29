@@ -262,10 +262,12 @@
 
 ### S3.4 — Bulk ops
 
-- **Files**: `tools/bulk.py`. Uses S2.3 + S2.4.
+- **Files**: `src/mcp_apple_reminders/tools/bulk.py` (new — 3 tools, all using `bulk_iter` from S2.3), `test_bulk_ops.py` (5 tests).
 - **Acceptance**:
-  - [ ] `bulk_complete`, `bulk_delete_completed`, `bulk_move`. Progress + elicitation as required.
-- [ ] Complete
+  - [x] `bulk_complete(reminder_ids)` — marks each via the bridge; progress per item; per-item failure report.
+  - [x] `bulk_move(reminder_ids, calendar_id)` — moves each via the bridge; progress per item; per-item failure report.
+  - [x] `bulk_delete_completed(start, end, calendar_id?)` — enumerates via SQLite, **elicitation guard before fires** (S2.4 surface used), progress per item, per-item failure report. `end < start` → ValueError.
+- [x] Complete (**Phase 3 — COMPLETE**)
 
 ### S3.5 — Multi-calendar query
 
