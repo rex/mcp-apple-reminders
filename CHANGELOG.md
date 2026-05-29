@@ -5,6 +5,23 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.30] — 2026-05-28 — Agent: Claude — Slice 2.2 (4 canned Prompts)
+
+### Added
+- `src/mcp_apple_reminders/prompts/{__init__,workflows}.py` — four `@mcp.prompt` registrations:
+  - `daily_review()` — pulls today + overdue from SQLite, builds an AM/PM review body.
+  - `weekly_retro(window_days=7)` — last N days' completed + still-open.
+  - `brain_dump_triage(list_name="Claude-Brain-Dump")` — surfaces every Brain Dump item with routing options (Active / On-Deck / Waiting / Done / Delete). Missing-list path returns a friendly explanation.
+  - `agent_visibility_sync(project_name)` — targets `Agents-<project_name>`; if the list doesn't exist, the prompt body explains how to bootstrap it via `create_calendar`.
+- Each returns `list[base.Message]` (a `UserMessage` framing + an `AssistantMessage` body) so the client sees a canonical conversation kickoff.
+- `server.py` registers the new prompts module.
+- `test_prompts.py` (5 tests): all four prompts registered, daily_review returns user+assistant messages, weekly_retro respects `window_days`, brain_dump_triage gracefully handles unknown list, agent_visibility_sync surfaces the bootstrap hint.
+
+### Verified
+- `pytest test_prompts.py`: 5 passed.
+- `await mcp.list_prompts()`: 4 entries.
+- `make lint && make check-architecture`: green.
+
 ## [0.1.29] — 2026-05-28 — Agent: Claude — Slice 2.1 (MCP Resources)
 
 Phase 2 begins. Four MCP Resources, all served from the SQLite reader.

@@ -195,11 +195,12 @@
 
 ### S2.2 — Prompts (4 canned workflows)
 
-- **Files**: `src/mcp_apple_reminders/prompts/__init__.py`, `prompts/*.py`
+- **Files**: `src/mcp_apple_reminders/prompts/__init__.py` (new), `prompts/workflows.py` (new), `server.py` (registered), `test_prompts.py` (new, 5 tests).
 - **Acceptance**:
-  - [ ] `daily_review`, `weekly_retro`, `brain_dump_triage`, `agent_visibility_sync` registered.
-  - [ ] Each renders to MCP `Prompt` messages with documented arguments.
-- [ ] Complete
+  - [x] All four prompts registered: `daily_review`, `weekly_retro(window_days=7)`, `brain_dump_triage(list_name="Claude-Brain-Dump")`, `agent_visibility_sync(project_name)`.
+  - [x] Each renders to `list[base.Message]` with `UserMessage` + `AssistantMessage`. SQLite-backed body pulls live state.
+  - [x] Missing-list paths return a friendly explanation instead of erroring.
+- [x] Complete
 
 ### S2.3 — Progress reporting skeleton
 

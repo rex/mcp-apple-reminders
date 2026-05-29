@@ -35,6 +35,7 @@ mcp = FastMCP(
 # Register every tool at import time. The per-category modules decorate
 # their handlers with `@mcp.tool()` at module-load — importing them is
 # what wires them up.
+from .prompts import workflows as _prompts_workflows  # noqa: E402, F401
 from .resources import reminders as _resources_reminders  # noqa: E402, F401
 from .tools import calendars as _calendars  # noqa: E402, F401
 from .tools import queries as _queries  # noqa: E402, F401
