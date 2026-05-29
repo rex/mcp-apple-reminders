@@ -204,19 +204,20 @@
 
 ### S2.3 — Progress reporting skeleton
 
-- **Files**: `_native/bulk.py`
+- **Files**: `src/mcp_apple_reminders/_native/bulk.py` (new), `test_bulk.py` (new — 2 tests).
 - **Acceptance**:
-  - [ ] `bulk_iter(items, ctx)` yields each item with progress reporting + cancellation check.
-  - [ ] Smoke test against a fake list of 25 items.
-- [ ] Complete
+  - [x] `bulk_iter(items, ctx, *, label, total)` async generator yields each item after `await ctx.report_progress(progress=i, total=n, message=...)` + best-effort cancellation check via `ctx.session.check_cancellation()` (guarded with `hasattr` because not every MCP client supports it yet).
+  - [x] `BulkCancelled` exception raised mid-iteration if the client signals cancel.
+  - [x] Smoke tests cover yield order, total-derivation when omitted, and per-call `report_progress` arg shape.
+- [x] Complete
 
 ### S2.4 — Elicitation guards
 
-- **Files**: `tools/calendars.py::delete_calendar`, `tools/reminders.py::bulk_delete_completed`
-- **Acceptance** (spec §Event-driven re destructive ops):
-  - [ ] `delete_calendar(force=true)` with N≥1 reminders prompts via `ctx.elicit` first.
-  - [ ] `bulk_delete_completed` prompts via `ctx.elicit`.
-- [ ] Complete
+- **Files**: `src/mcp_apple_reminders/tools/calendars.py::delete_calendar` (added `ctx.elicit` guard before the cascade fires).
+- **Acceptance**:
+  - [x] `delete_calendar(force=true)` with N≥1 reminders prompts via `ctx.elicit` first. Rejected elicitation raises `ValueError(f"Cascade delete of {name!r} aborted by elicitation (…).")`. `AttributeError` (older SDKs without `elicit`) caught — falls back to logging + proceeding.
+  - [⏸] `bulk_delete_completed` elicitation deferred to Slice 3.4 (when the tool itself lands; guarding a non-existent tool early would just generate work to undo). Slice 3.4 plan amended to include the elicitation guard.
+- [x] Complete (with documented deferral coupled to S3.4 ownership)
 
 ### S2.5 — Sampling: `triage_brain_dump`
 

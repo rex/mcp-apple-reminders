@@ -239,6 +239,32 @@ async def delete_calendar(name: str, ctx: Context, force: bool = False) -> dict:
             f"Pass force=true to delete the list and all its reminders."
         )
 
+    # Elicitation guard (S2.4): when the destructive force=True path will
+    # cascade into actual reminders, give the client a chance to confirm.
+    # `ctx.elicit` is best-effort — clients that don't support it return
+    # an "accept" automatically, so this only adds a UX touchpoint where
+    # supported.
+    if force and reminder_count and reminder_count > 0:
+        try:
+            from pydantic import BaseModel
+
+            class _ConfirmCascade(BaseModel):
+                pass
+
+            elicitation = await ctx.elicit(
+                message=(
+                    f"About to delete calendar {name!r} and cascade-remove "
+                    f"{reminder_count} reminder(s). This cannot be undone. Confirm?"
+                ),
+                schema=_ConfirmCascade,
+            )
+            if elicitation.action != "accept":
+                raise ValueError(f"Cascade delete of {name!r} aborted by elicitation ({elicitation.action}).")
+        except AttributeError:
+            # Older SDKs without ctx.elicit — log and proceed (the warning
+            # below still fires).
+            await ctx.debug("Elicitation not available on this Context; skipping confirm.")
+
     await ctx.warning(f"Deleting calendar {name!r} (force={force}, {reminder_count or 0} reminders)")
 
     try:

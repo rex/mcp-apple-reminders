@@ -5,6 +5,23 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.31] — 2026-05-28 — Agent: Claude — Slices 2.3 + 2.4 (progress + elicitation)
+
+Two small slices shipped together.
+
+### Added (S2.3 — progress skeleton)
+- `_native/bulk.py::bulk_iter(items, ctx, *, label, total)` — async generator that calls `ctx.report_progress(progress=i, total=n, message=…)` and best-effort `ctx.session.check_cancellation()` between each yield. Used by the bulk-op handlers landing in Phase 3 (S3.4).
+- `BulkCancelled` exception (with `# noqa: N818` since the descriptive name communicates intent better than `BulkCancelledError`).
+- `test_bulk.py` (2 tests): yield-order + progress-arg-shape + total-derivation.
+
+### Changed (S2.4 — elicitation guard)
+- `tools/calendars.py::delete_calendar(force=True)` now calls `ctx.elicit(message="About to delete … and cascade-remove N reminder(s). … Confirm?", schema=_ConfirmCascade)` before the destructive call fires. Rejected elicitation raises `ValueError("Cascade delete of {name!r} aborted by elicitation (…).")`. Older SDKs without `ctx.elicit` are detected via `AttributeError` and fall through (logged as debug).
+- `bulk_delete_completed` elicitation deferred to S3.4 when the underlying tool lands — guarding a tool that doesn't yet exist would just generate work to undo. S3.4's plan note carries the guard requirement.
+
+### Verified
+- `pytest test_bulk.py test_eventkit_wrapper.py test_resources.py test_prompts.py`: 22 passed, 2 skipped.
+- `make lint && make check-architecture`: green (61 files; all under hard cap; module shape green).
+
 ## [0.1.30] — 2026-05-28 — Agent: Claude — Slice 2.2 (4 canned Prompts)
 
 ### Added
