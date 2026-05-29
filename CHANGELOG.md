@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.71] — 2026-05-29 — Agent: Claude
+### Added
+- Add suggest_list_icon tool + auto-icon for create_calendar & create_smart_list: hybrid curated-table→sampling SF Symbol suggester (icon='auto'/'ask'/'none' or explicit symbol/emoji) with a 'sparkles' agent-glyph fallback; reminders://appearance gains an auto_suggest pointer.
+
 ## [0.1.70] — 2026-05-29 — Agent: Claude
 ### Changed
 - Regenerate capability catalog to include the reminders://appearance resource

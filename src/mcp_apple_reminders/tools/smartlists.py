@@ -22,6 +22,7 @@ from .._native.reminderkit_lists import (
 from .._native.reminderkit_lists import (
     update_smart_list as helper_update_smart_list,
 )
+from ..icon_suggest import resolve_icon
 from ..server import mcp
 
 
@@ -40,10 +41,14 @@ def _helper_call(fn, ctx_error, *args, **kwargs) -> dict:
     description=(
         "Create a custom smart list (a saved-filter list) in Reminders.app. "
         "Pass a `name` and optional appearance (`color`, `symbol` SF-symbol, "
-        "`emoji`). The filter itself is an opaque base64 blob: omit "
-        "`filter_data_b64` to create a named smart list whose filter you refine "
-        "in Reminders.app, or pass a previously-captured blob. Requires an "
-        "iCloud account that supports custom smart lists. Private ReminderKit API."
+        "`emoji`). `icon` is the high-level badge knob: 'auto' (default) "
+        "suggests an SF Symbol from the name — falling back to an agent glyph; "
+        "'ask' prompts; 'none' skips; or pass a symbol/emoji directly. An "
+        "explicit `symbol` or `emoji` overrides `icon`. The filter itself is an "
+        "opaque base64 blob: omit `filter_data_b64` to create a named smart list "
+        "whose filter you refine in Reminders.app, or pass a previously-captured "
+        "blob. Requires an iCloud account that supports custom smart lists. "
+        "Private ReminderKit API."
     ),
 )
 async def create_smart_list(
@@ -52,18 +57,20 @@ async def create_smart_list(
     color: Optional[str] = None,
     symbol: Optional[str] = None,
     emoji: Optional[str] = None,
+    icon: Optional[str] = "auto",
     filter_data_b64: Optional[str] = None,
 ) -> dict:
-    """Create a custom smart list. See the tool description for `filter_data_b64`."""
+    """Create a custom smart list. See the tool description for `icon` / `filter_data_b64`."""
     if not name or not name.strip():
         raise ValueError("name is required and must be non-empty")
+    resolved = await resolve_icon(ctx, name, icon, explicit_symbol=symbol, explicit_emoji=emoji)
     resp = _helper_call(
         helper_create_smart_list,
         ctx,
         name,
         color=color,
-        symbol=symbol,
-        emoji=emoji,
+        symbol=resolved.symbol,
+        emoji=resolved.emoji,
         filter_data_b64=filter_data_b64,
     )
     sid = str(resp.get("id") or "")
