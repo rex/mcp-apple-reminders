@@ -1,7 +1,7 @@
 """Slice 1.7 — set_tags + tag filter on get_reminders.
 
 Coverage:
-- `_native/reminderkit.py::add_tags` blank-input guards.
+- `_native/reminderkit_actions.py::add_tags` blank-input guards.
 - `Reader.iter_reminders(tags=[...])` builds the SQL WHERE clause that
   filters by tag, and the returned Reminders have `tags` populated.
 - Live: create a reminder with two tags via the helper; assert the
@@ -19,7 +19,7 @@ from mcp_apple_reminders._native.eventkit import DEFAULT_HELPER_PATH as EVENTKIT
 from mcp_apple_reminders._native.reminderkit import (
     DEFAULT_HELPER_PATH as REMINDERKIT_HELPER,
 )
-from mcp_apple_reminders._native.reminderkit import (
+from mcp_apple_reminders._native.reminderkit_actions import (
     add_tags,
 )
 from mcp_apple_reminders._native.sqlite import Reader, RemindersDBUnavailable, connect

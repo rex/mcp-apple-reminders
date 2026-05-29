@@ -1,7 +1,7 @@
 """Slice 1.5 tests — subtask write path + SQLite read of subtasks.
 
 Coverage:
-- `_native/reminderkit.py::create_subtask` blank-arg guards.
+- `_native/reminderkit_actions.py::create_subtask` blank-arg guards.
 - `Reader.iter_subtasks` returns empty for unknown parent.
 - `Reader.iter_subtasks` returns children for a real parent (live; skipped
   if no real reminders exist).
@@ -21,7 +21,7 @@ from mcp_apple_reminders._native.eventkit import DEFAULT_HELPER_PATH as EVENTKIT
 from mcp_apple_reminders._native.reminderkit import (
     DEFAULT_HELPER_PATH as REMINDERKIT_HELPER,
 )
-from mcp_apple_reminders._native.reminderkit import (
+from mcp_apple_reminders._native.reminderkit_actions import (
     create_subtask,
 )
 from mcp_apple_reminders._native.sqlite import (

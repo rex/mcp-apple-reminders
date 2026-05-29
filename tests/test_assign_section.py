@@ -13,6 +13,8 @@ from mcp_apple_reminders._native.reminderkit import (
 )
 from mcp_apple_reminders._native.reminderkit import (
     _invoke_action,
+)
+from mcp_apple_reminders._native.reminderkit_actions import (
     assign_section,
 )
 from mcp_apple_reminders._native.sqlite import Reader, RemindersDBUnavailable, connect

@@ -15,7 +15,7 @@ from mcp_apple_reminders._native.eventkit import DEFAULT_HELPER_PATH as EVENTKIT
 from mcp_apple_reminders._native.reminderkit import (
     DEFAULT_HELPER_PATH as REMINDERKIT_HELPER,
 )
-from mcp_apple_reminders._native.reminderkit import set_flagged
+from mcp_apple_reminders._native.reminderkit_actions import set_flagged
 
 # ---------------------------------------------------------------------------
 # Unit

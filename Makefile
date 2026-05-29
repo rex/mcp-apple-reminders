@@ -8,7 +8,7 @@
 
 .PHONY: help help-stack install env env-check setup validate update info \
         dev build start lint typecheck check-architecture check-docs \
-        check-precommit check-skeleton sync-skeleton fix test \
+        check-precommit check-skeleton sync-skeleton fix test test-actual \
         bump-patch bump-minor bump-major check-version-bumped version \
         clean clean-all \
         docker-build docker-run docker-stop docker-clean \
@@ -202,9 +202,9 @@ clean-native:
 ## lint: Run ruff (lint) + black (format check) on first-party code
 lint:
 	@echo "$(CYAN)Running ruff check...$(RESET)"
-	@./venv/bin/python -m ruff check src/ test_*.py test_support/
+	@./venv/bin/python -m ruff check src/ tests/
 	@echo "$(CYAN)Running black --check...$(RESET)"
-	@./venv/bin/python -m black --check --quiet src/ test_*.py test_support/
+	@./venv/bin/python -m black --check --quiet src/ tests/
 	@echo "$(GREEN)Lint clean.$(RESET)"
 
 ## typecheck: Run mypy on the MCP server package (PyObjC stubs missing → --ignore-missing-imports)
@@ -257,6 +257,10 @@ test:
 			echo "$(RED)  failing closed.$(RESET)"; \
 			exit 1 ;; \
 	esac
+
+## test-actual: Run the AGENTS.md §3 explicit pytest suites against tests/
+test-actual:
+	@./venv/bin/python -m pytest tests/test_mcp_tools.py tests/test_workflow_tools.py tests/test_e2e.py
 
 # ─── Docker ───────────────────────────────────────────────────────────
 

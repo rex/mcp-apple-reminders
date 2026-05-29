@@ -7,7 +7,7 @@ name = "mcp-apple-reminders"
 version = "0.1.0"
 description = "Model Context Protocol server for Apple Reminders integration"
 authors = [
-    {name = "Pierce", email = "pierce@example.com"}
+    {name = "Pierce", email = "pierce@piercemoore.com"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
@@ -39,12 +39,14 @@ dev = [
     "black>=23.0",
     "ruff>=0.8",
     "mypy>=1.13",
+    "pre-commit>=3.0",
+    "pyyaml>=6.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/mcp-apple-reminders"
-Repository = "https://github.com/yourusername/mcp-apple-reminders"
-Issues = "https://github.com/yourusername/mcp-apple-reminders/issues"
+Homepage = "https://github.com/rex/mcp-apple-reminders"
+Repository = "https://github.com/rex/mcp-apple-reminders"
+Issues = "https://github.com/rex/mcp-apple-reminders/issues"
 
 [project.scripts]
 mcp-apple-reminders = "mcp_apple_reminders:cli_main"
