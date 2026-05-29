@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.61] — 2026-05-29 — Agent: Claude
+### Added
+- Add scripts/gen_tools_doc.py + make gen-tools-doc target: regenerate docs/TOOLS.md (exhaustive capability catalog) from the live FastMCP server with full per-tool parameters; catalog refreshed to 41 tools / 5 resources / 4 prompts (was stale at 37 with no params)
+
 ## [0.1.60] — 2026-05-29 — Agent: Claude
 ### Changed
 - Extend CQ-2 collection fix to the CRUD suite: rename test_crud_*.py to crud_*.py and mark test_comprehensive_crud.py __test__=False (it is a script orchestrator), clearing 8 fixture-setup errors from a full pytest run

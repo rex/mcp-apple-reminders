@@ -8,7 +8,7 @@
 
 .PHONY: help help-stack install env env-check setup validate update info \
         dev build start lint typecheck check-architecture check-docs \
-        check-precommit check-skeleton sync-skeleton fix test test-actual \
+        check-precommit check-skeleton sync-skeleton fix test test-actual gen-tools-doc \
         bump-patch bump-minor bump-major check-version-bumped version \
         clean clean-all \
         docker-build docker-run docker-stop docker-clean \
@@ -261,6 +261,10 @@ test:
 ## test-actual: Run the AGENTS.md §3 explicit pytest suites against tests/
 test-actual:
 	@./venv/bin/python -m pytest tests/test_mcp_tools.py tests/test_workflow_tools.py tests/test_e2e.py
+
+## gen-tools-doc: Regenerate docs/TOOLS.md (capability catalog) from the live FastMCP server
+gen-tools-doc:
+	@./venv/bin/python scripts/gen_tools_doc.py
 
 # ─── Docker ───────────────────────────────────────────────────────────
 
