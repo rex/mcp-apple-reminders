@@ -37,6 +37,7 @@ mcp = FastMCP(
 # what wires them up.
 from .prompts import workflows as _prompts_workflows  # noqa: E402, F401
 from .resources import agents as _resources_agents  # noqa: E402, F401
+from .resources import appearance as _resources_appearance  # noqa: E402, F401
 from .resources import reminders as _resources_reminders  # noqa: E402, F401
 from .tools import agents as _agents_tool  # noqa: E402, F401
 from .tools import alarms as _alarms  # noqa: E402, F401

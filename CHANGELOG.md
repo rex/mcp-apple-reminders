@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.69] — 2026-05-29 — Agent: Claude
+### Added
+- Add reminders://appearance resource: authoritative 10-color Reminders palette (name+hex, mirrors helper makeREMColor) + SF-Symbol/emoji icon guidance so clients can discover valid color/symbol values for the appearance tools
+
 ## [0.1.68] — 2026-05-29 — Agent: Claude
 ### Changed
 - Refresh capability catalog to 54 tools after CL-2.1-2.5 (smart lists, appearance/pinning, templates, grocery, urgent/early-reminder/section); record CL-2 progress in TASK_STATE
