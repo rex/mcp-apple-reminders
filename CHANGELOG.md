@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.59] — 2026-05-29 — Agent: Claude
+### Changed
+- Record CL-1 cleanup completion in TASK_STATE (all batches + the CRITICAL bugfix done) and document the declined make sync-skeleton (skeleton v0.37.0 hooks regressed cd||exit 1 / SC2164) as an AGENTS §9 gotcha
+
 ## [0.1.58] — 2026-05-29 — Agent: Claude
 ### Fixed
 - Fix CRITICAL EventKit write-swallow: _save_ek_reminder and delete_reminder now unpack PyObjC's (BOOL, NSError) out-param tuple and raise on failure — previously the truthy tuple was captured into success so every failed write reported success (and bulk ops reported false counts); add regression tests

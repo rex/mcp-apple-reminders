@@ -12,7 +12,7 @@
 
 Spec **002 (modernize-and-foundation) is COMPLETE** — all of Phases 0–5 shipped: FastMCP on MCP 1.27.1, the three-tier native substrate (direct SQLite reads + Swift EventKit helper subprocess + Obj-C ReminderKit helper subprocess), frozen Pydantic v2 models with deeplinks, **41 MCP tools**, 5 Resources, 4 Prompts, Sampling, Elicitation, alarms/recurrence/bulk, the agent-visibility plane (S4.1), and list-groups (S5.1, ADR 0001). The only originally-planned slice not shipped is **S4.2** (TodoWrite mirror — stretch, deferred until Claude Code exposes a hookable TodoWrite surface).
 
-**Current work: the CL-1 cleanup pass** (`docs/audits/2026-05-29-post-spec-002-cleanup-audit/`), driven by a dynamic verify+expert-review workflow that re-checked the original 37 audit findings against HEAD and added a bleeding-edge expert dimension grounded in current MCP/FastMCP/Pydantic docs. **Next after cleanup:** (1) fix the CRITICAL EventKit write-swallow bug (own slice — see §3); (2) CL-2 capability extensions; (3) exhaustive integration testing (Pierce's stated next major phase).
+**CL-1 cleanup pass: COMPLETE** (2026-05-29) — all 9 batches (B0–B9) plus the CRITICAL EventKit write-swallow bugfix shipped (commits `aa613fb`→`3b2c2b2`), each gate-green + pushed. Audit + plan live in `docs/audits/2026-05-29-post-spec-002-cleanup-audit/`. One sub-item was DECLINED: `make sync-skeleton` on the 3 hooks (the skeleton v0.37.0 versions regressed `cd … || exit 1`; see §2 + AGENTS §9). **Next:** (1) CL-2 capability extensions (typed result models, smart lists, templates/grocery/clear_tags, ToolAnnotations); (2) exhaustive integration testing (Pierce's stated next major phase).
 
 ## Standing user directives
 
@@ -47,16 +47,16 @@ All slices across Phases 0–5 are ✅ done: S0.1–S0.6, S1.0–S1.8, S2.1–S2
 - B3 ✅ backfill CHANGELOG `[0.1.9]` / `[0.1.11]` placeholders
 - B4 ✅ relocate suite → `tests/` (`tests/_support/`) + fix CQ-2 collection (orchestrator `__test__ = False`)
 - B9 ✅ build-config: Makefile/pyproject → `tests/`, `test-actual` target, repair 4 stale `reminderkit_actions` test imports
-- B5 🟡 documentation rewrites (README, src READMEs, docs/MAP.md, AGENTS.md §9, TASK_STATE.md) — this batch
-- B6 ⏸ dead-code removal (`format_reminder`, dead callbacks, dead cancel branch) + `tools/__init__` 5→10
-- B7 ⏸ `_app_context`/`_bridge_from_ctx` dedup into `lifespan.py`
-- B8 ⏸ per-module small fixes (docstrings, hoist imports, silent-`[]`→raise, `_unused` hack)
-- CL-bug ⏸ EventKit write-swallow fix + regression test
-- (final) ⏸ `make sync-skeleton` — refresh the 3 drifted hooks (deferred to end so it can't mutate guardrails mid-run)
+- B5 ✅ documentation rewrites (README, both src READMEs, docs/MAP.md, AGENTS.md §9, TASK_STATE.md)
+- B6 ✅ dead-code removal (`format_reminder`, dead `on_reminder_*` callbacks, dead cancel branch + `BulkCancelled`) + `tools/__init__` 5→10
+- B7 ✅ `_app_context`/`_bridge_from_ctx` deduped into `lifespan.py` (alias imports across all 10 modules)
+- B8 ✅ per-module small fixes (docstrings, hoist `_ConfirmCascade`, drop `_unused` hack, silent-`[]`→raise)
+- CL-bug ✅ EventKit write-swallow fixed in both sinks + regression tests (v0.1.58)
+- (final) ⊘ `make sync-skeleton` **DECLINED** — v0.37.0's 3 hooks dropped `cd … || exit 1` (shellcheck SC2164 regression, less safe). Repo's hooks kept (intentionally ahead); their `check-skeleton` drift is expected. Fix belongs upstream in the skeleton.
 
 ## 3. Blockers / open questions
 
-- 🔴 **CRITICAL (newly found, adversarially confirmed) — EventKit write failures silently swallowed.** `_native/_internal.py:110-114` and `_native/core.py:205-209` capture the PyObjC `(BOOL, NSError)` out-param tuple into `success` (always truthy), so the failure branch is dead and **every write reports success**; bulk ops report false `{processed:N, failed:[]}` counts. Fix = tuple-unpack + raise on failure + a monkeypatch regression test (the `CL-bug` slice). NOT yet fixed.
+- ✅ **(FIXED v0.1.58) EventKit write-swallow** — `_save_ek_reminder` (`_internal.py`) and `RemindKit.delete_reminder` (`core.py`) now unpack the PyObjC `(BOOL, NSError)` out-param tuple and raise `RuntimeError(localizedDescription())` on failure; regression tests in `tests/test_write_error_propagation.py`. Bulk ops now surface real per-item failures in `failed[]`.
 - All prior spec-002 open questions (SQLite schema, helper lifetime mode, deeplink UUID equivalence) were resolved during the build.
 
 ## 4. Recent decisions (append-only, newest first)
