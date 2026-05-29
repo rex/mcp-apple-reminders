@@ -49,9 +49,52 @@ from .tools import sections as _sections  # noqa: E402, F401
 from .tools import workflow as _workflow  # noqa: E402, F401
 
 
+def _resolve_transport() -> str:
+    """Pick the transport.
+
+    Reads `MCP_APPLE_REMINDERS_TRANSPORT` from the environment first, then
+    falls back to the `server.transport` field in `VIBE.yaml` if present.
+    Default: `stdio`. Recognized values: `stdio`, `sse`, `streamable_http`.
+
+    Note on `streamable_http`: per the MCP spec, the server boots a small
+    HTTP listener and accepts MCP requests there. Clients that don't speak
+    HTTP will fail to connect; the default `stdio` remains correct for
+    Claude Desktop, Claude Code, and Codex.
+    """
+    import os
+
+    env = os.environ.get("MCP_APPLE_REMINDERS_TRANSPORT")
+    if env:
+        return env.strip().lower()
+    # Best-effort VIBE.yaml lookup. Failures fall back to stdio.
+    try:
+        from pathlib import Path
+
+        import yaml
+
+        repo_vibe = Path(__file__).resolve().parents[2] / "VIBE.yaml"
+        if repo_vibe.exists():
+            data = yaml.safe_load(repo_vibe.read_text()) or {}
+            transport = ((data.get("server") or {}).get("transport") or "stdio").strip().lower()
+            return transport
+    except Exception:
+        pass
+    return "stdio"
+
+
 def cli_main() -> int:
-    """Synchronous entry point for the console-script wrapper."""
-    mcp.run(transport="stdio")
+    """Synchronous entry point for the console-script wrapper.
+
+    Transport selection: `MCP_APPLE_REMINDERS_TRANSPORT` env var > `VIBE.yaml
+    ::server.transport` field > `stdio` default.
+    """
+    transport = _resolve_transport()
+    if transport not in ("stdio", "sse", "streamable_http"):
+        # Unknown transport — fall through to stdio rather than crashing,
+        # since this is invoked from MCP-client startup paths where a hard
+        # failure looks like the server is broken.
+        transport = "stdio"
+    mcp.run(transport=transport)
     return 0
 
 

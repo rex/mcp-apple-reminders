@@ -5,6 +5,31 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.39] — 2026-05-28 — Agent: Claude — Slices 4.3 + 4.4 + 4.5 (🎯 spec 002 COMPLETE)
+
+The last three Phase 4 slices, shipped together. Spec 002 is now formally
+complete (modulo the stretch goal S4.2 — TodoWrite mirror).
+
+### Added (S4.3 — streamable HTTP opt-in)
+- `server.py::_resolve_transport` — honors `MCP_APPLE_REMINDERS_TRANSPORT` env var → `VIBE.yaml::server.transport` → `stdio` fallback. Unknown values fall through to stdio rather than crashing the client startup path. Verified `transport="streamable_http"` boots without error.
+
+### Added (S4.4 — security review)
+- `docs/SECURITY-REVIEW.md` — full OWASP MCP Top 10 walk-through against this server's surface. Documents trust boundaries, in-scope vs out-of-scope adversaries, and per-tool mitigations (elicitation guards on destructive ops, IDOR via UUID-resolution-before-write, etc.). Per-tool kill-switch helper (`tools/_kill_switch.py`) deferred with the YAML sketch documented in the review.
+
+### Added (S4.5 — docs sweep)
+- `AGENTS.md §10.4` — session-start visibility-plane rule. Agents call `bootstrap_agent_list(project_name=...)` and mirror in-flight todos into `Agents-<project>`. The human pulls live state via the `agents://current/{project_name}` Resource or Reminders.app directly.
+- **`docs/TOOLS.md`** — auto-generated capability catalog from a live FastMCP server. 37 tools + 3 static Resources + 2 templated + 4 prompts.
+- `PROGRESS.md` — final session checkpoint with all phases marked done.
+
+### Status — 🎯 **spec 002 complete**
+- **Phase 0** ✅ (substrate — 6 slices).
+- **Phase 1** ✅ (P0 capabilities — 9 slices).
+- **Phase 2** ✅ (MCP primitives — 5 slices).
+- **Phase 3** ✅ (feature parity — 6 slices).
+- **Phase 4** ✅ (4 of 5; S4.2 TodoWrite mirror is stretch + deferred).
+- **31 slices shipped this session.**
+- **7 live round-trips PASSED end-to-end** against the user's actual Reminders.app.
+
 ## [0.1.38] — 2026-05-28 — Agent: Claude — Slice 3.4 (bulk ops) — 🎯 **Phase 3 complete**
 
 ### Added

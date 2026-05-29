@@ -39,7 +39,8 @@ def test_bulk_delete_completed_validates_window():
         return None
 
     msg = asyncio.run(go())
-    assert msg and "end" in msg
+    assert msg is not None
+    assert "end" in msg
 
 
 def test_bulk_complete_with_empty_list_returns_zero_processed():

@@ -72,7 +72,8 @@ AGENTS.md.pre-retrofit          Original 205-line guide (preserved for reference
 1. Read this file.
 2. Check `MAP.md` (after PR2) for the module you're touching.
 3. If `.mcp.json` declares `serena` (after PR3): `mcp__serena__activate_project` first, then `onboarding` on a fresh project else `list_memories`. Use Serena's symbolic tools (`find_symbol`, `replace_symbol_body`, `search_for_pattern`) over `Read`/`Edit`/`Grep`. Full protocol: `.claude/rules/serena.md` (after PR5).
-4. Run §3 commands before declaring done. Bump VERSION before commit.
+4. **Visibility-plane (post-S4.1)**: at session start, agents that share state with the human SHOULD call `bootstrap_agent_list(project_name="<this-project>")` to ensure the `Agents-<project>` Reminders list exists, then mirror their in-flight todos into it with `create_reminder` / `update_reminder` / `complete_reminder` / `delete_reminder`. The human pulls the live state via the `agents://current/{project_name}` Resource (or just opens Reminders.app).
+5. Run §3 commands before declaring done. Bump VERSION before commit.
 
 ## 11. When ending a session
 
