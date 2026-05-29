@@ -1,16 +1,7 @@
 """Direct read-only access to the Reminders.app CoreData SQLite store.
 
-Slice 1.0 — see `docs/SQLITE_SCHEMA.md` for the full schema breakdown,
-column mapping, timestamp/epoch notes, and the deeplink UUID equivalence
-contract verified at slice ship.
-
-Public surface:
-
-- `Reader(conn)` — facade class wrapping a connection with typed read
-  methods.
-- `RemindersDBUnavailable` — raised when the store can't be opened.
-- `connect(db_path=None)` + `find_db_path(store_dir=...)` — open/locate.
-- `APPLE_EPOCH_OFFSET` constant.
+See `docs/SQLITE_SCHEMA.md` for schema notes. Public surface: `Reader`,
+`RemindersDBUnavailable`, `connect`, `find_db_path`, `APPLE_EPOCH_OFFSET`.
 """
 
 from __future__ import annotations
@@ -27,6 +18,7 @@ from ._sqlite_helpers import (
     _build_reminders_query,
     _calendar_from_row,
     _reminder_from_row,
+    _resolve_section_name,
 )
 
 DEFAULT_STORE_PATH = (
@@ -151,46 +143,130 @@ class Reader:
 
     # ----- calendars -----
 
-    def list_calendars(self) -> list[Calendar]:
-        """Return every non-deleted user-visible reminder list."""
+    # Standard projection for ZREMCDBASELIST rows — includes ZISGROUP +
+    # ZPARENTLIST so _calendar_from_row + the parent-group resolver have
+    # what they need. Used by every public read method below.
+    _LIST_COLS = "Z_PK, ZNAME, ZCKIDENTIFIER, ZCOLOR, ZISGROUP, ZPARENTLIST"
+
+    def _resolve_parent_group_uuid(self, parent_z_pk: Optional[int]) -> Optional[str]:
+        """Resolve a `ZPARENTLIST` foreign-key Z_PK to the group's UUID."""
+        if not parent_z_pk:
+            return None
+        row = self._conn.execute(
+            "SELECT ZCKIDENTIFIER FROM ZREMCDBASELIST WHERE Z_PK = ? LIMIT 1",
+            (parent_z_pk,),
+        ).fetchone()
+        return str(row["ZCKIDENTIFIER"]) if row and row["ZCKIDENTIFIER"] else None
+
+    def list_calendars(self, *, include_groups: bool = False) -> list[Calendar]:
+        """Return every non-deleted user-visible reminder list.
+
+        Args:
+            include_groups: If False (default), filter out group rows
+                (ZISGROUP=1). If True, return groups alongside regular
+                lists. Post-S5.1 default — groups have their own
+                discovery surface via `list_groups()`.
+        """
+        default_uuid = self._default_calendar_uuid()
+        where = "ZMARKEDFORDELETION = 0 AND Z_ENT = 3 AND ZNAME IS NOT NULL AND ZNAME != ''"
+        if not include_groups:
+            where += " AND (ZISGROUP IS NULL OR ZISGROUP = 0)"
+        rows = self._conn.execute(
+            f"SELECT {self._LIST_COLS} FROM ZREMCDBASELIST WHERE {where} ORDER BY ZNAME"
+        ).fetchall()
+        return [
+            _calendar_from_row(r, default_uuid, parent_group_id=self._resolve_parent_group_uuid(r["ZPARENTLIST"]))
+            for r in rows
+        ]
+
+    def list_groups(self) -> list[Calendar]:
+        """Return every Reminders.app group (Z_ENT=3 ∧ ZISGROUP=1).
+
+        Groups have no reminders of their own; child lists point at them
+        via `ZPARENTLIST`. The returned `Calendar` will have
+        `is_group=True` and `parent_group_id=None`.
+        """
         default_uuid = self._default_calendar_uuid()
         rows = self._conn.execute(
-            "SELECT Z_PK, ZNAME, ZCKIDENTIFIER, ZCOLOR FROM ZREMCDBASELIST "
-            "WHERE ZMARKEDFORDELETION = 0 AND Z_ENT = 3 AND ZNAME IS NOT NULL AND ZNAME != '' "
-            "ORDER BY ZNAME"
+            f"SELECT {self._LIST_COLS} FROM ZREMCDBASELIST "
+            "WHERE ZMARKEDFORDELETION = 0 AND Z_ENT = 3 AND ZISGROUP = 1 "
+            "AND ZNAME IS NOT NULL AND ZNAME != '' ORDER BY ZNAME"
         ).fetchall()
-        return [_calendar_from_row(r, default_uuid) for r in rows]
+        return [
+            _calendar_from_row(r, default_uuid, parent_group_id=self._resolve_parent_group_uuid(r["ZPARENTLIST"]))
+            for r in rows
+        ]
+
+    def iter_lists_in_group(self, group_uuid: str) -> Iterator[Calendar]:
+        """Stream every list whose `ZPARENTLIST` points at the given group UUID."""
+        default_uuid = self._default_calendar_uuid()
+        group_row = self._conn.execute(
+            "SELECT Z_PK FROM ZREMCDBASELIST "
+            "WHERE lower(ZCKIDENTIFIER) = lower(?) AND ZISGROUP = 1 AND ZMARKEDFORDELETION = 0 LIMIT 1",
+            (group_uuid,),
+        ).fetchone()
+        if not group_row:
+            return
+        group_pk = group_row["Z_PK"]
+        rows = self._conn.execute(
+            f"SELECT {self._LIST_COLS} FROM ZREMCDBASELIST "
+            "WHERE ZPARENTLIST = ? AND ZMARKEDFORDELETION = 0 AND Z_ENT = 3 "
+            "AND (ZISGROUP IS NULL OR ZISGROUP = 0) "
+            "AND ZNAME IS NOT NULL AND ZNAME != '' ORDER BY ZNAME",
+            (group_pk,),
+        ).fetchall()
+        for r in rows:
+            yield _calendar_from_row(r, default_uuid, parent_group_id=group_uuid)
 
     def get_calendar_by_id(self, calendar_id: str) -> Optional[Calendar]:
-        """Look up a calendar by its `ZCKIDENTIFIER` UUID."""
+        """Look up a calendar by its `ZCKIDENTIFIER` UUID. Includes groups."""
         default_uuid = self._default_calendar_uuid()
         row = self._conn.execute(
-            "SELECT Z_PK, ZNAME, ZCKIDENTIFIER, ZCOLOR FROM ZREMCDBASELIST "
+            f"SELECT {self._LIST_COLS} FROM ZREMCDBASELIST "
             "WHERE lower(ZCKIDENTIFIER) = lower(?) AND ZMARKEDFORDELETION = 0 AND Z_ENT = 3 LIMIT 1",
             (calendar_id,),
         ).fetchone()
-        return _calendar_from_row(row, default_uuid) if row else None
+        if not row:
+            return None
+        return _calendar_from_row(
+            row, default_uuid, parent_group_id=self._resolve_parent_group_uuid(row["ZPARENTLIST"])
+        )
 
     def get_calendar_by_name(self, name: str) -> Optional[Calendar]:
-        """Look up a calendar by exact name."""
+        """Look up a calendar by exact name. Includes groups."""
         default_uuid = self._default_calendar_uuid()
         row = self._conn.execute(
-            "SELECT Z_PK, ZNAME, ZCKIDENTIFIER, ZCOLOR FROM ZREMCDBASELIST "
+            f"SELECT {self._LIST_COLS} FROM ZREMCDBASELIST "
             "WHERE ZNAME = ? AND ZMARKEDFORDELETION = 0 AND Z_ENT = 3 LIMIT 1",
             (name,),
         ).fetchone()
-        return _calendar_from_row(row, default_uuid) if row else None
+        if not row:
+            return None
+        return _calendar_from_row(
+            row, default_uuid, parent_group_id=self._resolve_parent_group_uuid(row["ZPARENTLIST"])
+        )
 
-    def search_calendars(self, query: str) -> list[Calendar]:
-        """Case-insensitive substring search by calendar name."""
+    def search_calendars(self, query: str, *, include_groups: bool = False) -> list[Calendar]:
+        """Case-insensitive substring search by calendar name.
+
+        Args:
+            query: Substring to match against ZNAME.
+            include_groups: If False (default), exclude group rows. Matches
+                the `list_calendars` default.
+        """
         default_uuid = self._default_calendar_uuid()
+        where = "ZMARKEDFORDELETION = 0 AND Z_ENT = 3 AND ZNAME IS NOT NULL AND lower(ZNAME) LIKE lower(?)"
+        params: list = [f"%{query}%"]
+        if not include_groups:
+            where += " AND (ZISGROUP IS NULL OR ZISGROUP = 0)"
         rows = self._conn.execute(
-            "SELECT Z_PK, ZNAME, ZCKIDENTIFIER, ZCOLOR FROM ZREMCDBASELIST "
-            "WHERE ZMARKEDFORDELETION = 0 AND Z_ENT = 3 AND ZNAME IS NOT NULL "
-            "AND lower(ZNAME) LIKE lower(?) ORDER BY ZNAME",
-            (f"%{query}%",),
+            f"SELECT {self._LIST_COLS} FROM ZREMCDBASELIST WHERE {where} ORDER BY ZNAME",
+            params,
         ).fetchall()
-        return [_calendar_from_row(r, default_uuid) for r in rows]
+        return [
+            _calendar_from_row(r, default_uuid, parent_group_id=self._resolve_parent_group_uuid(r["ZPARENTLIST"]))
+            for r in rows
+        ]
 
     # ----- reminders -----
 
@@ -256,42 +332,8 @@ class Reader:
         return [(str(r["sid"]), str(r["sname"])) for r in rows]
 
     def get_section_name(self, reminder_uuid: str) -> Optional[str]:
-        """Resolve a reminder's section_name via the parent list's membership blob.
-
-        Section memberships live in `ZREMCDBASELIST.ZMEMBERSHIPSOFREMINDERSINSECTIONSASDATA`
-        as a JSON document keyed by reminder UUID. Returns None if the
-        reminder is unsectioned or the blob is empty.
-        """
-        import json
-
-        row = self._conn.execute(
-            "SELECT l.Z_PK, l.ZMEMBERSHIPSOFREMINDERSINSECTIONSASDATA AS blob "
-            "FROM ZREMCDREMINDER r JOIN ZREMCDBASELIST l ON r.ZLIST = l.Z_PK "
-            "WHERE lower(r.ZCKIDENTIFIER) = lower(?) AND r.ZMARKEDFORDELETION = 0 "
-            "LIMIT 1",
-            (reminder_uuid,),
-        ).fetchone()
-        if not row or not row["blob"]:
-            return None
-        try:
-            data = json.loads(row["blob"])
-        except (TypeError, json.JSONDecodeError):
-            return None
-        membership = next(
-            (m for m in data.get("memberships", []) if m.get("memberID") == reminder_uuid),
-            None,
-        )
-        if not membership:
-            return None
-        group_id = membership.get("groupID")
-        if not group_id:
-            return None
-        section_row = self._conn.execute(
-            "SELECT ZDISPLAYNAME FROM ZREMCDBASESECTION "
-            "WHERE lower(ZCKIDENTIFIER) = lower(?) AND ZMARKEDFORDELETION = 0 LIMIT 1",
-            (group_id,),
-        ).fetchone()
-        return str(section_row["ZDISPLAYNAME"]) if section_row else None
+        """Resolve a reminder's section_name via the parent list's membership blob."""
+        return _resolve_section_name(self._conn, reminder_uuid)
 
     def iter_subtasks(self, parent_uuid: str) -> Iterator[Reminder]:
         """Stream the subtasks of the reminder identified by `parent_uuid`.

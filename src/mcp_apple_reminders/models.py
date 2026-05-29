@@ -89,6 +89,21 @@ class Calendar(BaseModel):
         description="Account owner (e.g. iCloud account email). EventKit does not always expose this; may be None.",
     )
     deeplink: str = Field(description="x-apple-reminderkit://REMCDList/{id} — opens the list in Reminders.app.")
+    # ----- post-S0.3 tail-append additions (ADR 0001, S5.1) -----
+    is_group: bool = Field(
+        default=False,
+        description=(
+            "True iff this Calendar row is a Reminders.app group (folder), "
+            "not a regular list. Surfaces from SQLite `ZISGROUP=1`."
+        ),
+    )
+    parent_group_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "If this list is a child of a group, the group's `ZCKIDENTIFIER`. "
+            "None for top-level lists and for groups themselves."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

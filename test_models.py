@@ -130,8 +130,22 @@ def test_reminder_field_order_is_canonical():
 
 
 def test_calendar_field_order_is_canonical():
-    """Field order is the contract freeze of Slice 0.3 — guarded by this test."""
-    expected = ["id", "name", "color", "is_default", "owner", "deeplink"]
+    """Field order is the contract freeze of Slice 0.3 — guarded by this test.
+
+    Post-S5.1 (ADR 0001), `is_group` + `parent_group_id` were appended at the
+    tail. Tail-additions are explicitly allowed by the S0.3 contract freeze.
+    """
+    expected = [
+        "id",
+        "name",
+        "color",
+        "is_default",
+        "owner",
+        "deeplink",
+        # Post-S0.3 tail-appended additions (ADR 0001, S5.1)
+        "is_group",
+        "parent_group_id",
+    ]
     actual = list(Calendar.model_fields.keys())
     assert actual == expected, (
         f"Calendar field order drifted from the S0.3 contract freeze.\n"

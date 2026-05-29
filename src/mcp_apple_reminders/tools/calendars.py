@@ -50,12 +50,18 @@ def _app_context(ctx: Context) -> AppContext:
         "and whether they are the default list."
     ),
 )
-async def list_calendars(ctx: Context) -> list[Calendar]:
-    """List all reminder calendars accessible to the user."""
+async def list_calendars(ctx: Context, include_groups: bool = False) -> list[Calendar]:
+    """List reminder calendars (lists, and optionally groups).
+
+    Args:
+        include_groups: When False (default, post-S5.1), filters out
+            group rows. Set True to see groups alongside lists; or use
+            the dedicated `list_groups` tool for groups only.
+    """
     app = _app_context(ctx)
     try:
         with app.open_sqlite() as conn:
-            return Reader(conn).list_calendars()
+            return Reader(conn).list_calendars(include_groups=include_groups)
     except RemindersDBUnavailable as e:
         await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
         return [native_calendar_to_pydantic(c) for c in app.bridge.calendars.list()]

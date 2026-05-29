@@ -166,6 +166,15 @@
 - (void)setIsPinned:(BOOL)pinned;
 - (void)setName:(NSString *)name;
 - (void)setParentOwnerID:(id)objectID;
+// --- Local mods (ADR 0001 / S5.1) ---------------------------------------
+// `setIsGroup:` is declared here on faith — the symbol exists in the private
+// REMListChangeItem on macOS 26.1 (corresponds to the `ZISGROUP` column on
+// `ZREMCDBASELIST`). Called only via `respondsToSelector:` guard below.
+- (void)setIsGroup:(BOOL)isGroup;
+// `setParentListID:` is a private setter we guess corresponds to the
+// `ZPARENTLIST` SQLite column (different from `setParentOwnerID:` which
+// scopes to the account). Guarded with `respondsToSelector:`.
+- (void)setParentListID:(id)objectID;
 @end
 
 @interface REMListGroceryContextChangeItem : NSObject
@@ -710,6 +719,9 @@ int main(int argc, const char * argv[]) {
             @"create_template",
             @"apply_template",
             @"delete_template",
+            // --- Local mods (ADR 0001 / S5.1) -----------------------------
+            @"create_group",
+            @"move_list_to_group",
         ]];
         if (![action isKindOfClass:[NSString class]] || ![allowedActions containsObject:action]) {
             fail(@"Unknown action");
@@ -760,6 +772,136 @@ int main(int argc, const char * argv[]) {
             NSString *url = objectID && [objectID respondsToSelector:@selector(urlRepresentation)] ? [[objectID urlRepresentation] absoluteString] : @"";
             details[@"id"] = uuid ?: @"";
             details[@"url"] = url ?: @"";
+            output(details);
+            return 0;
+        }
+        // --- Local mod (ADR 0001 / S5.1) -------------------------------------
+        // create_group: same path as create_list but flips `isGroup` on the
+        // change item before the save. Mirrors `ZISGROUP=1` in the SQLite
+        // schema. Requires `setIsGroup:` selector (declared above on faith).
+        if ([action isEqualToString:@"create_group"]) {
+            NSString *name = cmd[@"name"];
+            if (![name isKindOfClass:[NSString class]] || name.length == 0) {
+                fail(@"name is required");
+            }
+            NSError *error = nil;
+            REMStore *store = [REMStore new];
+            REMAccount *account = [store fetchPrimaryActiveCloudKitAccountWithError:&error];
+            if (!account) {
+                account = [store fetchDefaultAccountWithError:&error];
+            }
+            if (!account) {
+                fail(error.localizedDescription ?: @"No active Reminders account found");
+            }
+            REMSaveRequest *save = [[REMSaveRequest alloc] initWithStore:store];
+            id accountChange = [save updateAccount:account];
+            if (!accountChange) {
+                fail(@"Could not create ReminderKit account change item");
+            }
+            REMListChangeItem *change = [save addListWithName:name toAccountChangeItem:accountChange listObjectID:nil];
+            if (!change) {
+                fail(@"Could not create ReminderKit list change item");
+            }
+            if ([change respondsToSelector:@selector(setParentOwnerID:)]) {
+                [change setParentOwnerID:[account remObjectID]];
+            }
+            if (![change respondsToSelector:@selector(setIsGroup:)]) {
+                fail(@"ReminderKit on this macOS does not expose setIsGroup: — cannot create groups");
+            }
+            [change setIsGroup:YES];
+            if ([accountChange respondsToSelector:@selector(addListChangeItem:)]) {
+                [accountChange addListChangeItem:change];
+            }
+            if (![save saveSynchronouslyWithError:&error]) {
+                fail(error.localizedDescription ?: @"ReminderKit group save failed");
+            }
+            id objectID = [change remObjectID];
+            NSString *uuid = objectID && [objectID respondsToSelector:@selector(uuid)] ? [[objectID uuid] UUIDString] : @"";
+            NSString *url = objectID && [objectID respondsToSelector:@selector(urlRepresentation)] ? [[objectID urlRepresentation] absoluteString] : @"";
+            NSMutableDictionary *details = [NSMutableDictionary dictionaryWithDictionary:@{
+                @"status": @"created_group",
+                @"action": action,
+                @"name": name,
+                @"id": uuid ?: @"",
+                @"url": url ?: @"",
+            }];
+            output(details);
+            return 0;
+        }
+        // move_list_to_group: reparents an existing list under a group.
+        // Pass `listId` (the child list's UUID) + `groupId` (the group's
+        // UUID, or absent/empty to detach back to the account root).
+        if ([action isEqualToString:@"move_list_to_group"]) {
+            NSString *listID = cmd[@"listId"];
+            if (![listID isKindOfClass:[NSString class]] || listID.length == 0) {
+                fail(@"listId is required");
+            }
+            NSString *groupID = cmd[@"groupId"];
+            BOOL detach = (![groupID isKindOfClass:[NSString class]] || groupID.length == 0);
+            NSError *error = nil;
+            REMStore *store = [REMStore new];
+            NSURL *childListURL = listURL(listID);
+            id listObjectID = [REMObjectID objectIDWithURL:childListURL];
+            if (!listObjectID) {
+                fail(@"Could not build ReminderKit list object ID");
+            }
+            id list = [store fetchListWithObjectID:listObjectID error:&error];
+            if (!list) {
+                fail(error.localizedDescription ?: @"List not found");
+            }
+            id parentID = nil;
+            if (!detach) {
+                NSURL *groupURL = listURL(groupID);
+                parentID = [REMObjectID objectIDWithURL:groupURL];
+                if (!parentID) {
+                    fail(@"Could not build ReminderKit group object ID");
+                }
+                // Verify the target actually IS a group.
+                id group = [store fetchListWithObjectID:parentID error:&error];
+                if (!group) {
+                    fail(error.localizedDescription ?: @"Group not found");
+                }
+            } else {
+                // Detach: parent becomes the account.
+                REMAccount *account = [store fetchPrimaryActiveCloudKitAccountWithError:&error];
+                if (!account) {
+                    account = [store fetchDefaultAccountWithError:&error];
+                }
+                if (!account) {
+                    fail(error.localizedDescription ?: @"No active Reminders account found");
+                }
+                parentID = [account remObjectID];
+            }
+            REMSaveRequest *save = [[REMSaveRequest alloc] initWithStore:store];
+            REMListChangeItem *change = [save updateList:list];
+            if (!change) {
+                fail(@"Could not create ReminderKit list change item");
+            }
+            // Try both selector paths — `setParentListID:` aligns with the
+            // `ZPARENTLIST` column for group parents; `setParentOwnerID:`
+            // is the older account-parent path. macOS exposes one or both
+            // depending on framework version; prefer the list-aware one.
+            BOOL didSet = NO;
+            if (!detach && [change respondsToSelector:@selector(setParentListID:)]) {
+                [change setParentListID:parentID];
+                didSet = YES;
+            }
+            if (!didSet && [change respondsToSelector:@selector(setParentOwnerID:)]) {
+                [change setParentOwnerID:parentID];
+                didSet = YES;
+            }
+            if (!didSet) {
+                fail(@"ReminderKit on this macOS does not expose any list-reparent selector");
+            }
+            if (![save saveSynchronouslyWithError:&error]) {
+                fail(error.localizedDescription ?: @"ReminderKit list save failed");
+            }
+            NSMutableDictionary *details = [NSMutableDictionary dictionaryWithDictionary:@{
+                @"status": detach ? @"detached" : @"moved",
+                @"action": action,
+                @"listId": listID,
+                @"groupId": groupID ?: @"",
+            }];
             output(details);
             return 0;
         }

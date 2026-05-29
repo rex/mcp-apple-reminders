@@ -342,15 +342,15 @@
   - `src/mcp_apple_reminders/tools/calendars.py::list_calendars` — add the `include_groups: bool = False` arg + forward to the Reader.
   - `test_groups.py` (new) — unit (mocked) + live round-trip (`REM_LIVE_HELPER=1`) that creates a `REM-TEST-GROUP-S51` group, moves a child list under it, verifies via `Reader.iter_lists_in_group`, then cleans up.
 - **Acceptance**:
-  - [ ] `Calendar.is_group` is `True` exactly for `ZISGROUP=1` rows; `parent_group_id` is the parent group's `ZCKIDENTIFIER` (resolved by joining `ZPARENTLIST → Z_PK → ZCKIDENTIFIER`).
-  - [ ] `list_calendars()` (default) excludes group rows. `list_calendars(include_groups=True)` includes them.
-  - [ ] `create_group("X")` creates a group and returns the new `Calendar` with `is_group=True`.
-  - [ ] `move_list_to_group(list_uuid, group_uuid)` sets the child list's `ZPARENTLIST` to the group's `Z_PK`. `move_list_to_group(list_uuid, None)` detaches the list (clears `ZPARENTLIST`).
-  - [ ] `list_groups()` returns every `is_group=True` calendar.
-  - [ ] Live round-trip passes end-to-end.
-  - [ ] `_native/THIRD_PARTY_NOTICES.md` updated with the new `create_group` action as an explicit local modification.
-  - [ ] All gates green; `make typecheck` green.
-- [ ] Complete
+  - [x] `Calendar.is_group` is `True` exactly for `ZISGROUP=1` rows; `parent_group_id` is the parent group's `ZCKIDENTIFIER` (resolved by joining `ZPARENTLIST → Z_PK → ZCKIDENTIFIER` via `Reader._resolve_parent_group_uuid`).
+  - [x] `list_calendars()` (default) excludes group rows. `list_calendars(include_groups=True)` includes them. The MCP tool exposes this via an optional `include_groups: bool = False` arg.
+  - [x] `create_group("X")` creates a group and returns the new `Calendar` with `is_group=True`. The private `REMListChangeItem.setIsGroup:` selector is the writer — verified live on macOS 26.1.
+  - [x] `move_list_to_group(list_uuid, group_uuid)` sets `ZPARENTLIST` via the private `REMListChangeItem.setParentListID:` selector (NOT `setParentOwnerID:` — that one's for account-parent semantics and returns `com.apple.reminderkit error -1` when given a group ID). `move_list_to_group(list_uuid, None)` detaches via `setParentOwnerID:` with the account's `REMObjectID`.
+  - [x] `list_groups()` returns every `is_group=True` calendar. Reader method + MCP tool both ship.
+  - [x] **Live round-trip PASSED** (`test_live_group_round_trip`): created `REM-TEST-GROUP-S51` group + `REM-TEST-CHILDLIST-S51` list via the helper, moved the list under the group, asserted SQLite reads back `child.parent_group_id == group_id`, cleaned up via Swift helper's `delete_list`.
+  - [x] `_native/THIRD_PARTY_NOTICES.md` updated with the new `create_group` + `move_list_to_group` actions + the two new private-selector declarations as explicit local modifications.
+  - [x] All gates green: `make lint`, `make check-architecture`, `make typecheck`. Triggered one mid-slice refactor: `_native/reminderkit.py` split into transport (exceptions + `_invoke` + `ping`) and `_native/reminderkit_actions.py` (typed per-action wrappers) to stay under the 8-public-entry-point module-shape cap. `Reader.get_section_name` body pulled into `_sqlite_helpers.py` to stay under the 400-LOC sqlite.py hard cap.
+- [x] Complete
 
 ## Done when
 

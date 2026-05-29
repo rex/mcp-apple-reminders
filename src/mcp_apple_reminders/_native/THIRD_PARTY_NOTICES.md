@@ -25,18 +25,31 @@ argv shortcut documented in the header.
 
 ## Local modifications
 
-Both files have exactly two local modifications, both additive:
+The `remctl-bridge.swift` → `rem_eventkit.swift` file has exactly two local
+modifications:
 
-1. **File-header comment block** at the very top of each file. Documents the
-   borrow + upstream pin + local-modification list. No behavioral effect.
-2. **`--ping` CLI shortcut** at the very start of `main` in each file. Emits
-   `{"status":"ok","helper":"<name>"}` to stdout and exits 0. Used by
-   `verify_setup.py` to confirm the binary loads + framework symbols resolve
-   without needing to pipe a real JSON command on stdin. Does not alter any
-   pre-existing behavior path.
+1. **File-header comment block** at the very top. Documents the borrow +
+   upstream pin + local-modification list. No behavioral effect.
+2. **`--ping` CLI shortcut** at the very start of `main`. Emits
+   `{"status":"ok","helper":"rem_eventkit"}` to stdout and exits 0.
 
-No other lines have been touched; the JSON-over-stdio dispatch logic is
-upstream verbatim.
+The `remctl-private.m` → `rem_reminderkit.m` file has the same two mods
+plus **two new actions and one private-selector declaration added by S5.1
+(ADR 0001 — list-group support)**:
+
+3. New entry in the allowed-action set: `create_group`.
+4. New entry in the allowed-action set: `move_list_to_group`.
+5. Interface declaration on `REMListChangeItem` for the previously-undeclared
+   private selectors `setIsGroup:` and `setParentListID:` (both gated by
+   `respondsToSelector:` at call sites). These selectors are reverse-engineered
+   from the SQLite schema (`ZISGROUP` + `ZPARENTLIST` columns) and verified
+   live on macOS 26.1.
+6. Action handler blocks for `create_group` (calls `setIsGroup:YES` on a
+   new list change item) and `move_list_to_group` (calls `setParentListID:`
+   with the group's `REMObjectID`, or the account's for the detach case).
+
+No other lines have been touched in either file; the upstream JSON-over-stdio
+dispatch logic is preserved verbatim around these additions.
 
 ## Verbatim MIT License (from upstream `LICENSE`)
 

@@ -31,7 +31,7 @@ Spec `001-visibility-foundation` was retired (archived in `specs/_archive/`) aft
 | 2 | MCP protocol primitives (Resources, Prompts, Sampling, Elicitation, progress) | ✅ done | All 5 slices: S2.1 ✅, S2.2 ✅, S2.3 ✅, S2.4 ✅, S2.5 ✅ |
 | 3 | Feature parity (alarms time + location, recurrence, bulk ops, multi-cal query) | ✅ done | All 6 slices done (S3.1 ✅, S3.2 ✅, S3.3 ✅, S3.4 ✅, S3.5 ✅, S3.6 ✅) |
 | 4 | Visibility-plane pilot + cross-cutting (security, kill switches, docs sweep) | ✅ done (4/5; S4.2 stretch deferred) | Agents-<project> bootstrap shipped (S4.1); SECURITY-REVIEW.md done (S4.4); docs/TOOLS.md auto-generated (S4.5); streamable HTTP opt-in (S4.3); S4.2 TodoWrite mirror is a stretch goal — deferred for a future iteration where Claude Code's TodoWrite hook surface becomes hookable. |
-| 5 | List-group support — ADR 0001 (2026-05-28) addendum to spec 002 | ⏸ pending | Reverse-engineered Reminders.app group schema (`ZISGROUP=1` + `ZPARENTLIST`); one slice (S5.1) covers read + write + Pydantic + Obj-C helper extension + live test. |
+| 5 | List-group support — ADR 0001 (2026-05-28) addendum to spec 002 | ✅ done | S5.1 shipped 2026-05-29. Read + write groups end-to-end. `create_group` + `list_groups` + `move_list_to_group` MCP tools + `is_group`/`parent_group_id` on Calendar. Live round-trip PASSED. The cleanup pass (CL-1) comes next. |
 
 Statuses: `⏸ pending` · `🟡 in-prog` · `✅ done` · `🔴 blocked`
 

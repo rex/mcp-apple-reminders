@@ -15,7 +15,7 @@ from .._native.reminderkit import (
     ReminderKitHelperError,
     ReminderKitHelperUnavailable,
 )
-from .._native.reminderkit import (
+from .._native.reminderkit_actions import (
     assign_section as helper_assign_section,
 )
 from .._native.sqlite import Reader, RemindersDBUnavailable

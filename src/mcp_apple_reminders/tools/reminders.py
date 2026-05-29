@@ -16,13 +16,13 @@ from .._native.reminderkit import (
     ReminderKitHelperError,
     ReminderKitHelperUnavailable,
 )
-from .._native.reminderkit import (
+from .._native.reminderkit_actions import (
     add_tags as helper_add_tags,
 )
-from .._native.reminderkit import (
+from .._native.reminderkit_actions import (
     create_subtask as helper_create_subtask,
 )
-from .._native.reminderkit import (
+from .._native.reminderkit_actions import (
     set_flagged as helper_set_flagged,
 )
 from .._native.sqlite import Reader, RemindersDBUnavailable

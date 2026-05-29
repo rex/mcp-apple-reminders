@@ -5,6 +5,58 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.44] — 2026-05-29 — Agent: Claude — Slice 5.1 (🎯 list-group support)
+
+ADR 0001 acted on. Pierce's hunch — point at the one "Claude" group and reverse-
+engineer outward — paid off in full: groups now have a real first-class surface
+across read + write + Pydantic + Obj-C helper + tools + tests. Live round-trip
+PASSED end-to-end.
+
+### Added (read side)
+- `Calendar` Pydantic gains `is_group: bool = False` + `parent_group_id: Optional[str] = None` at the tail (post-S0.3-freeze additive — defaults preserve compat). Regression test `test_calendar_field_order_is_canonical` updated to lock the new tail in.
+- `_native/sqlite.py::Reader.list_groups()` — `WHERE ZISGROUP = 1`.
+- `_native/sqlite.py::Reader.iter_lists_in_group(group_uuid)` — resolves group's `Z_PK` then streams children whose `ZPARENTLIST` matches.
+- `_native/sqlite.py::Reader.list_calendars(include_groups=False)` — default behavior change. Groups excluded unless the caller asks. `search_calendars` gets the same toggle.
+- `_native/sqlite.py::Reader._resolve_parent_group_uuid()` — joins `ZPARENTLIST → Z_PK → ZCKIDENTIFIER`.
+- `_native/_sqlite_helpers.py::_calendar_from_row` — extended with `parent_group_id` kwarg and reads `ZISGROUP` from the row.
+
+### Added (write side — Obj-C helper extensions)
+- `_native/src/rem_reminderkit.m` (vendored, **local mod**) — new private-selector declarations on `REMListChangeItem`: `setIsGroup:` and `setParentListID:`. Both gated with `respondsToSelector:` at call sites.
+- Two new actions in the helper's allowed-action set: `create_group` and `move_list_to_group`. **`setParentListID:` is the correct reparent selector** — `setParentOwnerID:` (the obvious-looking choice from the existing header) returns `com.apple.reminderkit error -1` when given a group's REMObjectID; the schema column name `ZPARENTLIST` was the clue that the right setter mirrored it.
+- `_native/THIRD_PARTY_NOTICES.md` updated with the new mods documented as explicit local modifications.
+
+### Added (Python wrappers + MCP tools)
+- New module `_native/reminderkit_actions.py` — typed per-action wrappers (`create_group`, `move_list_to_group`, `assign_section`, `add_tags`, `set_flagged`, `create_subtask`). Pulled out of `_native/reminderkit.py` so the protocol module stays under the 8-public-entry-point module-shape cap.
+- New module `tools/groups.py` with three MCP tools:
+  - `create_group(name)` — 38th tool.
+  - `list_groups()` — 39th tool.
+  - `move_list_to_group(list_id, group_id?)` — 40th tool.
+- `tools/calendars.py::list_calendars` gains the `include_groups: bool = False` argument.
+
+### Architecture refactors (mid-slice, to stay under gate caps)
+- `_native/reminderkit.py` split into transport (exceptions + `_invoke` + `ping` + `is_available`) and `_native/reminderkit_actions.py` (typed action wrappers). Tools/ updated to import from the new module.
+- `Reader.get_section_name` body extracted to `_sqlite_helpers.py::_resolve_section_name` so `sqlite.py` stays under the 400-line hard cap.
+
+### Test
+- `test_groups.py` (8 tests; 7 pass + 1 opt-in live):
+  - Pydantic defaults + group construction.
+  - Input guards on `create_group` / `move_list_to_group` wrappers.
+  - `Reader.list_groups` returns rows with `is_group=True`.
+  - `Reader.iter_lists_in_group` unknown UUID → empty.
+  - `list_calendars(include_groups=...)` toggle exercises both modes.
+  - **`test_live_group_round_trip`** (REM_LIVE_HELPER=1) — creates group + child list + moves + asserts SQLite reads back `parent_group_id == group_id` + cleans up. **PASSED.**
+- `test_models.py::test_calendar_field_order_is_canonical` updated to lock the tail-append (`is_group`, `parent_group_id`).
+
+### Verified
+- `pytest test_groups.py test_models.py test_sqlite_reader.py test_alarms.py test_resources.py test_prompts.py test_agents.py test_bulk_ops.py`: 51 passed, 4 skipped (opt-in live tests, 5 of which have PASSED across the session).
+- `REM_LIVE_HELPER=1 pytest test_groups.py::test_live_group_round_trip`: PASSED.
+- `await mcp.list_tools()`: **40 tools** registered (+3 vs S4.5).
+- `make lint && make check-architecture && make typecheck`: green.
+
+### Status — **🎯 Phase 5 / Slice 5.1 complete**
+- 32 slices shipped in the session sprint.
+- Next per ADR 0001 + audit captured at `docs/audits/2026-05-29-post-spec-002-cleanup-audit/`: cleanup pass (CL-1 — single slice or CL-1a/b/c/d split, shape pending).
+
 ## [0.1.43] — 2026-05-29 — Agent: Claude — audit captured (4 Opus subagents → 5 docs)
 
 After Pierce opened the repo in an editor post-spec-002 and surfaced sprawl + stale debris,

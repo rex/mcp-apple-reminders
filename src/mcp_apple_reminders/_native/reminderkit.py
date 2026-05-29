@@ -215,107 +215,11 @@ def _invoke_action(action: str, **kwargs: Any) -> dict:
     return _invoke(payload)
 
 
-def assign_section(reminder_id: str, section_id: str) -> dict:
-    """Move a reminder into a section via the Obj-C `assign_section` action.
-
-    Args:
-        reminder_id: The reminder's UUID.
-        section_id: The section's UUID (resolve via `Reader.list_sections_in_calendar`).
-
-    Raises:
-        ValueError: blank input.
-        ReminderKitHelperUnavailable: helper missing.
-        ReminderKitHelperError: structured helper error.
-    """
-    if not reminder_id or not reminder_id.strip():
-        raise ValueError("reminder_id is required and must be non-empty")
-    if not section_id or not section_id.strip():
-        raise ValueError("section_id is required and must be non-empty")
-    return _invoke({"action": "assign_section", "id": reminder_id, "sectionId": section_id})
-
-
-def add_tags(reminder_id: str, tags: list[str]) -> dict:
-    """Append tags to a reminder via the Obj-C `add_tags` action.
-
-    NOTE: the underlying helper action is **additive**. Existing tags are
-    preserved; this just adds the new ones. To "replace" the tag set
-    callers must currently use Reminders.app to remove the old tags;
-    a `clear_tags` helper action will land in a follow-up patch.
-
-    Args:
-        reminder_id: The reminder's UUID.
-        tags: One or more tag names (without the leading `#`). The helper
-            rejects empty lists.
-
-    Raises:
-        ValueError: `reminder_id` is blank or `tags` is empty.
-        ReminderKitHelperUnavailable: helper missing.
-        ReminderKitHelperError: helper returned a structured error.
-    """
-    if not reminder_id or not reminder_id.strip():
-        raise ValueError("reminder_id is required and must be non-empty")
-    cleaned = [t for t in (tags or []) if t and t.strip()]
-    if not cleaned:
-        raise ValueError("tags is required and must contain at least one non-empty value")
-    return _invoke({"action": "add_tags", "id": reminder_id, "tags": cleaned})
-
-
-def set_flagged(reminder_id: str, flagged: bool) -> dict:
-    """Set the flagged flag on a reminder via the Obj-C `set_flagged` action.
-
-    Args:
-        reminder_id: The reminder's UUID.
-        flagged: True to flag, False to clear.
-
-    Raises:
-        ValueError: `reminder_id` is blank.
-        ReminderKitHelperUnavailable: helper missing.
-        ReminderKitHelperError: helper returned a structured error.
-    """
-    if not reminder_id or not reminder_id.strip():
-        raise ValueError("reminder_id is required and must be non-empty")
-    return _invoke({"action": "set_flagged", "id": reminder_id, "flagged": bool(flagged)})
-
-
-def create_subtask(parent_id: str, title: str, **extras: Any) -> dict:
-    """Create one new subtask under the given parent via `add_subtasks`.
-
-    The subtask inherits the parent's list automatically — there's no separate
-    list_id to pass. Additional kwargs flow through to the helper's
-    per-subtask spec dict (e.g. `priority`).
-
-    Args:
-        parent_id: The parent reminder's UUID (matches
-            `EKReminder.calendarItemIdentifier()` and SQLite `ZCKIDENTIFIER`).
-        title: The subtask title.
-        **extras: Per-subtask metadata flowed into the spec dict.
-
-    Returns:
-        The helper's response dict, which carries the new subtask's id and url
-        under `subtasks[0]` of the response payload.
-
-    Raises:
-        ReminderKitHelperUnavailable: helper missing.
-        ReminderKitHelperError: helper returned a structured error.
-        ValueError: title or parent_id blank.
-    """
-    if not parent_id or not parent_id.strip():
-        raise ValueError("parent_id is required and must be non-empty")
-    if not title or not title.strip():
-        raise ValueError("title is required and must be non-empty")
-    spec: dict[str, Any] = {"title": title, **extras}
-    return _invoke({"action": "add_subtasks", "id": parent_id, "subtasks": [spec]})
-
-
 __all__ = [
     "DEFAULT_HELPER_PATH",
     "REMINDERKIT_HELPER_AVAILABLE",
     "ReminderKitHelperError",
     "ReminderKitHelperUnavailable",
-    "add_tags",
-    "assign_section",
-    "create_subtask",
     "is_available",
     "ping",
-    "set_flagged",
 ]

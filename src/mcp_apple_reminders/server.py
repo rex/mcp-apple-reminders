@@ -42,6 +42,7 @@ from .tools import agents as _agents_tool  # noqa: E402, F401
 from .tools import alarms as _alarms  # noqa: E402, F401
 from .tools import bulk as _bulk  # noqa: E402, F401
 from .tools import calendars as _calendars  # noqa: E402, F401
+from .tools import groups as _groups  # noqa: E402, F401
 from .tools import queries as _queries  # noqa: E402, F401
 from .tools import reminders as _reminders  # noqa: E402, F401
 from .tools import sampling as _sampling  # noqa: E402, F401
