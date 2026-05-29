@@ -184,6 +184,8 @@ async def update_reminder(
         priority: New priority: 'none', 'low', 'medium', 'high', or integer 0-9. Optional.
         url: New URL to associate with the reminder. Optional.
         is_completed: Mark the reminder as completed (true) or incomplete (false). Optional.
+        flagged: Set or clear the reminder's flag (via the ReminderKit helper). Optional.
+        add_tags: Tags to add (merged with existing, not replaced; via the ReminderKit helper). Optional.
     """
     kwargs: dict = {}
     if title:

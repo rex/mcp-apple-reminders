@@ -58,13 +58,5 @@ def test_bulk_move_with_empty_list_returns_zero_processed():
     assert out == {"processed": 0, "failed": []}
 
 
-def test_valid_routes_unused_import_silenced():
-    """Module-level sanity check — the deferred `native_reminder_to_pydantic` import shouldn't crash."""
-    from mcp_apple_reminders.tools import bulk
-
-    # `_unused` proves the deferred import resolved without exception.
-    assert hasattr(bulk, "_unused")
-
-
 # pytest config — we don't yield from any external state, suppress xdist warnings.
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")

@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.57] — 2026-05-29 — Agent: Claude
+### Fixed
+- Fix per-module issues: document update_reminder flagged/add_tags args, hoist _ConfirmCascade elicit schema to module scope in calendars, drop the _unused native_reminder_to_pydantic import hack in bulk (+ its test), and raise instead of silently returning [] when SQLite is unavailable in get_completed_in_range/get_subtasks/list_groups
+
 ## [0.1.56] — 2026-05-29 — Agent: Claude
 ### Changed
 - Deduplicate the _app_context accessor (8 tool modules) and _bridge_from_ctx (2 modules) into shared lifespan.app_context/bridge_from_ctx helpers

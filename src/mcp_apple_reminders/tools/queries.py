@@ -254,8 +254,10 @@ async def get_completed_in_range(
             await ctx.debug(f"get_completed_in_range: {len(results)} completion(s) in window")
             return results
     except RemindersDBUnavailable as e:
-        await ctx.warning(f"SQLite read path unavailable ({e}); EventKit fallback not implemented for this tool.")
-        return []
+        await ctx.error(f"SQLite read path unavailable ({e}); get_completed_in_range requires the SQLite reader.")
+        raise ValueError(
+            f"SQLite read path unavailable ({e}); get_completed_in_range requires the SQLite reader."
+        ) from e
 
 
 @mcp.tool(

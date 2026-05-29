@@ -42,8 +42,8 @@ async def get_subtasks(reminder_id: str, ctx: Context) -> list[Reminder]:
             await ctx.debug(f"get_subtasks({reminder_id}): {len(subtasks)} found")
             return subtasks
     except RemindersDBUnavailable as e:
-        await ctx.warning(f"SQLite read path unavailable ({e}); cannot list subtasks.")
-        return []
+        await ctx.error(f"SQLite read path unavailable ({e}); cannot list subtasks.")
+        raise ValueError(f"SQLite read path unavailable ({e}); subtasks require the SQLite reader.") from e
 
 
 @mcp.tool(

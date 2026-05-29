@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Optional
 
 from mcp.server.fastmcp import Context
+from pydantic import BaseModel
 
 from .._native.eventkit import (
     EventKitHelperError,
@@ -35,6 +36,10 @@ from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
 from ..models import Calendar, native_calendar_to_pydantic
 from ..server import mcp
+
+
+class _ConfirmCascade(BaseModel):
+    """Empty elicitation schema — the user just accepts or declines the cascade."""
 
 
 @mcp.tool(
@@ -247,11 +252,6 @@ async def delete_calendar(name: str, ctx: Context, force: bool = False) -> dict:
     # supported.
     if force and reminder_count and reminder_count > 0:
         try:
-            from pydantic import BaseModel
-
-            class _ConfirmCascade(BaseModel):
-                pass
-
             elicitation = await ctx.elicit(
                 message=(
                     f"About to delete calendar {name!r} and cascade-remove "

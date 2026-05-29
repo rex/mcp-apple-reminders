@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from .._native.bulk import bulk_iter
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
-from ..models import Reminder, native_reminder_to_pydantic
+from ..models import Reminder
 from ..server import mcp
 
 
@@ -151,7 +151,3 @@ async def bulk_delete_completed(
         "failed": failed,
         "window": {"start": start, "end": end},
     }
-
-
-# Avoid an unused-import lint hit while keeping the converter ready for future use.
-_unused = native_reminder_to_pydantic  # noqa: F841

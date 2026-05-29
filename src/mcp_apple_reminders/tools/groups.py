@@ -109,8 +109,8 @@ async def list_groups(ctx: Context) -> list[Calendar]:
         with app.open_sqlite() as conn:
             return Reader(conn).list_groups()
     except RemindersDBUnavailable as e:
-        await ctx.warning(f"SQLite read path unavailable ({e}); returning [].")
-        return []
+        await ctx.error(f"SQLite read path unavailable ({e}); cannot list groups.")
+        raise ValueError(f"SQLite read path unavailable ({e}); groups require the SQLite reader.") from e
 
 
 @mcp.tool(
