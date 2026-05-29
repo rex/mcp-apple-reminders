@@ -40,6 +40,7 @@ from .resources import reminders as _resources_reminders  # noqa: E402, F401
 from .tools import calendars as _calendars  # noqa: E402, F401
 from .tools import queries as _queries  # noqa: E402, F401
 from .tools import reminders as _reminders  # noqa: E402, F401
+from .tools import sampling as _sampling  # noqa: E402, F401
 from .tools import sections as _sections  # noqa: E402, F401
 from .tools import workflow as _workflow  # noqa: E402, F401
 

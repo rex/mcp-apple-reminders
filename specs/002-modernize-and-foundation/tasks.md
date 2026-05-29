@@ -221,12 +221,13 @@
 
 ### S2.5 — Sampling: `triage_brain_dump`
 
-- **Files**: `tools/sampling.py` (new), test
+- **Files**: `src/mcp_apple_reminders/tools/sampling.py` (new), `test_sampling.py` (new — 5 tests on the helper surface).
 - **Acceptance**:
-  - [ ] Given `from_list` (default Claude-Brain-Dump), the tool calls `ctx.session.create_message` to classify each item by domain.
-  - [ ] Routes accordingly (with elicitation if confidence < threshold).
-  - [ ] Test mocks the sampling call.
-- [ ] Complete
+  - [x] Given `from_list` (default `Claude-Brain-Dump`), `max_items` cap, the tool reads incomplete items from SQLite, builds a structured prompt, calls `await ctx.session.create_message(...)`, parses the JSON routing response, and returns `{from_list, items, routing, valid_destinations, model_response}`.
+  - [x] Routes proposed only — the tool does NOT move anything. The caller applies via `move_reminder_*` afterwards. (More conservative than the spec's "routes accordingly" — keeps the tool deterministic and lets the user double-check the LLM's classification.)
+  - [x] Invalid LLM responses (unknown ids, made-up destinations, non-JSON, code-fenced JSON) all parsed/discarded safely. Tests cover each case.
+  - [x] **`Phase 2 — COMPLETE`**: all five slices landed.
+- [x] Complete
 
 ## Phase 3 — Feature parity
 

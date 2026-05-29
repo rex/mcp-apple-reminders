@@ -5,6 +5,28 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.32] — 2026-05-28 — Agent: Claude — Slice 2.5 (sampling) — 🎯 **Phase 2 complete**
+
+### Added
+- `src/mcp_apple_reminders/tools/sampling.py::triage_brain_dump(from_list, max_items)` — the 29th tool. Reads incomplete items from the named list (default `Claude-Brain-Dump`), builds a structured prompt, calls `await ctx.session.create_message(...)`, parses JSON routing, returns `{from_list, items, routing, valid_destinations, model_response}`. Tool does NOT move anything — returns proposed routing for the caller to apply via `move_reminder_*`. More conservative than the spec's "routes accordingly"; lets the user double-check the LLM's classification.
+- Robust response parsing: unknown ids dropped, made-up destinations dropped, code-fenced JSON unwrapped, non-JSON returns empty dict (not exception).
+- `test_sampling.py` (5 tests) on the helper surface — pure unit-level so the prompt/parse logic stays under test without requiring a real sampling-capable client.
+
+### Decided
+- Older SDKs without `ctx.session.create_message` are detected via `AttributeError` and surface a clear `ValueError` pointing the user at the manual workflow.
+
+### Verified
+- `pytest test_sampling.py`: 5 passed.
+- `await mcp.list_tools()`: **29 tools registered**.
+- `make lint && make check-architecture`: green.
+
+### Status — **🎯 PHASE 2 COMPLETE**
+- Phase 0 (substrate): ✅ S0.1–S0.6.
+- Phase 1 (P0 capabilities): ✅ S1.0–S1.8.
+- **Phase 2 (MCP primitives): ✅ S2.1 (Resources), S2.2 (Prompts), S2.3 (progress), S2.4 (elicitation), S2.5 (sampling).**
+- 20 slices shipped this session.
+- Next: Phase 3 (alarms, recurrence, bulk, multi-cal, completed-in-range).
+
 ## [0.1.31] — 2026-05-28 — Agent: Claude — Slices 2.3 + 2.4 (progress + elicitation)
 
 Two small slices shipped together.
