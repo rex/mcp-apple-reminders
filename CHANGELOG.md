@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.33] — 2026-05-28 — Agent: Claude — PROGRESS.md checkpoint
+### Documented
+- Refreshed `PROGRESS.md` to reflect Phase 0/1/2 complete, 20 slices shipped, 29 MCP tools registered, 4 Resources, 4 Prompts. Quick stats + last three decisions + Phase 3 entry point. Reading order for fresh agent unchanged.
+
 ## [0.1.32] — 2026-05-28 — Agent: Claude — Slice 2.5 (sampling) — 🎯 **Phase 2 complete**
 
 ### Added
