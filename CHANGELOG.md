@@ -5,6 +5,28 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.29] — 2026-05-28 — Agent: Claude — Slice 2.1 (MCP Resources)
+
+Phase 2 begins. Four MCP Resources, all served from the SQLite reader.
+
+### Added
+- `src/mcp_apple_reminders/resources/__init__.py` + `resources/reminders.py`:
+  - `reminders://default` — user's default list with incomplete reminders.
+  - `reminders://overdue` — incomplete reminders past their due date.
+  - `reminders://today` — incomplete reminders due in the current local day.
+  - `reminders://list/{calendar_id}` — reminders inside a specific list.
+- Each resource returns `{"reminders": [...], "context": {...}}` JSON.
+- `server.py` imports the new `resources/reminders` module so the decorators register at server start.
+- `test_resources.py` (5 tests):
+  - 3 static resources registered + 1 template registered.
+  - Each resource read returns a valid JSON envelope with the documented context keys.
+  - Overdue resource asserted to return only `completed=False` reminders.
+
+### Verified
+- `pytest test_resources.py`: 5 passed.
+- `await mcp.list_resources()`: 3 entries; `await mcp.list_resource_templates()`: 1 entry.
+- `make lint && make check-architecture`: green.
+
 ## [0.1.28] — 2026-05-28 — Agent: Claude — Slice 1.8 (assign_section) — 🎯 **Phase 1 complete**
 
 The last Phase 1 slice. Every capability the spec promised for P0 now ships:

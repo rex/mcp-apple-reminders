@@ -186,11 +186,12 @@
 
 ### S2.1 — Resources (4 SQLite-served views)
 
-- **Files**: `src/mcp_apple_reminders/resources/__init__.py`, `resources/reminders.py`, registration in `server.py`
+- **Files**: `src/mcp_apple_reminders/resources/__init__.py` (new), `resources/reminders.py` (new, 4 `@mcp.resource` decorators), `server.py` (registered the new module), `test_resources.py` (new, 5 tests).
 - **Acceptance**:
-  - [ ] `reminders://list/{id}`, `reminders://default`, `reminders://overdue`, `reminders://today` registered, all served from SQLite (~10ms each).
-  - [ ] Resources are discoverable via the client's resource-listing call.
-- [ ] Complete
+  - [x] **3 static + 1 templated** registered: `reminders://default`, `reminders://overdue`, `reminders://today`, `reminders://list/{calendar_id}`. All served from the SQLite reader.
+  - [x] Discoverable: `await mcp.list_resources()` returns the 3 static entries; `await mcp.list_resource_templates()` returns the templated one.
+  - [x] Smoke tests live-exercise each static resource end-to-end against the user's store (30 reminders in default, 28 overdue, 0 today on the test machine).
+- [x] Complete
 
 ### S2.2 — Prompts (4 canned workflows)
 
