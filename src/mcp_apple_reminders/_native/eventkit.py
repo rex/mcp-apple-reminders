@@ -214,6 +214,100 @@ def set_alarm(
     return _invoke(payload, helper_path=helper_path)
 
 
+def set_location_alarm(
+    reminder_id: str,
+    latitude: float,
+    longitude: float,
+    *,
+    location_title: Optional[str] = None,
+    radius_m: float = 100.0,
+    proximity: str = "enter",
+    helper_path: Optional[Path] = None,
+) -> dict:
+    """Add a geofenced (location-based) alarm to a reminder.
+
+    Args:
+        reminder_id: Target reminder UUID.
+        latitude: Decimal degrees, -90 to 90.
+        longitude: Decimal degrees, -180 to 180.
+        location_title: Human-readable label shown in Reminders.app. Optional.
+        radius_m: Geofence radius in meters. Default 100m.
+        proximity: 'enter' fires when entering the radius; 'leave' on exit.
+
+    Raises:
+        ValueError: blank reminder_id, lat/lon out of range, bad proximity.
+        EventKitHelperUnavailable: helper missing.
+        EventKitHelperError: structured helper error.
+    """
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    if not -90.0 <= latitude <= 90.0:
+        raise ValueError(f"latitude must be in [-90, 90]; got {latitude}")
+    if not -180.0 <= longitude <= 180.0:
+        raise ValueError(f"longitude must be in [-180, 180]; got {longitude}")
+    if proximity not in ("enter", "leave"):
+        raise ValueError(f"proximity must be 'enter' or 'leave'; got {proximity!r}")
+
+    payload: dict[str, Any] = {
+        "action": "update",
+        "id": reminder_id,
+        "latitude": latitude,
+        "longitude": longitude,
+        "radius": float(radius_m),
+        "proximity": proximity,
+    }
+    if location_title:
+        payload["locationTitle"] = location_title
+    return _invoke(payload, helper_path=helper_path)
+
+
+def set_recurrence(
+    reminder_id: str,
+    frequency: str,
+    interval: int = 1,
+    *,
+    days_of_week: Optional[list[int]] = None,
+    days_of_month: Optional[list[int]] = None,
+    end_iso: Optional[str] = None,
+    helper_path: Optional[Path] = None,
+) -> dict:
+    """Set a recurrence rule on a reminder via the Swift helper.
+
+    Args:
+        reminder_id: Target reminder UUID.
+        frequency: One of `daily`, `weekly`, `monthly`, `yearly`.
+        interval: Recurrence interval (every N days/weeks/etc). Default 1.
+        days_of_week: ISO weekday numbers (1=Mon … 7=Sun) for `weekly`. Optional.
+        days_of_month: 1–31 for `monthly`. Optional.
+        end_iso: ISO datetime where recurrence stops. Optional (infinite if omitted).
+
+    Raises:
+        ValueError: blank/invalid input.
+        EventKitHelperUnavailable / EventKitHelperError on helper failure.
+    """
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    if frequency not in ("daily", "weekly", "monthly", "yearly"):
+        raise ValueError(f"frequency must be one of daily/weekly/monthly/yearly; got {frequency!r}")
+    if interval < 1:
+        raise ValueError(f"interval must be >= 1; got {interval}")
+
+    spec: dict[str, Any] = {"frequency": frequency, "interval": int(interval)}
+    if days_of_week:
+        spec["daysOfWeek"] = list(days_of_week)
+    if days_of_month:
+        spec["daysOfMonth"] = list(days_of_month)
+    if end_iso:
+        spec["end"] = end_iso
+
+    payload: dict[str, Any] = {
+        "action": "update",
+        "id": reminder_id,
+        "recurrence": spec,
+    }
+    return _invoke(payload, helper_path=helper_path)
+
+
 def delete_calendar(
     title: str,
     *,
@@ -293,4 +387,6 @@ __all__ = [
     "delete_calendar",
     "rename_calendar",
     "set_alarm",
+    "set_location_alarm",
+    "set_recurrence",
 ]

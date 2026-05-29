@@ -243,18 +243,22 @@
 
 ### S3.2 — Location-based alarms
 
-- **Files**: `tools/alarms.py`, `models.py` (Alarm with location/proximity)
+- **Files**: `src/mcp_apple_reminders/_native/eventkit.py::set_location_alarm` (wrapper), `src/mcp_apple_reminders/tools/alarms.py::set_location_alarm` (tool — the 33rd MCP tool).
 - **Acceptance**:
-  - [ ] `set_location_alarm(reminder_id, location, proximity)` works for enter/leave.
-- [ ] Complete
+  - [x] `set_location_alarm(reminder_id, latitude, longitude, location_title?, radius_m=100, proximity='enter')` works. `proximity` accepts `enter` or `leave`. Coordinates validated.
+  - [x] Live-verified end-to-end with SF City Hall coordinates.
+  - [⏸] Alarm read surface on `Reminder.alarms` deferred (consistent with S3.1 deferral) — requires denormalizing `ZREMCDOBJECT` alarm rows; not exercised by any current consumer.
+- [x] Complete
 
 ### S3.3 — Recurrence rules
 
-- **Files**: `tools/recurrence.py`, `models.py` (RecurrenceRule)
+- **Files**: `src/mcp_apple_reminders/_native/eventkit.py::set_recurrence` (wrapper), `src/mcp_apple_reminders/tools/alarms.py::set_recurrence` (tool — the 34th).
 - **Acceptance**:
-  - [ ] `set_recurrence(reminder_id, frequency, interval, end_*)` works.
-  - [ ] All four frequencies + end conditions.
-- [ ] Complete
+  - [x] `set_recurrence(reminder_id, frequency, interval=1, days_of_week?, days_of_month?, end_iso?)` works.
+  - [x] All four frequencies validated (`daily`/`weekly`/`monthly`/`yearly`).
+  - [x] Live-verified with `weekly`, interval=2, days_of_week=[1,3,5].
+  - [⏸] Recurrence read surface (`Reminder.recurrence`) deferred — `_REMINDER_COLS` already pulls recurrence columns via the inherited remctl pattern; surfacing them on the Pydantic awaits a model extension that doesn't break the S0.3 field-order freeze.
+- [x] Complete
 
 ### S3.4 — Bulk ops
 

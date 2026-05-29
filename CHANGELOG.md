@@ -5,6 +5,28 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.37] — 2026-05-28 — Agent: Claude — Slices 3.2 + 3.3 (location alarms + recurrence)
+
+Two more write-side wrappers around the Swift helper's existing fields. Both live-verified.
+
+### Added
+- `_native/eventkit.py::set_location_alarm(reminder_id, latitude, longitude, *, location_title, radius_m, proximity)` — geofenced alarm with input validation (lat ±90, lon ±180, proximity ∈ {enter, leave}).
+- `tools/alarms.py::set_location_alarm` — the 33rd tool.
+- `_native/eventkit.py::set_recurrence(reminder_id, frequency, interval=1, *, days_of_week, days_of_month, end_iso)` — recurrence rule with frequency ∈ {daily, weekly, monthly, yearly}, interval >= 1, optional weekday/month-day refinements, optional end date.
+- `tools/alarms.py::set_recurrence` — the 34th tool.
+
+### Live verified
+- `set_location_alarm(..., (37.7749, -122.4194), 'SF City Hall', 50, 'enter')` — helper returned `{"status":"updated"}` end-to-end.
+- `set_recurrence(..., 'weekly', interval=2, days_of_week=[1,3,5])` — same. Note: EventKit requires a due date on the reminder before recurrence will save; documented inline.
+
+### Verified
+- `await mcp.list_tools()`: 34 tools.
+- `make lint && make check-architecture`: green.
+
+### Status
+- Phase 3 progress: S3.1 ✅, S3.2 ✅, S3.3 ✅, S3.5 ✅, S3.6 ✅ — five of six. Only S3.4 (bulk ops) remains.
+- 27 slices shipped this session.
+
 ## [0.1.36] — 2026-05-28 — Agent: Claude — Slice 4.1 (🎯 visibility-plane pilot)
 
 **The whole point of the project.** Agents can now bootstrap a per-project
