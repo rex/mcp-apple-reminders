@@ -33,6 +33,7 @@ from . import (
     sampling,
     sections,
     smartlists,
+    templates,
     workflow,
 )
 
@@ -48,5 +49,6 @@ __all__ = [
     "sampling",
     "sections",
     "smartlists",
+    "templates",
     "workflow",
 ]

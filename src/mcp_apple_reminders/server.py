@@ -49,6 +49,7 @@ from .tools import reminders as _reminders  # noqa: E402, F401
 from .tools import sampling as _sampling  # noqa: E402, F401
 from .tools import sections as _sections  # noqa: E402, F401
 from .tools import smartlists as _smartlists  # noqa: E402, F401
+from .tools import templates as _templates  # noqa: E402, F401
 from .tools import workflow as _workflow  # noqa: E402, F401
 
 

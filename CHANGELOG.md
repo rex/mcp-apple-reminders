@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.65] — 2026-05-29 — Agent: Claude
+### Added
+- Add list-template tools (create_template / apply_template / delete_template) via _native/reminderkit_content.py + tools/templates.py
+
 ## [0.1.64] — 2026-05-29 — Agent: Claude
 ### Added
 - Add list/group appearance + pinning tools: set_list_appearance (rename/color/SF-symbol/emoji; works on lists AND groups), set_list_pinned, set_smart_list_pinned
