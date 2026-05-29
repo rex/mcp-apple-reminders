@@ -5,9 +5,31 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
-## [0.1.41] — 2026-05-29 — Agent: Claude
-### Changed
-- _(fill in — what changed in this version)_
+## [0.1.42] — 2026-05-29 — Agent: Claude — CHANGELOG fix-forward for 0.1.41
+
+### Fixed
+- Backfilled the `[0.1.41]` entry that landed with the placeholder text (`_(fill in — what changed in this version)_`). Race between `make bump-patch` writing the date-stamped header and the prior `replace_content` call's older-date pattern. The 0.1.41 body now describes the actual change: ADR 0001 + S5.1 spec'd.
+
+## [0.1.41] — 2026-05-29 — Agent: Claude — ADR 0001 + S5.1 spec'd (planning only)
+
+After Pierce pointed at his single "Claude" group and asked us to chase
+it through the schema, a quick SQL probe cracked the structure open.
+This commit captures the decision to act on it — planning-only, no
+code change yet.
+
+### Added (docs only)
+- **`docs/adr/0001-list-group-support.md`** — first ADR. Records the schema reverse-engineering (`ZISGROUP=1` flag + `ZPARENTLIST` foreign key, both on the same `ZREMCDBASELIST` table — no separate group entity), the decision to extend spec 002 with Phase 5, alternatives considered (vs. spec 003), risks (private-framework drift, dual `ZPARENTLIST` columns, backward compat on `list_calendars`), and the implementation surface sketch.
+- **`specs/002-modernize-and-foundation/plan.md`** — Phase 5 section after Phase 4 with one slice (S5.1).
+- **`specs/002-modernize-and-foundation/tasks.md`** — full S5.1 task entry with files + acceptance bullets.
+- **`TASK_STATE.md`** — Phase 5 row added; S5.1 marked as the new NEXT slice.
+
+### Slice 5.1 surface (planned)
+- `Reader.list_groups()` + `Reader.iter_lists_in_group()` + `Reader.list_calendars(include_groups=False)`.
+- `Calendar` Pydantic gains `is_group: bool = False` + `parent_group_id: Optional[str] = None` at the tail (post-S0.3-freeze additive — defaults preserve compat).
+- One new local mod to `_native/src/rem_reminderkit.m`: `create_group` action (+ optionally `move_list_to_group`).
+- Python wrappers + 3 new MCP tools in a new `tools/groups.py`.
+- `tools/calendars.py::list_calendars(include_groups=False)`.
+- Live round-trip test.
 
 ## [0.1.40] — 2026-05-28 — Agent: Claude — typecheck gate fixes
 
