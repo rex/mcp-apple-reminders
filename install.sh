@@ -59,13 +59,7 @@ source venv/bin/activate
 echo "📦 Upgrading pip..."
 python -m pip install --upgrade pip --quiet
 
-# Install dependencies
-echo "📦 Installing dependencies..."
-python -m pip install -r requirements.txt --quiet
-echo "✓ Dependencies installed"
-echo ""
-
-# Install the package in development mode
+# Install the package in development mode (deps resolve from pyproject.toml)
 echo "📦 Installing mcp-apple-reminders..."
 python -m pip install -e . --quiet
 echo "✓ Package installed"

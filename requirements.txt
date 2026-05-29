@@ -1,8 +1,0 @@
-# Core MCP dependencies
-mcp>=1.27,<2
-pydantic>=2.10,<3
-
-# macOS EventKit framework access
-pyobjc-core>=12.0,<13
-pyobjc-framework-EventKit>=12.0,<13
-pyobjc-framework-Foundation>=12.0,<13
