@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.67] — 2026-05-29 — Agent: Claude
+### Added
+- Add reminder-attribute tools: set_urgent, set_early_reminder (lead-time alert), add_section_and_assign via _native/reminderkit_flags.py + tools/flags.py
+
 ## [0.1.66] — 2026-05-29 — Agent: Claude
 ### Added
 - Add categorize_grocery_items tool (Apple on-device grocery categorization) via tools/grocery.py
