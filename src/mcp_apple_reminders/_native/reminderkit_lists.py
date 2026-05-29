@@ -72,3 +72,40 @@ def delete_smart_list(smart_list_id: str) -> dict:
     if not smart_list_id or not smart_list_id.strip():
         raise ValueError("smart_list_id is required and must be non-empty")
     return _invoke({"action": "delete_smart_list", "smartListId": smart_list_id})
+
+
+def set_list_appearance(
+    list_id: str,
+    *,
+    name: Optional[str] = None,
+    color: Optional[str] = None,
+    symbol: Optional[str] = None,
+    emoji: Optional[str] = None,
+) -> dict:
+    """Rename and/or restyle a list OR group (color, SF-symbol name, emoji)."""
+    if not list_id or not list_id.strip():
+        raise ValueError("list_id is required and must be non-empty")
+    payload: dict = {"action": "set_list_appearance", "listId": list_id}
+    if name:
+        payload["name"] = name
+    if color:
+        payload["color"] = color
+    if symbol:
+        payload["symbol"] = symbol
+    if emoji:
+        payload["emoji"] = emoji
+    return _invoke(payload)
+
+
+def set_list_pinned(list_id: str, pinned: bool) -> dict:
+    """Pin or unpin a list/group in the Reminders sidebar."""
+    if not list_id or not list_id.strip():
+        raise ValueError("list_id is required and must be non-empty")
+    return _invoke({"action": "set_list_pinned", "listId": list_id, "pinned": bool(pinned)})
+
+
+def set_smart_list_pinned(smart_list_id: str, pinned: bool) -> dict:
+    """Pin or unpin a custom smart list."""
+    if not smart_list_id or not smart_list_id.strip():
+        raise ValueError("smart_list_id is required and must be non-empty")
+    return _invoke({"action": "set_smart_list_pinned", "smartListId": smart_list_id, "pinned": bool(pinned)})

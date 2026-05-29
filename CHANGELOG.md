@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.64] — 2026-05-29 — Agent: Claude
+### Added
+- Add list/group appearance + pinning tools: set_list_appearance (rename/color/SF-symbol/emoji; works on lists AND groups), set_list_pinned, set_smart_list_pinned
+
 ## [0.1.63] — 2026-05-29 — Agent: Claude
 ### Added
 - Add smart-list tools (create_smart_list / update_smart_list / delete_smart_list) via new _native/reminderkit_lists.py wrappers + tools/smartlists.py, exposing the compiled-but-stranded ReminderKit smart-list actions (44 tools)

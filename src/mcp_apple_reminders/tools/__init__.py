@@ -24,6 +24,7 @@ from __future__ import annotations
 from . import (
     agents,
     alarms,
+    appearance,
     bulk,
     calendars,
     groups,
@@ -38,6 +39,7 @@ from . import (
 __all__ = [
     "agents",
     "alarms",
+    "appearance",
     "bulk",
     "calendars",
     "groups",
