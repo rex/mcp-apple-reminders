@@ -31,6 +31,7 @@ from . import (
     reminders,
     sampling,
     sections,
+    smartlists,
     workflow,
 )
 
@@ -44,5 +45,6 @@ __all__ = [
     "reminders",
     "sampling",
     "sections",
+    "smartlists",
     "workflow",
 ]
