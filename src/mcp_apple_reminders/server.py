@@ -36,7 +36,9 @@ mcp = FastMCP(
 # their handlers with `@mcp.tool()` at module-load — importing them is
 # what wires them up.
 from .prompts import workflows as _prompts_workflows  # noqa: E402, F401
+from .resources import agents as _resources_agents  # noqa: E402, F401
 from .resources import reminders as _resources_reminders  # noqa: E402, F401
+from .tools import agents as _agents_tool  # noqa: E402, F401
 from .tools import alarms as _alarms  # noqa: E402, F401
 from .tools import calendars as _calendars  # noqa: E402, F401
 from .tools import queries as _queries  # noqa: E402, F401

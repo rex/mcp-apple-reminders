@@ -5,6 +5,35 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.36] — 2026-05-28 — Agent: Claude — Slice 4.1 (🎯 visibility-plane pilot)
+
+**The whole point of the project.** Agents can now bootstrap a per-project
+`Agents-<project>` Reminders list and a client can poll `agents://current/{project}`
+to see the agent's mirrored todo board without joining the agent's session.
+Live round-trip PASSED end-to-end.
+
+### Added
+- **`tools/agents.py::bootstrap_agent_list(project_name)`** — idempotent. Returns the existing `Agents-<project_name>` Calendar if present (sub-ms SQLite check), creates it via the Swift helper (`color="gray"`) if missing.
+- **`resources/agents.py`** — `agents://current/{project_name}` Resource template. Returns JSON `{"project": str, "list": Calendar|null, "todos": list[Reminder]}`. Unknown project gets a `note` field pointing the client at `bootstrap_agent_list`.
+- `server.py` registers both new modules.
+- `test_agents.py` (4 tests; 3 pass + 1 opt-in live):
+  - registration: `agents://current/{project_name}` in resource templates.
+  - unknown project → bootstrap note in payload.
+  - blank input → ValueError from the underlying helper.
+  - **`test_live_create_and_resource_round_trip`** — creates via helper, reads via resource, asserts the list shape, cleans up. **PASSED.**
+
+### Decided
+- AGENTS.md session-start auto-bootstrap rule documentation moves to S4.5 (docs sweep) so all the agent-onboarding instructions land together. The S4.1 changelog explicitly carries this dependency.
+
+### Verified
+- `pytest test_agents.py`: 3 passed, 1 skipped.
+- `await mcp.list_tools()`: **32 tools**. `await mcp.list_resource_templates()`: 2 entries (reminders + agents).
+- `make lint && make check-architecture`: green.
+
+### Status
+- Phase 0 ✅, Phase 1 ✅, Phase 2 ✅, Phase 3 🟡 (3 of 6: S3.1, S3.5, S3.6 done), **Phase 4 🟡 (1 of 5: S4.1 done — THE PAYOFF).**
+- 25 slices shipped this session.
+
 ## [0.1.35] — 2026-05-28 — Agent: Claude — Slices 3.5 + 3.6 (multi-cal + completed range)
 
 Two small SQLite-only slices shipped together.

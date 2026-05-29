@@ -284,12 +284,13 @@
 
 ### S4.1 — Agent visibility-plane bootstrap
 
-- **Files**: `tools/agents.py`, `resources/agents.py`, AGENTS.md sweep
+- **Files**: `src/mcp_apple_reminders/tools/agents.py` (new — `bootstrap_agent_list` tool), `src/mcp_apple_reminders/resources/agents.py` (new — `agents://current/{project_name}` Resource template), `server.py` (registered both new modules), `test_agents.py` (new — 4 tests including live).
 - **Acceptance**:
-  - [ ] `bootstrap_agent_list(project_name)` creates `Agents-<project_name>` if missing.
-  - [ ] `agents://current` resource exposes the current project's list.
-  - [ ] AGENTS.md documents the session-start auto-bootstrap rule.
-- [ ] Complete
+  - [x] `bootstrap_agent_list(project_name)` is idempotent: returns the existing `Agents-<project_name>` Pydantic Calendar if present (SQLite sub-ms check), creates it via the Swift helper if missing (default color `gray`).
+  - [x] `agents://current/{project_name}` Resource template returns JSON: `{"project": str, "list": Calendar|null, "todos": list[Reminder]}`. Unknown project returns a `note` field pointing the client at `bootstrap_agent_list`.
+  - [x] **Live end-to-end round-trip verified manually**: create via Swift helper, read via the Resource (shows the list + 0 todos), delete via helper. **PASSED.**
+  - [⏸] AGENTS.md session-start auto-bootstrap rule documentation will land in S4.5 (docs sweep slice), where it'll appear alongside the other agent-onboarding instructions for coherence.
+- [x] Complete
 
 ### S4.2 — TodoWrite mirror (STRETCH)
 
