@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.68] — 2026-05-29 — Agent: Claude
+### Changed
+- Refresh capability catalog to 54 tools after CL-2.1-2.5 (smart lists, appearance/pinning, templates, grocery, urgent/early-reminder/section); record CL-2 progress in TASK_STATE
+
 ## [0.1.67] — 2026-05-29 — Agent: Claude
 ### Added
 - Add reminder-attribute tools: set_urgent, set_early_reminder (lead-time alert), add_section_and_assign via _native/reminderkit_flags.py + tools/flags.py
