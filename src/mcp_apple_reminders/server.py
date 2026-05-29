@@ -88,13 +88,17 @@ def cli_main() -> int:
     Transport selection: `MCP_APPLE_REMINDERS_TRANSPORT` env var > `VIBE.yaml
     ::server.transport` field > `stdio` default.
     """
-    transport = _resolve_transport()
-    if transport not in ("stdio", "sse", "streamable_http"):
-        # Unknown transport — fall through to stdio rather than crashing,
-        # since this is invoked from MCP-client startup paths where a hard
-        # failure looks like the server is broken.
-        transport = "stdio"
-    mcp.run(transport=transport)
+    transport_raw = _resolve_transport()
+    # FastMCP's `run()` is typed against a Literal of valid transport names.
+    # Normalize and narrow with explicit branches so mypy is happy and
+    # unknown values fall through to stdio rather than crashing the client
+    # startup path.
+    if transport_raw == "sse":
+        mcp.run(transport="sse")
+    elif transport_raw in ("streamable_http", "streamable-http"):
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run(transport="stdio")
     return 0
 
 

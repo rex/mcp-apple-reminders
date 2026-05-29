@@ -5,6 +5,22 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.40] — 2026-05-28 — Agent: Claude — typecheck gate fixes
+
+Stop-hook surfaced three mypy errors that previous slices had not exercised.
+Resolved per the Pierce-restated rule that first-party code (including the
+post-S0.2-rename `_native/*.py`) must meet VIBE.yaml guidelines; only the
+vendored Swift + Obj-C sources under `_native/src/*` are exempt.
+
+### Fixed
+- `_native/core.py::RemindKit.get_next_reminder` — sort key narrowed via `cast(datetime, x.due_date)` so mypy knows the post-filter list is `due_date`-bearing. (The `[r for r in … if r.due_date is not None]` filter already guaranteed non-None, but mypy doesn't narrow through that idiom.)
+- `server.py::cli_main` — replaced the `mcp.run(transport=str)` call with an explicit branch over the Literal-typed transport names (`stdio`, `sse`, `streamable-http`). Unknown values still fall through to `stdio` rather than crashing the client startup path.
+
+### Verified
+- `make typecheck`: `Success: no issues found in 31 source files`.
+- `make lint && make check-architecture`: green (no regressions; 71 files; module-shape gate green).
+- `pytest test_mcp_tools.py test_e2e.py test_models.py test_sqlite_reader.py test_alarms.py test_resources.py test_prompts.py test_agents.py test_bulk_ops.py`: 49 passed, 3 skipped.
+
 ## [0.1.39] — 2026-05-28 — Agent: Claude — Slices 4.3 + 4.4 + 4.5 (🎯 spec 002 COMPLETE)
 
 The last three Phase 4 slices, shipped together. Spec 002 is now formally

@@ -12,7 +12,7 @@ Side effects on instantiation:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Callable, Generator, Optional
+from typing import Callable, Generator, Optional, cast
 
 from Foundation import (
     NSURL,
@@ -157,8 +157,9 @@ class RemindKit:
         """Return the soonest incomplete reminder with a due date, or None."""
         current_time = datetime.now()
         all_reminders = list(self.get_reminders(is_completed=False, due_after=current_time))
-        upcoming_reminders = [r for r in all_reminders if r.due_date]
-        upcoming_reminders.sort(key=lambda x: x.due_date)
+        # `r.due_date is not None` lets mypy narrow the Optional in the sort key.
+        upcoming_reminders = [r for r in all_reminders if r.due_date is not None]
+        upcoming_reminders.sort(key=lambda x: cast(datetime, x.due_date))
         return upcoming_reminders[0] if upcoming_reminders else None
 
     def get_reminders(
