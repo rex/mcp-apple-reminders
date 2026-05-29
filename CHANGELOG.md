@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.60] — 2026-05-29 — Agent: Claude
+### Changed
+- Extend CQ-2 collection fix to the CRUD suite: rename test_crud_*.py to crud_*.py and mark test_comprehensive_crud.py __test__=False (it is a script orchestrator), clearing 8 fixture-setup errors from a full pytest run
+
 ## [0.1.59] — 2026-05-29 — Agent: Claude
 ### Changed
 - Record CL-1 cleanup completion in TASK_STATE (all batches + the CRITICAL bugfix done) and document the declined make sync-skeleton (skeleton v0.37.0 hooks regressed cd||exit 1 / SC2164) as an AGENTS §9 gotcha

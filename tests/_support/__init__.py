@@ -5,5 +5,5 @@ Public helpers:
 - `get_current_cst_iso8601` (from `harness`) — timestamp helper for unique test titles
 - `cleanup_test_reminders` (from `cleanup`) — delete + verify-deletion helper
 
-Per-domain test modules (`test_crud_*`, `test_workflow_*`) import from here.
+Per-domain step modules (`crud_*`, `workflow_*`) and test modules import from here.
 """
