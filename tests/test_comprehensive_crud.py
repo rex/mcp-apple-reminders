@@ -3,7 +3,7 @@
 
 Top-level driver that instantiates `RemindKit`, runs each per-domain test
 module in sequence, and cleans up. Per-domain tests live in
-`test_crud_*.py` modules; shared helpers in `test_support/`.
+`test_crud_*.py` modules; shared helpers in `_support/`.
 
 (post S0.2 — no sys.path mutation; RemindKit lives at
 `mcp_apple_reminders._native`.)
@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import sys
 
+from _support.cleanup import cleanup_test_reminders
+from _support.harness import TestResults, get_current_cst_iso8601
 from test_crud_calendars import test_calendar_operations
 from test_crud_queries import test_query_operations
 from test_crud_reminders import test_reminder_crud_operations
 from test_crud_variations import test_additional_reminder_operations
-from test_support.cleanup import cleanup_test_reminders
-from test_support.harness import TestResults, get_current_cst_iso8601
 
 
 def main() -> int:

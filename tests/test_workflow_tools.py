@@ -2,8 +2,13 @@
 """Workflow tools test suite orchestrator.
 
 Top-level driver that instantiates `RemindKit`, runs each per-domain workflow
-test module, and cleans up. Per-domain tests live in `test_workflow_*.py`;
-shared helpers in `test_support/`.
+step, and cleans up. Per-domain steps live in `workflow_*.py` (renamed from
+`test_workflow_*.py` so pytest does not try to collect their arg-taking helper
+functions as fixtures-based tests); shared helpers live in `_support/`.
+
+This module is a SCRIPT, not a pytest module — run it with
+`python tests/test_workflow_tools.py`. `__test__ = False` tells pytest to skip
+collection so the orchestration helpers it imports are not mistaken for tests.
 
 (post S0.2 — no sys.path mutation; RemindKit lives at
 `mcp_apple_reminders._native`.)
@@ -13,12 +18,15 @@ from __future__ import annotations
 
 import sys
 
-from test_support.cleanup import cleanup_test_reminders
-from test_support.harness import TestResults, get_current_cst_iso8601
-from test_workflow_convenience import test_workflow_convenience_functions
-from test_workflow_discovery import test_get_workflow_lists
-from test_workflow_errors import test_error_handling
-from test_workflow_moves import test_move_between_all_workflow_lists, test_move_reminder_functionality
+from _support.cleanup import cleanup_test_reminders
+from _support.harness import TestResults, get_current_cst_iso8601
+from workflow_convenience import test_workflow_convenience_functions
+from workflow_discovery import test_get_workflow_lists
+from workflow_errors import test_error_handling
+from workflow_moves import test_move_between_all_workflow_lists, test_move_reminder_functionality
+
+# This file is a script orchestrator, not a pytest test module — skip collection.
+__test__ = False
 
 
 def main() -> int:

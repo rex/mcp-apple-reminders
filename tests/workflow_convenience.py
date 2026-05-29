@@ -7,7 +7,7 @@ single test reminder through each in sequence.
 
 from __future__ import annotations
 
-from test_support.harness import get_current_cst_iso8601
+from _support.harness import get_current_cst_iso8601
 
 
 def test_workflow_convenience_functions(rk, workflow_lists, results):

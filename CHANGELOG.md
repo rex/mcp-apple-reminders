@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.52] — 2026-05-29 — Agent: Claude
+### Changed
+- Relocate test suite into tests/ (tests/_support); rename 4 workflow library modules; fix CQ-2 pytest collection of orchestrator helpers
+
 ## [0.1.51] — 2026-05-29 — Agent: Claude
 ### Changed
 - Backfill CHANGELOG [0.1.9] (S1.1 is_default fix) and [0.1.11] (spec 001 archive / spec 002 land) placeholders

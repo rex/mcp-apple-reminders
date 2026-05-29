@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from test_support.harness import get_current_cst_iso8601
+from _support.harness import get_current_cst_iso8601
 
 
 def test_additional_reminder_operations(rk, results):
