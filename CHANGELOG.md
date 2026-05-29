@@ -5,6 +5,30 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.43] — 2026-05-29 — Agent: Claude — audit captured (4 Opus subagents → 5 docs)
+
+After Pierce opened the repo in an editor post-spec-002 and surfaced sprawl + stale debris,
+four parallel Opus review subagents audited the mess across four dimensions. Findings
+captured here so nothing's lost when the cleanup pass starts.
+
+### Added
+- **`docs/audits/2026-05-29-post-spec-002-cleanup-audit/`** — new audit subdirectory with five docs:
+  - `README.md` — synthesis + severity-grouped findings + cleanup-shape decision pending.
+  - `01-file-organization.md` — 17 layout findings (`.DS_Store` tracked, redundant `requirements.txt`, `_native/` flat layout, `tools/sections.py` misnamed, `.claude/` skeleton spillover, etc.).
+  - `02-documentation.md` — markdown audit (`CHANGELOG.md` 0.1.9 + 0.1.11 placeholders, README massively stale, AGENTS.md §9 lies about capabilities, src-tree READMEs pre-FastMCP).
+  - `03-code-quality.md` — 10 source findings, including **2 CRITICAL** (`move_reminder_blocked` silently routes to `Claude-Waiting`; 4 `test_workflow_*.py` modules un-collectable from missing `conftest.py`).
+  - `04-build-config.md` — 6 HIGH (`pyproject.testpaths` lies; README `import main` ImportError; 3 skeleton hooks drifted from v0.37.0) + 8 MEDIUM + 1 LOW.
+
+### Aggregate
+- **5 CRITICAL** findings (functional bugs).
+- **~18 HIGH** findings (docs lying / source mess / skeleton drift).
+- **~14 MEDIUM** findings (polish / consistency).
+- **~37 distinct issues** total beyond the pre-audit known list (28 test_*.py to relocate, 10 stale root markdowns to delete, duplicate `TOOLS.md`).
+
+### Status
+- Audit complete. Cleanup deferred until **after S5.1 (list-group support)** ships, per Pierce's direction ("we're so close to a significant completion threshold, may as well keep sprinting").
+- Cleanup will land as **one slice (`CL-1`) or split sub-slices (`CL-1a/b/c/d`)** — shape pending Pierce's call.
+
 ## [0.1.42] — 2026-05-29 — Agent: Claude — CHANGELOG fix-forward for 0.1.41
 
 ### Fixed
