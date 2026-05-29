@@ -72,6 +72,7 @@ async def get_reminders(
     is_completed: Optional[bool] = None,
     priority: Optional[str] = None,
     calendar_id: Optional[str] = None,
+    calendar_ids: Optional[list[str]] = None,
     tags: Optional[list[str]] = None,
     limit: Optional[int] = None,
 ) -> list[Reminder]:
@@ -94,6 +95,7 @@ async def get_reminders(
         with app.open_sqlite() as conn:
             stream = Reader(conn).iter_reminders(
                 calendar_id=calendar_id,
+                calendar_ids=calendar_ids,
                 completed=is_completed,
                 due_after=due_after_dt,
                 due_before=due_before_dt,
@@ -210,6 +212,54 @@ async def get_overdue_reminders(ctx: Context, limit: Optional[int] = None) -> li
         if limit and limit > 0:
             results = results[:limit]
         return results
+
+
+@mcp.tool(
+    name="get_completed_in_range",
+    description=(
+        "Return reminders whose completion_date falls in [start, end). "
+        "Completion ranges are closed on the start and open on the end so "
+        "passing the same datetime for both yields an empty result (instead "
+        "of one fenceposting boundary)."
+    ),
+)
+async def get_completed_in_range(
+    start: str,
+    end: str,
+    ctx: Context,
+    calendar_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[Reminder]:
+    """Reminders completed within a half-open `[start, end)` window.
+
+    Args:
+        start: ISO datetime, inclusive.
+        end: ISO datetime, exclusive.
+        calendar_id: Optional list UUID to scope to one calendar.
+        limit: Optional cap.
+    """
+    app = _app_context(ctx)
+    start_dt = parse_datetime(start)
+    end_dt = parse_datetime(end)
+    if end_dt < start_dt:
+        raise ValueError("end must be >= start")
+
+    try:
+        with app.open_sqlite() as conn:
+            results = list(
+                Reader(conn).iter_reminders(
+                    completed=True,
+                    completion_after=start_dt,
+                    completion_before=end_dt,
+                    calendar_id=calendar_id,
+                    limit=limit,
+                )
+            )
+            await ctx.debug(f"get_completed_in_range: {len(results)} completion(s) in window")
+            return results
+    except RemindersDBUnavailable as e:
+        await ctx.warning(f"SQLite read path unavailable ({e}); EventKit fallback not implemented for this tool.")
+        return []
 
 
 @mcp.tool(

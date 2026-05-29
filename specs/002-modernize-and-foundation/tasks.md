@@ -265,17 +265,20 @@
 
 ### S3.5 — Multi-calendar query
 
-- **Files**: `_native/sqlite.py::get_reminders` (accept `calendar_ids`)
+- **Files**: `src/mcp_apple_reminders/_native/_sqlite_helpers.py::_build_reminders_query` + `src/mcp_apple_reminders/_native/sqlite.py::Reader.iter_reminders` (added `calendar_ids: Optional[list[str]]`), `src/mcp_apple_reminders/tools/queries.py::get_reminders` (forwards the new arg), `test_multi_cal_and_range.py` (covered).
 - **Acceptance**:
-  - [ ] `get_reminders(calendar_ids=["a","b"])` returns merged results from one SQL query.
-- [ ] Complete
+  - [x] `get_reminders(calendar_ids=["a","b"])` translates to `WHERE lower(l.ZCKIDENTIFIER) IN (?, ?)`. Single query, no Python-side merging.
+  - [x] Test confirms results stay inside the requested list set.
+- [x] Complete
 
 ### S3.6 — `get_completed_in_range`
 
-- **Files**: `tools/queries.py`, `_native/sqlite.py`
+- **Files**: `src/mcp_apple_reminders/_native/_sqlite_helpers.py::_build_reminders_query` (added `completion_after` + `completion_before` params), `src/mcp_apple_reminders/_native/sqlite.py::Reader.iter_reminders` (forwards them), `src/mcp_apple_reminders/tools/queries.py::get_completed_in_range` (new tool).
 - **Acceptance**:
-  - [ ] `get_completed_in_range(start, end, calendar_id?)` returns matches with `completion_date` in `[start, end)`.
-- [ ] Complete
+  - [x] `get_completed_in_range(start, end, calendar_id?)` returns `completion_date` in `[start, end)`. SQL: `WHERE r.ZCOMPLETIONDATE >= start AND r.ZCOMPLETIONDATE < end`. Half-open window per the spec.
+  - [x] `end < start` raises `ValueError`.
+  - [x] Tests cover empty far-future window + 5-year-back window that asserts every result has a completion_date within the bounds.
+- [x] Complete
 
 ## Phase 4 — Visibility-plane pilot + cross-cutting
 

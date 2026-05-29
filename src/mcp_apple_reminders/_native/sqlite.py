@@ -198,14 +198,26 @@ class Reader:
         self,
         *,
         calendar_id: Optional[str] = None,
+        calendar_ids: Optional[list[str]] = None,
         completed: Optional[bool] = None,
         due_after: Optional[datetime] = None,
         due_before: Optional[datetime] = None,
+        completion_after: Optional[datetime] = None,
+        completion_before: Optional[datetime] = None,
         tags: Optional[list[str]] = None,
         limit: Optional[int] = None,
     ) -> Iterator[Reminder]:
         """Stream reminders that match the supplied filters."""
-        sql, params = _build_reminders_query(calendar_id, completed, due_after, due_before, tags=tags)
+        sql, params = _build_reminders_query(
+            calendar_id,
+            completed,
+            due_after,
+            due_before,
+            tags=tags,
+            calendar_ids=calendar_ids,
+            completion_after=completion_after,
+            completion_before=completion_before,
+        )
         if limit and limit > 0:
             sql += " LIMIT ?"
             params.append(int(limit))

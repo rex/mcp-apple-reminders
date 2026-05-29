@@ -5,6 +5,25 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.35] — 2026-05-28 — Agent: Claude — Slices 3.5 + 3.6 (multi-cal + completed range)
+
+Two small SQLite-only slices shipped together.
+
+### Added
+- `_native/_sqlite_helpers.py::_build_reminders_query` gains `calendar_ids`, `completion_after`, `completion_before` parameters.
+- `_native/sqlite.py::Reader.iter_reminders` forwards them.
+- `tools/queries.py::get_reminders(..., calendar_ids=None)` (S3.5).
+- `tools/queries.py::get_completed_in_range(start, end, calendar_id?, limit?)` (S3.6) — the 31st tool. Half-open window: `[start, end)`. `end < start` raises `ValueError`.
+- `test_multi_cal_and_range.py` (4 tests): unknown-UUID-returns-empty, real-list filter, far-future window, 5-year-back window.
+
+### Verified
+- `pytest test_multi_cal_and_range.py`: 4 passed.
+- `await mcp.list_tools()`: 31 tools.
+- `make lint && make check-architecture`: green.
+
+### Status
+- Phase 3 progress: S3.1 ✅, S3.5 ✅, S3.6 ✅ — three of six. S3.2 (location alarms), S3.3 (recurrence), S3.4 (bulk ops) remain.
+
 ## [0.1.34] — 2026-05-28 — Agent: Claude — Slice 3.1 (set_alarm time-based)
 
 ### Added

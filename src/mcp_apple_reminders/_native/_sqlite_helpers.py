@@ -79,12 +79,19 @@ def _build_reminders_query(
     due_after: Optional[datetime],
     due_before: Optional[datetime],
     tags: Optional[list[str]] = None,
+    calendar_ids: Optional[list[str]] = None,
+    completion_after: Optional[datetime] = None,
+    completion_before: Optional[datetime] = None,
 ) -> tuple[str, list]:
     where = ["r.ZMARKEDFORDELETION = 0", "r.ZACCOUNT IS NOT NULL"]
     params: list = []
     if calendar_id is not None:
         where.append("lower(l.ZCKIDENTIFIER) = lower(?)")
         params.append(calendar_id)
+    if calendar_ids:
+        placeholders = ", ".join("?" for _ in calendar_ids)
+        where.append(f"lower(l.ZCKIDENTIFIER) IN ({placeholders})")
+        params.extend(c.lower() for c in calendar_ids)
     if completed is not None:
         where.append("r.ZCOMPLETED = ?")
         params.append(1 if completed else 0)
@@ -94,6 +101,12 @@ def _build_reminders_query(
     if due_before is not None:
         where.append("r.ZDUEDATE <= ?")
         params.append(due_before.timestamp() - APPLE_EPOCH_OFFSET)
+    if completion_after is not None:
+        where.append("r.ZCOMPLETIONDATE >= ?")
+        params.append(completion_after.timestamp() - APPLE_EPOCH_OFFSET)
+    if completion_before is not None:
+        where.append("r.ZCOMPLETIONDATE < ?")
+        params.append(completion_before.timestamp() - APPLE_EPOCH_OFFSET)
     if tags:
         placeholders = ", ".join("?" for _ in tags)
         where.append(
