@@ -81,6 +81,24 @@ def create_group(name: str) -> dict:
     return _invoke({"action": "create_group", "name": name})
 
 
+def delete_group(group_id: str) -> dict:
+    """Permanently delete a group via `delete_group` action.
+
+    The group must be empty — its children must be reparented or detached
+    first via `move_list_to_group`. Mirrors the `REMSmartListChangeItem.
+    removeFromParentWithAccountChangeItem:` deletion pattern, applied to
+    `REMListChangeItem` (private selector — declared in the helper header
+    block and gated by `respondsToSelector:`).
+
+    Raises:
+        ValueError: blank `group_id`.
+        ReminderKitHelperUnavailable / ReminderKitHelperError on helper failure.
+    """
+    if not group_id or not group_id.strip():
+        raise ValueError("group_id is required and must be non-empty")
+    return _invoke({"action": "delete_group", "id": group_id})
+
+
 def move_list_to_group(list_id: str, group_id: Optional[str]) -> dict:
     """Reparent a list under a group, or detach back to the account root.
 
@@ -104,6 +122,7 @@ __all__ = [
     "assign_section",
     "create_group",
     "create_subtask",
+    "delete_group",
     "move_list_to_group",
     "set_flagged",
 ]

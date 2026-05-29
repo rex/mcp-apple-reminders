@@ -175,6 +175,10 @@
 // `ZPARENTLIST` SQLite column (different from `setParentOwnerID:` which
 // scopes to the account). Guarded with `respondsToSelector:`.
 - (void)setParentListID:(id)objectID;
+// `removeFromParentWithAccountChangeItem:` is the deletion path —
+// mirrors the existing `REMSmartListChangeItem` method of the same name.
+// Guarded with `respondsToSelector:`.
+- (void)removeFromParentWithAccountChangeItem:(id)accountChangeItem;
 @end
 
 @interface REMListGroceryContextChangeItem : NSObject
@@ -722,6 +726,7 @@ int main(int argc, const char * argv[]) {
             // --- Local mods (ADR 0001 / S5.1) -----------------------------
             @"create_group",
             @"move_list_to_group",
+            @"delete_group",
         ]];
         if (![action isKindOfClass:[NSString class]] || ![allowedActions containsObject:action]) {
             fail(@"Unknown action");
@@ -826,6 +831,55 @@ int main(int argc, const char * argv[]) {
                 @"url": url ?: @"",
             }];
             output(details);
+            return 0;
+        }
+        // delete_group: removes a group from its account. Group must be
+        // empty — children must be reparented or detached first via
+        // move_list_to_group. Mirrors `delete_smart_list` shape.
+        if ([action isEqualToString:@"delete_group"]) {
+            NSString *groupID = cmd[@"id"];
+            if (![groupID isKindOfClass:[NSString class]] || groupID.length == 0) {
+                fail(@"id is required");
+            }
+            NSURL *groupObjectURL = listURL(groupID);
+            id objectID = [REMObjectID objectIDWithURL:groupObjectURL];
+            if (!objectID) {
+                fail(@"Could not build ReminderKit list object ID");
+            }
+            NSError *error = nil;
+            REMStore *store = [REMStore new];
+            id group = [store fetchListWithObjectID:objectID error:&error];
+            if (!group) {
+                fail(error.localizedDescription ?: @"Group not found");
+            }
+            REMAccount *account = [store fetchPrimaryActiveCloudKitAccountWithError:&error];
+            if (!account) {
+                account = [store fetchDefaultAccountWithError:&error];
+            }
+            if (!account) {
+                fail(error.localizedDescription ?: @"No active Reminders account found");
+            }
+            REMSaveRequest *save = [[REMSaveRequest alloc] initWithStore:store];
+            id accountChange = [save updateAccount:account];
+            if (!accountChange) {
+                fail(@"Could not create ReminderKit account change item");
+            }
+            REMListChangeItem *change = [save updateList:group];
+            if (!change) {
+                fail(@"Could not create ReminderKit list change item");
+            }
+            if (![change respondsToSelector:@selector(removeFromParentWithAccountChangeItem:)]) {
+                fail(@"ReminderKit on this macOS does not expose removeFromParentWithAccountChangeItem: on REMListChangeItem");
+            }
+            [change removeFromParentWithAccountChangeItem:accountChange];
+            if (![save saveSynchronouslyWithError:&error]) {
+                fail(error.localizedDescription ?: @"ReminderKit group delete failed");
+            }
+            output(@{
+                @"status": @"deleted_group",
+                @"action": action,
+                @"id": groupID,
+            });
             return 0;
         }
         // move_list_to_group: reparents an existing list under a group.

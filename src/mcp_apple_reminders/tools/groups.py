@@ -26,6 +26,9 @@ from .._native.reminderkit_actions import (
     create_group as helper_create_group,
 )
 from .._native.reminderkit_actions import (
+    delete_group as helper_delete_group,
+)
+from .._native.reminderkit_actions import (
     move_list_to_group as helper_move_list_to_group,
 )
 from .._native.sqlite import Reader, RemindersDBUnavailable
@@ -112,6 +115,57 @@ async def list_groups(ctx: Context) -> list[Calendar]:
     except RemindersDBUnavailable as e:
         await ctx.warning(f"SQLite read path unavailable ({e}); returning [].")
         return []
+
+
+@mcp.tool(
+    name="delete_group",
+    description=(
+        "Permanently delete a Reminders.app group. The group must be empty — "
+        "if it has children, detach or reparent them first with "
+        "`move_list_to_group`. DESTRUCTIVE — this action cannot be undone."
+    ),
+)
+async def delete_group(group_id: str, ctx: Context) -> dict:
+    """Delete a group by UUID.
+
+    Args:
+        group_id: UUID of the group to delete.
+    """
+    if not group_id or not group_id.strip():
+        raise ValueError("group_id is required and must be non-empty")
+
+    app = _app_context(ctx)
+    name: Optional[str] = None
+    child_count: Optional[int] = None
+    try:
+        with app.open_sqlite() as conn:
+            reader = Reader(conn)
+            cal = reader.get_calendar_by_id(group_id)
+            if cal is None or not cal.is_group:
+                raise ValueError(f"No group with id {group_id!r} found " f"(must be a group, not a regular list).")
+            name = cal.name
+            child_count = sum(1 for _ in reader.iter_lists_in_group(group_id))
+    except RemindersDBUnavailable as e:
+        await ctx.warning(f"SQLite unavailable; skipping pre-check ({e}).")
+
+    if child_count and child_count > 0:
+        raise ValueError(
+            f"Group {name!r} has {child_count} child list(s). "
+            f"Detach or reparent them first with `move_list_to_group`."
+        )
+
+    await ctx.warning(f"Deleting group {name!r} ({group_id}, destructive)")
+    try:
+        helper_delete_group(group_id)
+    except ReminderKitHelperUnavailable as e:
+        await ctx.error(f"ReminderKit helper unavailable: {e}")
+        raise ValueError(f"ReminderKit helper not built. Run `make build-native`. ({e})") from e
+    except ReminderKitHelperError as e:
+        await ctx.error(f"delete_group failed: {e.message}")
+        raise ValueError(e.message) from e
+
+    await ctx.info(f"Deleted group {name!r} ({group_id})")
+    return {"id": group_id, "name": name, "status": "deleted_group"}
 
 
 @mcp.tool(

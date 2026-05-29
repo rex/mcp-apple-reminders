@@ -24,6 +24,7 @@ from mcp_apple_reminders._native.reminderkit import (
 )
 from mcp_apple_reminders._native.reminderkit_actions import (
     create_group,
+    delete_group,
     move_list_to_group,
 )
 from mcp_apple_reminders._native.sqlite import (
@@ -205,5 +206,13 @@ def test_live_group_round_trip():
         finally:
             conn.close()
     finally:
+        # Detach the child from the group BEFORE either delete — groups can
+        # only be deleted when empty (the delete_group action validates this).
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            move_list_to_group(child_id, None)
         _delete(child_name)
-        _delete(group_name)
+        # Group is invisible to EventKit; delete via Obj-C helper.
+        with contextlib.suppress(Exception):
+            delete_group(group_id)

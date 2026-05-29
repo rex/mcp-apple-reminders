@@ -5,6 +5,36 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.46] — 2026-05-29 — Agent: Claude — S5.1 cleanup + `delete_group`
+
+Pierce opened Reminders.app and found 4 orphaned `REM-TEST-GROUP-S51` empty
+groups from S5.1 probing. Root cause: the Swift helper's `delete_list` uses
+`EKEventStore.removeCalendar`, which cannot see groups (groups are a
+ReminderKit-private concept invisible to EventKit). The S5.1 live test's
+try/finally cleanup called `delete_list` and silently failed on the group.
+
+### Added
+- **`_native/src/rem_reminderkit.m`**: new local mod — `delete_group` action.
+  Mirrors `delete_smart_list`'s shape via the private
+  `REMListChangeItem.removeFromParentWithAccountChangeItem:` selector (now
+  declared in the borrowed interface block with `respondsToSelector:` guard).
+- **`_native/reminderkit_actions.py::delete_group(group_id)`** — Python wrapper.
+- **`tools/groups.py::delete_group(group_id)`** — 41st MCP tool. Refuses to
+  delete a non-empty group (detach children first via `move_list_to_group`).
+- **`test_live_group_round_trip`** rewritten to self-clean: detach child
+  from group → delete child via Swift helper → delete group via Obj-C helper.
+- **`THIRD_PARTY_NOTICES.md`**: documented the new local mod.
+
+### Fixed
+- Deleted 4 orphaned `REM-TEST-GROUP-S51` test groups from Pierce's Reminders.app.
+
+### Verified
+- `pytest test_groups.py`: 8 passed.
+- `REM_LIVE_HELPER=1 pytest test_groups.py::test_live_group_round_trip`: PASSED.
+- Zero leaks after the live run.
+- `make lint && make check-architecture && make typecheck`: green.
+- `await mcp.list_tools()`: **41 tools**.
+
 ## [0.1.45] — 2026-05-29 — Agent: Claude — black-format `test_groups.py`
 
 ### Fixed
