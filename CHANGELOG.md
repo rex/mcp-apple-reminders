@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.54] — 2026-05-29 — Agent: Claude
+### Changed
+- Rewrite stale docs to current FastMCP three-tier state: README (22->41 tools, _native architecture, cli_main), both src READMEs, docs/MAP.md, AGENTS.md (capability state + tests/ paths), TASK_STATE.md (current + CL-1)
+
 ## [0.1.53] — 2026-05-29 — Agent: Claude
 ### Fixed
 - Fix build-config: repoint Makefile lint/test + pyproject to tests/, add test-actual target, real author email/repo URLs/dev-extras, desktop-config venv interpreter, and repair 4 stale reminderkit_actions test imports

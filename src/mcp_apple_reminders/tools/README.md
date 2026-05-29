@@ -1,8 +1,8 @@
 # tools/
 
-Per-category MCP tool registry. Each module here owns 5–6 tools in one logical
-domain (calendars, reminders, queries, workflow); `__init__.py` aggregates them
-into the two flat collections the server dispatcher consumes.
+Per-category MCP tool modules. Each file owns the tools for one logical domain
+and registers them by decorating plain functions with `@mcp.tool`. There is no
+aggregation dict — registration happens as a side effect of import.
 
 ## Status
 
@@ -10,81 +10,104 @@ into the two flat collections the server dispatcher consumes.
 
 ## Why this exists
 
-The original `server.py` registered all 22 tools in two giant functions
-(`list_tools` and `call_tool`) — ~960 lines, impossible to navigate. Splitting
-by category gives each domain its own ~150-line module with both the tool
-schemas and their handlers side-by-side. Adding a new tool means finding the
-right category and adding two lines (one schema, one handler).
+Splitting tools by domain keeps each module small and navigable, and keeps the
+architecture line-limit gate happy (hard cap 400 lines/file). Adding a tool means
+finding the right module and writing one decorated function.
+
+## How registration works
+
+FastMCP registers a tool the moment its module is imported:
+
+```python
+from ..server import mcp
+
+@mcp.tool(name="create_reminder", description="Create a new reminder …")
+def create_reminder(ctx: Context, title: str, ...) -> Reminder:
+    app = ctx.request_context.lifespan_context   # the AppContext
+    ...
+```
+
+`tools/__init__.py` does nothing but `from . import calendars, reminders, …` for
+every module below, so importing the `tools` package runs all the decorators.
+`server.py` imports `tools` once at startup; FastMCP then exposes the registry
+over MCP automatically.
+
+Shared state — the resolved SQLite path, native helper paths, and `open_sqlite()`
+— reaches each tool through the **lifespan `AppContext`**, retrieved from the
+injected `Context` (`ctx.request_context.lifespan_context`). Tools do not import
+module globals for state.
 
 ## Public API
 
-Each `tools/<category>.py` exports exactly two module-level symbols:
-
-- `TOOLS: list[Tool]` — the MCP `Tool` schemas (name, description, inputSchema).
-- `HANDLERS: dict[str, Callable]` — name → handler. Handler signature:
-  `(arguments: dict, remind: RemindKit) -> list[TextContent]`.
-
-`__init__.py` exports:
-
-- `ALL_TOOLS: list[Tool]` — concatenation of every category's TOOLS in category order.
-- `ALL_HANDLERS: dict[str, Callable]` — merged dict of every category's HANDLERS.
+- Each module: a set of `@mcp.tool`-decorated functions (the tools themselves).
+- `__init__.py`: imports every tool module so the decorators run. No exports.
 
 ## Architecture
 
 ```
-server.py::list_tools()  → tools/__init__.py::ALL_TOOLS
-server.py::call_tool()   → tools/__init__.py::ALL_HANDLERS[name](arguments, remind)
-                                                                  ↓
-                                                  tools/<category>.py::_handle_<name>
-                                                                  ↓
-                                              pyremindkit / formatting helpers
+server.py imports `tools` package
+   ↓
+tools/__init__.py imports each module → @mcp.tool decorators register on `mcp`
+   ↓
+tool fn(ctx, …):  ctx.request_context.lifespan_context  →  AppContext
+                  reads  → _native/sqlite.py
+                  writes → _native/eventkit.py / reminderkit.py
+                  shapes → ../models.py, ../formatting.py
 ```
 
-- Depends on: `pyremindkit` (the EventKit wrapper), `..formatting` (shared rendering).
-- Depended on by: `..server.py` only.
+- Depends on: `..server.mcp`, `..models`, `..formatting`, the `.._native` layer.
+- Depended on by: `..server` (imports the package to trigger registration).
 
-## Files
+## Modules (10 · 41 tools)
 
-| File | Tools | Lines |
+| Module | # | Tools |
 |---|---|---|
-| `__init__.py` | aggregator (`ALL_TOOLS`, `ALL_HANDLERS`) | 27 |
-| `calendars.py` | `list_calendars`, `get_calendar`, `get_calendar_by_id`, `search_calendars`, `get_default_calendar` (5) | 120 |
-| `reminders.py` | `create_reminder`, `update_reminder`, `complete_reminder`, `uncomplete_reminder`, `get_reminder`, `delete_reminder` (6) | 168 |
-| `queries.py` | `get_reminders`, `search_reminders`, `get_next_reminder`, `get_overdue_reminders`, `get_today_reminders` (5) | 184 |
-| `workflow.py` | `get_workflow_lists`, `move_reminder_to_list`, `move_reminder_on_deck`, `move_reminder_active`, `move_reminder_done`, `move_reminder_blocked` (6) | 151 |
+| `calendars.py` | 8 | `create_calendar`, `delete_calendar`, `update_calendar`, `get_calendar`, `get_calendar_by_id`, `get_default_calendar`, `list_calendars`, `search_calendars` |
+| `reminders.py` | 6 | `create_reminder`, `update_reminder`, `delete_reminder`, `complete_reminder`, `uncomplete_reminder`, `get_reminder` |
+| `queries.py` | 6 | `get_reminders`, `get_today_reminders`, `get_overdue_reminders`, `get_next_reminder`, `get_completed_in_range`, `search_reminders` |
+| `workflow.py` | 6 | `move_reminder_active`, `move_reminder_on_deck`, `move_reminder_blocked`, `move_reminder_done`, `move_reminder_to_list`, `get_workflow_lists` |
+| `groups.py` | 4 | `create_group`, `list_groups`, `delete_group`, `move_list_to_group` |
+| `alarms.py` | 3 | `set_alarm`, `set_location_alarm`, `set_recurrence` |
+| `bulk.py` | 3 | `bulk_complete`, `bulk_move`, `bulk_delete_completed` |
+| `sections.py` | 3 | `get_subtasks`, `set_parent`, `assign_section` |
+| `agents.py` | 1 | `bootstrap_agent_list` |
+| `sampling.py` | 1 | `triage_brain_dump` |
 
-22 tools total. Each category file stays under the 250-line soft limit.
+41 tools total. Full per-tool argument/behavior reference: `docs/TOOLS.md`.
 
 ## Invariants
 
-- **Handler signature is uniform**: `(arguments: dict, remind: RemindKit) -> list[TextContent]`. Don't deviate; the dispatcher passes only those two args.
-- **Handlers raise; never catch**: bare `raise` for unexpected errors, `raise ValueError(...)` for user-input mistakes. The central `try/except` in `server.py::call_tool` translates those to MCP responses.
-- **`TOOLS` and `HANDLERS` must agree on keys**: every `Tool.name` must have a matching entry in `HANDLERS`. The `tools/__init__.py` test (verify before commit) catches mismatches.
-- **No I/O at import time** in the category modules. Only `server.py` does the `remind = RemindKit()` singleton — category modules are pure registries.
+- **One tool = one decorated function.** The `@mcp.tool(name=..., description=...)`
+  decorator IS the registration. Don't reintroduce a `TOOLS`/`HANDLERS` dict.
+- **`name=` is a public contract.** Every deployed client binds to it. Add new
+  tools; never silently rename or reshape an existing one.
+- **State via `AppContext`, not globals.** Pull SQLite / helper paths from
+  `ctx.request_context.lifespan_context`.
+- **Reads → SQLite; writes → native helpers.** Query tools go through
+  `_native/sqlite.py`; mutating tools shell out via `_native/eventkit.py` or
+  `_native/reminderkit_actions.py`.
+- **Return models, not strings.** Return `Reminder` / `Calendar` (frozen Pydantic
+  v2, each with a `deeplink`); FastMCP serializes them.
 
 ## Common tasks
 
-- **Add a new tool to an existing category** —
-  1. Add `_handle_<name>(arguments, remind) -> list[TextContent]` function above `TOOLS` in the category file.
-  2. Append a `Tool(name=..., description=..., inputSchema=...)` to `TOOLS`.
-  3. Add `"<name>": _handle_<name>` to `HANDLERS`.
-  No edits in `server.py` or `__init__.py`.
-
-- **Add a new category** (rare — only if no existing category fits) —
-  1. Create `tools/<name>.py` with the two exports.
-  2. Add `from . import <name>` to `__init__.py`.
-  3. Spread its `TOOLS` and `HANDLERS` into the aggregators (one line each).
-
-- **Reorder tools in the catalog** — reorder the lists; the dict merge order doesn't matter since dispatch is by key lookup.
+- **Add a tool to an existing category** — write a `@mcp.tool`-decorated function
+  in the matching module. No edits in `server.py` or `__init__.py`.
+- **Add a new category** (rare) — create `tools/<name>.py` with decorated
+  functions, then add `from . import <name>` to `tools/__init__.py`.
 
 ## Gotchas
 
-- `formatting.py` lives one level up (`from ..formatting import ...`). Don't accidentally do a flat-relative import.
-- The `Claude-*` move sugars in `workflow.py` all share `_move_to_named_list` — keep it that way to avoid divergent error messages.
-- `get_reminders` and `get_today_reminders` both build filter kwargs but slightly differently — `get_reminders` uses the shared `_build_filter_kwargs`; `get_today_reminders` overrides date bounds. Don't refactor them together without thinking about the today-edge-cases.
+- **A module that isn't imported registers nothing.** If a new module's tools
+  don't appear, confirm `tools/__init__.py` imports it.
+- `models.py` and `formatting.py` live one level up — `from ..models import …`,
+  `from ..formatting import …`. Don't do a flat-relative import.
+- The `move_reminder_*` lane tools in `workflow.py` share one move helper — keep
+  them on it so error messages stay consistent.
 
 ## Related
 
-- `../server.py` — the dispatcher that consumes this registry.
-- `../formatting.py` — the shared rendering helpers every handler uses.
-- `MAP.md` — extension points and the full mental model.
+- `../server.py` — owns the `mcp` instance and imports this package.
+- `../models.py`, `../formatting.py` — shapes / rendering tools rely on.
+- `docs/TOOLS.md` — exhaustive tool catalog.
+- `docs/MAP.md` — repo-level navigation.
