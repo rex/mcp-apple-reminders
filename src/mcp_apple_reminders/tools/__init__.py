@@ -1,23 +1,48 @@
-"""MCP tool registry (post-S0.4 FastMCP edition).
+"""MCP tool registry (FastMCP edition).
 
-Importing this package (or its submodules) registers all 22 tools against the
+Importing this package (or its submodules) registers all 41 tools against the
 shared `mcp_apple_reminders.server.mcp` FastMCP instance via the `@mcp.tool()`
-decorators at module scope.
+decorators at module scope. FastMCP owns the registry directly — there is no
+`ALL_TOOLS` / `ALL_HANDLERS` aggregation and no low-level `call_tool` dispatch.
 
-There is no longer an `ALL_TOOLS` / `ALL_HANDLERS` aggregation — FastMCP owns
-the registry directly. The pre-S0.4 dispatch path (`call_tool` + handler dict)
-was removed alongside the low-level `Server` class.
-
-Layout:
-- `calendars.py` — 5 list/get/search/default tools.
+Layout (10 modules):
+- `calendars.py` — 8 calendar lifecycle + list/get/search tools.
 - `reminders.py` — 6 CRUD + complete/uncomplete tools.
-- `queries.py` — 5 filter/search/today/overdue/next tools.
-- `workflow.py` — 6 Claude-* list lookup + move tools.
+- `queries.py` — 6 filter/search/today/overdue/next/completed-range tools.
+- `workflow.py` — 6 Claude-* workflow-list move + lookup tools.
+- `groups.py` — 4 list-group (sidebar folder) tools.
+- `alarms.py` — 3 time/location alarm + recurrence tools.
+- `bulk.py` — 3 bulk complete/move/delete-completed tools.
+- `sections.py` — 3 subtask/parent/section tools.
+- `agents.py` — 1 agent-visibility bootstrap tool.
+- `sampling.py` — 1 sampling-backed triage tool.
 """
 
 from __future__ import annotations
 
 # Re-export the per-category modules so callers can introspect what's wired up.
-from . import calendars, queries, reminders, sections, workflow
+from . import (
+    agents,
+    alarms,
+    bulk,
+    calendars,
+    groups,
+    queries,
+    reminders,
+    sampling,
+    sections,
+    workflow,
+)
 
-__all__ = ["calendars", "queries", "reminders", "sections", "workflow"]
+__all__ = [
+    "agents",
+    "alarms",
+    "bulk",
+    "calendars",
+    "groups",
+    "queries",
+    "reminders",
+    "sampling",
+    "sections",
+    "workflow",
+]

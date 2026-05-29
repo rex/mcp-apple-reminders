@@ -12,7 +12,7 @@ Side effects on instantiation:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Callable, Generator, Optional, cast
+from typing import Generator, Optional, cast
 
 from Foundation import (
     NSURL,
@@ -40,18 +40,12 @@ class RemindKit:
 
     On construction, requests Reminders permission and opens an `EKEventStore`.
     All reminder/calendar operations route through this instance.
-
-    Note: `on_reminder_created` and `on_reminder_completed` register callbacks
-    into internal lists that are NEVER FIRED (dead code preserved from the
-    original implementation, tracked as a known issue).
     """
 
     def __init__(self):
         self._event_store = _grant_permission()
         self.calendars = CalendarManager(self, self._event_store)
         self._is_authenticated = False
-        self._on_reminder_created_callbacks = []
-        self._on_reminder_completed_callbacks = []
 
     def create_reminder(self, **kwargs) -> Reminder:
         """Create a reminder. Defaults to the system default calendar.
@@ -63,9 +57,6 @@ class RemindKit:
         calendar = self.calendars.get_by_id(calendar_id) if calendar_id else self.calendars.get_default()
 
         reminder = calendar.create_reminder(**kwargs)
-
-        for callback in self._on_reminder_created_callbacks:
-            callback(reminder)
 
         return reminder
 
@@ -210,20 +201,3 @@ class RemindKit:
             raise RuntimeError(f"Failed to delete reminder: {error}")
 
         return success
-
-    def on_reminder_created(self, callback: Callable) -> None:
-        """Register a callback that WOULD be invoked when a reminder is created.
-
-        NOTE: this callback list is dead code — `create_reminder` iterates it, but
-        no upstream EventKit observer is wired up to trigger it for external
-        changes. Tracked as a known issue.
-        """
-        self._on_reminder_created_callbacks.append(callback)
-
-    def on_reminder_completed(self, callback: Callable) -> None:
-        """Register a callback for reminder-completion events.
-
-        NOTE: never fired anywhere in the codebase. Dead code preserved for API
-        compatibility; tracked as a known issue.
-        """
-        self._on_reminder_completed_callbacks.append(callback)

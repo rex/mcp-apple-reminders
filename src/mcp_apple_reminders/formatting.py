@@ -1,8 +1,6 @@
-"""Formatting helpers shared across MCP tool handlers.
+"""Parsing helpers shared across MCP tool handlers.
 
-Three small utilities:
-- `format_reminder` — render a `Reminder` as the canonical human-readable text block
-  returned from `get_reminder`, `create_reminder`, etc.
+Two small utilities:
 - `parse_datetime` — parse ISO-format datetime strings from MCP arguments.
 - `parse_priority` — accept either named priorities ("none"/"low"/"medium"/"high")
   or integer strings (0-9) and return the canonical EventKit integer.
@@ -11,47 +9,6 @@ Three small utilities:
 from __future__ import annotations
 
 from datetime import datetime
-
-from mcp_apple_reminders._native import Reminder
-
-
-def format_reminder(reminder: Reminder) -> str:
-    """Render a `Reminder` as a multi-line human-readable block.
-
-    The output is consumed by the MCP client as plain text. Fields are emitted
-    one-per-line in a stable order so downstream parsers (or humans) can rely on
-    the layout.
-    """
-    parts = [
-        f"ID: {reminder.id}",
-        f"Title: {reminder.title}",
-        f"Completed: {'Yes' if reminder.completed else 'No'}",
-    ]
-
-    if reminder.due_date:
-        parts.append(f"Due Date: {reminder.due_date.strftime('%Y-%m-%d %H:%M:%S')}")
-
-    if reminder.notes:
-        parts.append(f"Notes: {reminder.notes}")
-
-    if reminder.url:
-        parts.append(f"URL: {reminder.url}")
-
-    priority_map = {0: "None", 1: "Low", 5: "Medium", 9: "High"}
-    priority_str = priority_map.get(reminder.priority, f"Custom ({reminder.priority})")
-    parts.append(f"Priority: {priority_str}")
-
-    parts.append(f"List ID: {reminder.list_id}")
-
-    if reminder.created_date:
-        parts.append(f"Created: {reminder.created_date.strftime('%Y-%m-%d %H:%M:%S')}")
-
-    if reminder.modified_date:
-        parts.append(f"Modified: {reminder.modified_date.strftime('%Y-%m-%d %H:%M:%S')}")
-
-    parts.append(f"Flagged: {'Yes' if reminder.flagged else 'No'}")
-
-    return "\n".join(parts)
 
 
 def parse_datetime(date_string: str) -> datetime:

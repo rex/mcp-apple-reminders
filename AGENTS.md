@@ -68,7 +68,6 @@ install.sh, shim_mcp.sh         Bootstrap + first-run permission-prompt shim
 
 ## 9. Things agents get wrong here
 
-- **Dead callbacks**: `_native/core.py`'s `on_reminder_created` / `on_reminder_completed` register but never fire. Don't rely on them.
 - **EventKit error out-params are mishandled** — `error = None` then passed to PyObjC. Actual errors never propagate; failure messages always literally say `None`.
 - **Capability state (2026-05-29)**: `create_calendar` / `delete_calendar` / `update_calendar`, `set_flagged`, `set_recurrence`, `set_alarm` + `set_location_alarm`, subtasks (`create_reminder(parent_reminder_id=…)` + `get_subtasks`), tags, sections, and list-groups are all SHIPPED via the Swift EventKit + Obj-C ReminderKit helpers — the old "NO X" gaps are gone. Real remaining gaps: recurrence/alarms are write-only (no read-back in `models.py`); and smart-list create/manage, templates, grocery auto-categorize, attachments, list pinning/appearance, urgent/early-reminder, and `clear_tags` are implemented in `_native/src/rem_reminderkit.m` but NOT yet exposed as MCP tools (~70% of the Obj-C helper surface). Backlog: `docs/audits/2026-05-29-post-spec-002-cleanup-audit/` + `PROGRESS.md`.
 - **Architecture gate is opt-OUT**: every source file is scanned by default. Hard cap 400 lines, soft 250. The 4 pre-retrofit oversized files (`server.py`, `core.py`, two test files) were split — do NOT add new files that bust the cap on the assumption a grandfather glob will catch them. There are no grandfather globs.
