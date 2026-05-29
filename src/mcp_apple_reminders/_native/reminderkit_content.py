@@ -38,3 +38,12 @@ def delete_template(template_id: str) -> dict:
     if not template_id or not template_id.strip():
         raise ValueError("template_id is required and must be non-empty")
     return _invoke({"action": "delete_template", "templateId": template_id})
+
+
+def categorize_grocery_items(list_id: str, reminder_ids: list[str]) -> dict:
+    """Auto-categorize grocery reminders (produce, dairy, …) in a grocery-enabled list."""
+    if not list_id or not list_id.strip():
+        raise ValueError("list_id is required and must be non-empty")
+    if not reminder_ids:
+        raise ValueError("reminder_ids must be a non-empty list")
+    return _invoke({"action": "categorize_grocery_items", "listId": list_id, "reminderIds": list(reminder_ids)})

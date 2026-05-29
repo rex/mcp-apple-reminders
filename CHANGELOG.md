@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.66] — 2026-05-29 — Agent: Claude
+### Added
+- Add categorize_grocery_items tool (Apple on-device grocery categorization) via tools/grocery.py
+
 ## [0.1.65] — 2026-05-29 — Agent: Claude
 ### Added
 - Add list-template tools (create_template / apply_template / delete_template) via _native/reminderkit_content.py + tools/templates.py
