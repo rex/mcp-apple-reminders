@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.51] — 2026-05-29 — Agent: Claude
+### Changed
+- Backfill CHANGELOG [0.1.9] (S1.1 is_default fix) and [0.1.11] (spec 001 archive / spec 002 land) placeholders
+
 ## [0.1.50] — 2026-05-29 — Agent: Claude
 ### Removed
 - Remove 10 stale root markdown docs + relocate MAP.md to docs/MAP.md
@@ -815,7 +819,7 @@ action, all within a pytest run.
 
 ## [0.1.11] — 2026-05-28 — Agent: Claude
 ### Changed
-- _(fill in — what changed in this version)_
+- Archived spec 001-visibility-foundation and landed spec 002-modernize-and-foundation — the pivot to the RemCTL three-tier native architecture (direct SQLite reads + Swift EventKit helper subprocess + Obj-C ReminderKit helper subprocess) plus FastMCP / MCP 1.27 modernization (Resources, Prompts, Sampling, Elicitation, deeplinks on every Reminder + Calendar).
 
 ## [0.1.10] — 2026-05-28 — Agent: Claude
 ### Fixed
@@ -823,7 +827,7 @@ action, all within a pytest run.
 
 ## [0.1.9] — 2026-05-28 — Agent: Claude
 ### Changed
-- _(fill in — what changed in this version)_
+- Corrected `is_default` detection in `CalendarManager.list()` (slice S1.1): the default calendar is now identified by comparing each calendar against `EKEventStore.defaultCalendarForNewReminders()` instead of the prior logic that never flagged one (the change the [0.1.10] note claimed it had already filled).
 
 ## [0.1.8] — 2026-05-28 — Agent: Claude
 ### Changed
