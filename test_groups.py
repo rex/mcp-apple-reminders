@@ -146,9 +146,7 @@ def test_list_calendars_include_groups_toggle():
 
 
 @pytest.mark.skipif(
-    os.environ.get("REM_LIVE_HELPER") != "1"
-    or not REMINDERKIT_HELPER.exists()
-    or not EVENTKIT_HELPER.exists(),
+    os.environ.get("REM_LIVE_HELPER") != "1" or not REMINDERKIT_HELPER.exists() or not EVENTKIT_HELPER.exists(),
     reason="Set REM_LIVE_HELPER=1 with both helpers built to run the live S5.1 round-trip.",
 )
 def test_live_group_round_trip():
@@ -201,9 +199,9 @@ def test_live_group_round_trip():
         try:
             child = Reader(conn).get_calendar_by_id(child_id)
             assert child is not None
-            assert child.parent_group_id == group_id, (
-                f"parent_group_id mismatch: got {child.parent_group_id!r}, want {group_id!r}"
-            )
+            assert (
+                child.parent_group_id == group_id
+            ), f"parent_group_id mismatch: got {child.parent_group_id!r}, want {group_id!r}"
         finally:
             conn.close()
     finally:

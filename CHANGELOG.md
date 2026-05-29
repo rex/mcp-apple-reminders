@@ -5,6 +5,11 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.45] — 2026-05-29 — Agent: Claude — black-format `test_groups.py`
+
+### Fixed
+- `test_groups.py` failed `make lint` (black --check) post-S5.1 ship. `make typecheck` + `make check-architecture` + `ruff check` were all green; only black reformatting was outstanding. Stop-hook caught it before idle. No semantic change.
+
 ## [0.1.44] — 2026-05-29 — Agent: Claude — Slice 5.1 (🎯 list-group support)
 
 ADR 0001 acted on. Pierce's hunch — point at the one "Claude" group and reverse-
