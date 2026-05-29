@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.56] — 2026-05-29 — Agent: Claude
+### Changed
+- Deduplicate the _app_context accessor (8 tool modules) and _bridge_from_ctx (2 modules) into shared lifespan.app_context/bridge_from_ctx helpers
+
 ## [0.1.55] — 2026-05-29 — Agent: Claude
 ### Removed
 - Remove dead code: format_reminder, on_reminder_created/completed callbacks + their create-loop, the dead bulk check_cancellation branch + BulkCancelled; tools/__init__ now imports all 10 tool modules

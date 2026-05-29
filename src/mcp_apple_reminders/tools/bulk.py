@@ -19,13 +19,9 @@ from pydantic import BaseModel
 
 from .._native.bulk import bulk_iter
 from .._native.sqlite import Reader, RemindersDBUnavailable
-from ..lifespan import AppContext
+from ..lifespan import app_context as _app_context
 from ..models import Reminder, native_reminder_to_pydantic
 from ..server import mcp
-
-
-def _app_context(ctx: Context) -> AppContext:
-    return ctx.request_context.lifespan_context
 
 
 @mcp.tool(

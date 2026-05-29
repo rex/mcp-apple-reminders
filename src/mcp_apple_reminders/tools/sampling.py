@@ -23,13 +23,8 @@ from mcp import types as mcp_types
 from mcp.server.fastmcp import Context
 
 from .._native.sqlite import Reader, RemindersDBUnavailable
-from ..lifespan import AppContext
+from ..lifespan import app_context as _app_context
 from ..server import mcp
-
-
-def _app_context(ctx: Context) -> AppContext:
-    return ctx.request_context.lifespan_context
-
 
 _VALID_ROUTES = {
     "Claude-Active": "Working on it now.",

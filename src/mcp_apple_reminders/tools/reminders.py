@@ -27,17 +27,10 @@ from .._native.reminderkit_actions import (
 )
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..formatting import parse_datetime, parse_priority
-from ..lifespan import AppContext
+from ..lifespan import app_context as _app_context
+from ..lifespan import bridge_from_ctx as _bridge_from_ctx
 from ..models import Reminder, native_reminder_to_pydantic, reminder_deeplink
 from ..server import mcp
-
-
-def _bridge_from_ctx(ctx: Context):
-    return ctx.request_context.lifespan_context.bridge
-
-
-def _app_context(ctx: Context) -> AppContext:
-    return ctx.request_context.lifespan_context
 
 
 @mcp.tool(

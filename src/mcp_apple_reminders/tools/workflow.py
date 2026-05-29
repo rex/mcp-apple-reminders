@@ -18,12 +18,9 @@ from __future__ import annotations
 
 from mcp.server.fastmcp import Context
 
+from ..lifespan import bridge_from_ctx as _bridge_from_ctx
 from ..models import Calendar, Reminder, native_calendar_to_pydantic, native_reminder_to_pydantic
 from ..server import mcp
-
-
-def _bridge_from_ctx(ctx: Context):
-    return ctx.request_context.lifespan_context.bridge
 
 
 async def _move_to_named_list(bridge, reminder_id: str, list_name: str, ctx: Context) -> Reminder:

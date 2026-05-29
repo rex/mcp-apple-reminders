@@ -27,7 +27,7 @@ from ._native import RemindKit
 from ._native.sqlite import RemindersDBUnavailable, connect, find_db_path
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.fastmcp import Context, FastMCP
 
 
 @dataclass
@@ -47,6 +47,16 @@ class AppContext:
         if self.sqlite_db_path is None:
             raise RemindersDBUnavailable("Reminders SQLite store path not resolved at startup.")
         return connect(self.sqlite_db_path)
+
+
+def app_context(ctx: Context) -> AppContext:
+    """Return the lifespan-owned AppContext for a tool/resource Context."""
+    return ctx.request_context.lifespan_context
+
+
+def bridge_from_ctx(ctx: Context) -> RemindKit:
+    """Return the RemindKit (EventKit) bridge from a tool/resource Context."""
+    return ctx.request_context.lifespan_context.bridge
 
 
 @asynccontextmanager
@@ -95,4 +105,4 @@ async def app_lifespan(server: "FastMCP") -> AsyncIterator[AppContext]:
         pass
 
 
-__all__ = ["AppContext", "app_lifespan"]
+__all__ = ["AppContext", "app_context", "app_lifespan", "bridge_from_ctx"]

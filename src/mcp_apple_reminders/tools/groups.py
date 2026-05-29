@@ -32,13 +32,9 @@ from .._native.reminderkit_actions import (
     move_list_to_group as helper_move_list_to_group,
 )
 from .._native.sqlite import Reader, RemindersDBUnavailable
-from ..lifespan import AppContext
+from ..lifespan import app_context as _app_context
 from ..models import Calendar, calendar_deeplink
 from ..server import mcp
-
-
-def _app_context(ctx: Context) -> AppContext:
-    return ctx.request_context.lifespan_context
 
 
 @mcp.tool(
