@@ -102,19 +102,19 @@ def _save_ek_reminder(event_store: EKEventStore, ek_reminder) -> bool:
         True on success.
 
     Raises:
-        RuntimeError: If EventKit refuses the save. NOTE: EventKit reports the
-            actual error through an out-parameter that PyObjC does not currently
-            populate from None; the captured `error` is consistently None, so
-            the raised message ends with `: None`. Fixing this requires
-            allocating an actual `objc.nil` reference. Tracked as a known issue.
+        RuntimeError: If EventKit refuses the save, carrying the NSError's
+            localized description. PyObjC folds the trailing `NSError**`
+            out-parameter into the return value, so the call returns a
+            `(BOOL, NSError)` tuple — we unpack it. Do NOT revert to
+            `error = None; success = ...save..._error_(...)`: that captures
+            the whole (always-truthy) tuple into `success`, making the
+            failure branch dead and silently swallowing every write error.
     """
-    error = None
-    success = event_store.saveReminder_commit_error_(ek_reminder, True, error)
-
-    if not success:
-        raise RuntimeError(f"Failed to update reminder: {error}")
-
-    return success
+    ok, error = event_store.saveReminder_commit_error_(ek_reminder, True, None)
+    if not ok:
+        detail = error.localizedDescription() if error is not None else "unknown EventKit error"
+        raise RuntimeError(f"Failed to save reminder: {detail}")
+    return bool(ok)
 
 
 __all__ = [

@@ -194,10 +194,11 @@ class RemindKit:
         if not ek_reminder:
             raise ValueError(f"Reminder with ID '{reminder_id}' not found.")
 
-        error = None
-        success = self._event_store.removeReminder_commit_error_(ek_reminder, True, error)
-
-        if not success:
-            raise RuntimeError(f"Failed to delete reminder: {error}")
-
-        return success
+        # PyObjC folds the NSError** out-param into the return value: the call
+        # returns a (BOOL, NSError) tuple. Unpack it — do NOT capture the tuple
+        # into a single truthy `success` (that swallows every failure).
+        ok, error = self._event_store.removeReminder_commit_error_(ek_reminder, True, None)
+        if not ok:
+            detail = error.localizedDescription() if error is not None else "unknown EventKit error"
+            raise RuntimeError(f"Failed to delete reminder: {detail}")
+        return bool(ok)
