@@ -15,9 +15,15 @@ def _get_prompt(name: str, **arguments):
     return asyncio.run(mcp.get_prompt(name, arguments or None))
 
 
-def test_four_prompts_registered():
+def test_prompts_registered():
     names = {p.name for p in _list_prompts()}
-    assert names >= {"daily_review", "weekly_retro", "brain_dump_triage", "agent_visibility_sync"}
+    assert names >= {
+        "daily_review",
+        "weekly_retro",
+        "brain_dump_triage",
+        "agent_visibility_sync",
+        "organize_into_sections",
+    }
 
 
 def test_daily_review_returns_messages():
@@ -48,3 +54,10 @@ def test_agent_visibility_sync_handles_missing_project_list():
     text_content = "".join(m.content.text if hasattr(m.content, "text") else "" for m in result.messages)
     assert "Agents-NoSuchProject-S22" in text_content
     assert "create_calendar" in text_content
+
+
+def test_organize_into_sections_handles_missing_list():
+    """If the named list doesn't exist, the prompt returns a friendly explanation."""
+    result = _get_prompt("organize_into_sections", list_name="DefinitelyDoesNotExist-CL212")
+    text_content = "".join(m.content.text if hasattr(m.content, "text") else "" for m in result.messages)
+    assert "not found" in text_content

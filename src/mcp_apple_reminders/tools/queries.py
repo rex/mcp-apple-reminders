@@ -16,9 +16,10 @@ to single-digit ms.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Annotated, Optional
 
 from mcp.server.fastmcp import Context
+from pydantic import Field
 
 from .._native import Priority
 from .._native.sqlite import Reader, RemindersDBUnavailable
@@ -66,15 +67,23 @@ def _matches_priority(reminder_priority: int, bucket: Priority) -> bool:
 )
 async def get_reminders(
     ctx: Context,
-    due_after: Optional[str] = None,
-    due_before: Optional[str] = None,
-    is_completed: Optional[bool] = None,
-    priority: Optional[str] = None,
-    calendar_id: Optional[str] = None,
-    calendar_ids: Optional[list[str]] = None,
-    tags: Optional[list[str]] = None,
-    flagged: Optional[bool] = None,
-    limit: Optional[int] = None,
+    due_after: Annotated[
+        Optional[str], Field(description="Only reminders due on/after this ISO 8601 datetime.")
+    ] = None,
+    due_before: Annotated[Optional[str], Field(description="Only reminders due before this ISO 8601 datetime.")] = None,
+    is_completed: Annotated[
+        Optional[bool], Field(description="Filter by completion: true=completed, false=incomplete, omit=both.")
+    ] = None,
+    priority: Annotated[
+        Optional[str], Field(description="Filter by priority bucket: 'none', 'low', 'medium', 'high'.")
+    ] = None,
+    calendar_id: Annotated[Optional[str], Field(description="Restrict to a single list (calendar) UUID.")] = None,
+    calendar_ids: Annotated[
+        Optional[list[str]], Field(description="Restrict to several list UUIDs (union of their reminders).")
+    ] = None,
+    tags: Annotated[Optional[list[str]], Field(description="Only reminders carrying all of these tags.")] = None,
+    flagged: Annotated[Optional[bool], Field(description="Filter by flag state.")] = None,
+    limit: Annotated[Optional[int], Field(description="Cap the number of reminders returned.")] = None,
 ) -> list[Reminder]:
     """Get reminders with optional filters (SQLite-first; EventKit fallback).
 
@@ -169,7 +178,11 @@ async def get_recently_deleted(ctx: Context, limit: Optional[int] = None) -> lis
         "and notes fields. Case-insensitive partial matching."
     ),
 )
-async def search_reminders(query: str, ctx: Context, limit: Optional[int] = None) -> list[Reminder]:
+async def search_reminders(
+    query: Annotated[str, Field(description="Substring matched against reminder title and notes (case-insensitive).")],
+    ctx: Context,
+    limit: Annotated[Optional[int], Field(description="Cap the number of matches returned.")] = None,
+) -> list[Reminder]:
     """SQLite-first substring search across title and notes.
 
     Args:

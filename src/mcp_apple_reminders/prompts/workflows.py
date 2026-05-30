@@ -1,4 +1,4 @@
-"""Four canned MCP Prompts — Slice 2.2.
+"""Five canned MCP Prompts — Slice 2.2 (+ organize_into_sections, CL-2.12).
 
 Each prompt builds a `list[base.Message]` from the live SQLite store so the
 agent can act immediately. Prompts are conceptually frozen workflows that
@@ -11,6 +11,7 @@ The four:
 - `weekly_retro` — last 7 days' completed + still-open.
 - `brain_dump_triage` — pull from a Claude-Brain-Dump list and route.
 - `agent_visibility_sync` — surface the Agents-<project> list for sync.
+- `organize_into_sections` — propose a section layout for a list's reminders.
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ def _bullet_list(reminders: list, *, empty_note: str = "(none)") -> str:
 
 @mcp.prompt(
     name="daily_review",
+    title="Daily Review",
     description=(
         "Quick AM/PM review prompt: surfaces today's reminders + everything "
         "overdue, plus a brief agenda for triage. Reads live from SQLite."
@@ -79,6 +81,7 @@ def daily_review() -> list[base.Message]:
 
 @mcp.prompt(
     name="weekly_retro",
+    title="Weekly Retro",
     description=("Weekly retro: last 7 days of completed work + still-open items. " "Reads live from SQLite."),
 )
 def weekly_retro(window_days: int = 7) -> list[base.Message]:
@@ -112,6 +115,7 @@ def weekly_retro(window_days: int = 7) -> list[base.Message]:
 
 @mcp.prompt(
     name="brain_dump_triage",
+    title="Brain Dump Triage",
     description=(
         "Pull every reminder from the `Claude-Brain-Dump` list and propose "
         "where each one should go (active / on-deck / waiting / done)."
@@ -153,6 +157,7 @@ def brain_dump_triage(list_name: str = "Claude-Brain-Dump") -> list[base.Message
 
 @mcp.prompt(
     name="agent_visibility_sync",
+    title="Agent Visibility Sync",
     description=(
         "Surface the `Agents-<project>` reminder list so the agent can sync "
         "its current todos there. Pass `project_name` to target a specific list."
@@ -188,5 +193,50 @@ def agent_visibility_sync(project_name: str) -> list[base.Message]:
 
     return [
         base.UserMessage(f"Sync your current todos into `{list_name}` so the user can see what you're working on."),
+        base.AssistantMessage(body),
+    ]
+
+
+@mcp.prompt(
+    name="organize_into_sections",
+    title="Organize Into Sections",
+    description=(
+        "Read a list's incomplete reminders and its existing sections, then "
+        "propose which section each reminder belongs to. The agent applies the "
+        "plan with `assign_section` (existing section) or `add_section_and_assign` "
+        "(new section). Pass `list_name` to target a specific list."
+    ),
+)
+def organize_into_sections(list_name: str) -> list[base.Message]:
+    """Propose a sectioning plan for a list's incomplete reminders."""
+    try:
+        with connect() as conn:
+            reader = Reader(conn)
+            cal = reader.get_calendar_by_name(list_name)
+            if cal is None:
+                return [
+                    base.UserMessage(
+                        f"List {list_name!r} not found. Create it in Apple Reminders first, "
+                        f"or pass `list_name=` with an existing list."
+                    )
+                ]
+            items = list(reader.iter_reminders(calendar_id=cal.id, completed=False))
+            sections = reader.list_sections_in_calendar(cal.id)
+    except RemindersDBUnavailable as e:
+        return [base.UserMessage(f"Section organization unavailable — SQLite read failed: {e}")]
+
+    existing = ", ".join(sorted(sname for _sid, sname in sections)) or "(none yet)"
+    body = (
+        f"# Organize Into Sections — {list_name}\n\n"
+        f"## Existing sections\n{existing}\n\n"
+        f"## Reminders to organize ({len(items)})\n{_bullet_list(items, empty_note='List is empty.')}\n\n"
+        f"### Plan\n"
+        f"Group the reminders into coherent sections. Prefer the existing sections above; "
+        f"propose a new one only when nothing fits. For each reminder, name its destination section, then:\n"
+        f"- existing section → `assign_section(reminder_id, section_name)`\n"
+        f"- new section → `add_section_and_assign(reminder_id, section_name)`"
+    )
+    return [
+        base.UserMessage(f"Organize the reminders in `{list_name}` into sensible sections."),
         base.AssistantMessage(body),
     ]

@@ -36,6 +36,7 @@ def _reminders_payload(reminders: list, **context: Any) -> str:
 @mcp.resource(
     uri="reminders://default",
     name="Default list",
+    title="Default List",
     description=(
         "The user's default reminder list with all incomplete reminders inside it. "
         "Sourced via the SQLite reader; sub-millisecond."
@@ -63,6 +64,7 @@ def default_list() -> str:
 @mcp.resource(
     uri="reminders://overdue",
     name="Overdue reminders",
+    title="Overdue Reminders",
     description="Incomplete reminders whose due date is in the past. Sub-millisecond via SQLite.",
     mime_type="application/json",
 )
@@ -80,6 +82,7 @@ def overdue_reminders() -> str:
 @mcp.resource(
     uri="reminders://today",
     name="Today's reminders",
+    title="Today's Reminders",
     description="Incomplete reminders due in the current local day. Sub-millisecond via SQLite.",
     mime_type="application/json",
 )
@@ -109,6 +112,7 @@ def today_reminders() -> str:
 @mcp.resource(
     uri="reminders://list/{calendar_id}",
     name="Specific list",
+    title="List by ID",
     description=(
         "Reminders inside a specific list identified by its UUID. Substitute "
         "the UUID into the path: e.g. reminders://list/A6D35949-…"
@@ -135,6 +139,7 @@ def list_by_id(calendar_id: str) -> str:
 @mcp.resource(
     uri="reminders://recently-deleted",
     name="Recently deleted",
+    title="Recently Deleted",
     description=(
         "Reminders marked for deletion but not yet purged (recoverable in "
         "Reminders.app). Read-only recovery view via the SQLite reader."
@@ -154,6 +159,7 @@ def recently_deleted_reminders() -> str:
 @mcp.resource(
     uri="reminders://tags",
     name="All tags",
+    title="All Tags",
     description="Every distinct hashtag/tag in use on live (non-deleted) reminders, sorted. Sub-millisecond via SQLite.",
     mime_type="application/json",
 )

@@ -1,16 +1,17 @@
 """Reminder CRUD MCP tools — FastMCP edition.
 
-Six operations: create, update, complete (sugar over update), uncomplete
-(sugar), get-by-id, delete. The complete/uncomplete handlers are thin
-wrappers that call `update_reminder(is_completed=…)` so they stay in sync
-with the canonical update path automatically.
+Four operations: create, update, get-by-id, delete. The complete/uncomplete
+shortcuts live in `tools/completion.py` (split out to keep this module under
+the architecture line cap); they call `update_reminder(is_completed=…)` so
+they stay in sync with the canonical update path.
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Annotated, Optional
 
 from mcp.server.fastmcp import Context
+from pydantic import Field
 
 from .._native.eventkit_readback import summarize_alarms, summarize_recurrence
 from .._native.reminderkit import (
@@ -50,15 +51,26 @@ from ._annotations import CREATE, DESTROY, MUTATE, READ
     ),
 )
 async def create_reminder(
-    title: str,
+    title: Annotated[str, Field(description="The title/name of the reminder.")],
     ctx: Context,
-    due_date: Optional[str] = None,
-    notes: Optional[str] = None,
-    priority: Optional[str] = None,
-    url: Optional[str] = None,
-    calendar_id: Optional[str] = None,
-    parent_reminder_id: Optional[str] = None,
-    flagged: Optional[bool] = None,
+    due_date: Annotated[
+        Optional[str], Field(description="Due date as an ISO 8601 datetime string, e.g. '2026-06-15T09:00:00'.")
+    ] = None,
+    notes: Annotated[Optional[str], Field(description="Free-form notes/body for the reminder.")] = None,
+    priority: Annotated[
+        Optional[str], Field(description="Priority: 'none', 'low', 'medium', 'high', or an integer 0-9.")
+    ] = None,
+    url: Annotated[Optional[str], Field(description="A URL to associate with the reminder.")] = None,
+    calendar_id: Annotated[
+        Optional[str], Field(description="Target list (calendar) UUID; defaults to the user's default list.")
+    ] = None,
+    parent_reminder_id: Annotated[
+        Optional[str],
+        Field(
+            description="If set, create this reminder as a subtask of the given parent (inherits the parent's list)."
+        ),
+    ] = None,
+    flagged: Annotated[Optional[bool], Field(description="Set the reminder's flag on creation.")] = None,
 ) -> Reminder:
     """Create a new reminder. If `parent_reminder_id` is set, creates a subtask.
 
@@ -175,17 +187,21 @@ async def create_reminder(
     ),
 )
 async def update_reminder(
-    reminder_id: str,
+    reminder_id: Annotated[str, Field(description="UUID of the reminder to update.")],
     ctx: Context,
-    title: Optional[str] = None,
-    due_date: Optional[str] = None,
-    notes: Optional[str] = None,
-    priority: Optional[str] = None,
-    url: Optional[str] = None,
-    is_completed: Optional[bool] = None,
-    flagged: Optional[bool] = None,
-    add_tags: Optional[list[str]] = None,
-    clear_tags: bool = False,
+    title: Annotated[Optional[str], Field(description="New title.")] = None,
+    due_date: Annotated[Optional[str], Field(description="New due date as an ISO 8601 datetime string.")] = None,
+    notes: Annotated[Optional[str], Field(description="New notes; pass an empty string to clear.")] = None,
+    priority: Annotated[
+        Optional[str], Field(description="New priority: 'none', 'low', 'medium', 'high', or an integer 0-9.")
+    ] = None,
+    url: Annotated[Optional[str], Field(description="New URL; pass an empty string to clear.")] = None,
+    is_completed: Annotated[Optional[bool], Field(description="Mark completed (true) or incomplete (false).")] = None,
+    flagged: Annotated[Optional[bool], Field(description="Set or clear the reminder's flag.")] = None,
+    add_tags: Annotated[Optional[list[str]], Field(description="Tags to add (merged with existing tags).")] = None,
+    clear_tags: Annotated[
+        bool, Field(description="Remove all existing tags first; combine with add_tags for replacement.")
+    ] = False,
 ) -> Reminder:
     """Update an existing reminder.
 
@@ -268,48 +284,6 @@ async def update_reminder(
         fields.append("tags+=")
     await ctx.info(f"Updated reminder {reminder_id}: fields={fields}")
     return updated
-
-
-@mcp.tool(
-    name="complete_reminder",
-    title="Complete Reminder",
-    annotations=MUTATE,
-    description=(
-        "Mark a reminder as completed. This is a convenience tool that's "
-        "equivalent to calling update_reminder with is_completed=true."
-    ),
-)
-async def complete_reminder(reminder_id: str, ctx: Context) -> Reminder:
-    """Mark a reminder as completed.
-
-    Args:
-        reminder_id: The unique identifier of the reminder to mark as complete.
-    """
-    bridge = _bridge_from_ctx(ctx)
-    result = native_reminder_to_pydantic(bridge.update_reminder(reminder_id, is_completed=True))
-    await ctx.info(f"Completed reminder {reminder_id}")
-    return result
-
-
-@mcp.tool(
-    name="uncomplete_reminder",
-    title="Uncomplete Reminder",
-    annotations=MUTATE,
-    description=(
-        "Mark a reminder as incomplete/not done. This is useful for reopening "
-        "a reminder that was previously completed."
-    ),
-)
-async def uncomplete_reminder(reminder_id: str, ctx: Context) -> Reminder:
-    """Mark a reminder as incomplete.
-
-    Args:
-        reminder_id: The unique identifier of the reminder to mark as incomplete.
-    """
-    bridge = _bridge_from_ctx(ctx)
-    result = native_reminder_to_pydantic(bridge.update_reminder(reminder_id, is_completed=False))
-    await ctx.info(f"Uncompleted reminder {reminder_id}")
-    return result
 
 
 @mcp.tool(

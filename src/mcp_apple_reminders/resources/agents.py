@@ -20,6 +20,7 @@ AGENT_LIST_PREFIX = "Agents-"
 @mcp.resource(
     uri="agents://current/{project_name}",
     name="Agents visibility plane",
+    title="Agents Visibility Plane",
     description=(
         "Live state of the `Agents-<project_name>` reminder list — the "
         "agent's mirrored todo board. Returns JSON: "

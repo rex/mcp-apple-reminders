@@ -7,7 +7,8 @@ decorators at module scope. FastMCP owns the registry directly — there is no
 
 Layout:
 - `calendars.py` — calendar lifecycle + list/get/search tools.
-- `reminders.py` — CRUD + complete/uncomplete tools.
+- `reminders.py` — create/update/get/delete CRUD tools.
+- `completion.py` — complete/uncomplete shortcuts.
 - `queries.py` — filter/search/today/overdue/next/completed-range tools.
 - `workflow.py` — Claude-* workflow-list move + lookup tools.
 - `groups.py` — list-group (sidebar folder) tools.
@@ -31,6 +32,7 @@ from . import (
     attachments,
     bulk,
     calendars,
+    completion,
     flags,
     grocery,
     groups,
@@ -50,6 +52,7 @@ __all__ = [
     "attachments",
     "bulk",
     "calendars",
+    "completion",
     "flags",
     "grocery",
     "groups",

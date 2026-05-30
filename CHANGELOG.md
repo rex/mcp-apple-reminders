@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.83] — 2026-05-30 — Agent: Claude
+### Changed
+- CL-2.12: resources/prompts polish — title= on all 8 resources + 5 prompts; new organize_into_sections prompt; per-param Field(description=) on the high-traffic tools (create_reminder/update_reminder/get_reminders/search_reminders) so their inputSchema params are documented. Split complete/uncomplete into tools/completion.py to keep reminders.py under the 400-line cap after the Annotated expansion.
+
 ## [0.1.82] — 2026-05-30 — Agent: Claude
 ### Changed
 - CL-2.11: typed result models (results.py) — the 27 write/bulk/triage tools return frozen WriteResult/DeleteResult/BulkResult/TriageResult instead of bare dict, so each declares an outputSchema and emits structuredContent. extra='allow' envelopes preserve helper echo keys (additionalProperties:true → wire-safe); a _Result.of(**fields) factory keeps construction mypy-clean over extras. New test_result_models.py locks the contract; wire-tested via fresh stdio server.

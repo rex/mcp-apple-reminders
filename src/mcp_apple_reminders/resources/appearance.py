@@ -119,6 +119,7 @@ _PAYLOAD = {
 @mcp.resource(
     "reminders://appearance",
     name="Appearance options",
+    title="Appearance Options",
     description="Canonical list colors (name + hex) and icon (SF Symbol / emoji) guidance for the appearance tools.",
     mime_type="application/json",
 )
