@@ -46,19 +46,11 @@ async def run(c: WireClient, store: TestStore, r: Reporter) -> None:
     await c.call_ok(
         "set_early_reminder", {"reminder_id": rid, "unit": 2, "count": 1}, label="set_early_reminder(1 day)"
     )
-    # KNOWN ISSUE (found by this suite): set_urgent crashes the ReminderKit helper with
-    # `-[REMReminderStorage urgentAlarmContext]: unrecognized selector` on this macOS — the
-    # urgent-context selector is missing/misnamed. Tracked for a dedicated fix (guard the
-    # selector → clean error, or find the working one). Asserted as expected-error so the
-    # suite stays green and flips loudly when set_urgent is repaired.
-    err = await c.call_expect_error(
-        "set_urgent", {"reminder_id": rid, "urgent": True}, label="set_urgent (KNOWN broken: urgentAlarmContext)"
-    )
-    r.check(
-        "set_urgent known-issue signature",
-        "urgentAlarmContext" in err or "unrecognized selector" in err,
-        err[:120],
-    )
+    # set_urgent now uses REMReminder.setPrefersUrgentPresentationStyleForDateAlarms: — the
+    # old urgentAlarmContext selector was removed on current macOS (fixed v0.1.93).
+    urgent = await c.call_ok("set_urgent", {"reminder_id": rid, "urgent": True}, label="set_urgent(true)")
+    r.check("set_urgent -> urgent=True echoed", bool(urgent) and urgent.get("urgent") is True, str(urgent))
+    await c.call_ok("set_urgent", {"reminder_id": rid, "urgent": False}, label="set_urgent(false)")
 
     got = await c.call_ok("get_reminder", {"reminder_id": rid}, label="get_reminder(read-back)")
     if got:

@@ -121,7 +121,7 @@
 - (id)flaggedContext;
 - (id)hashtagContext;
 - (id)subtaskContext;
-- (id)urgentAlarmContext;
+- (void)setPrefersUrgentPresentationStyleForDateAlarms:(BOOL)value;
 - (void)addAlarm:(id)alarm;
 @end
 
@@ -148,10 +148,6 @@
 
 @interface REMReminderFlaggedContextChangeItem : NSObject
 - (void)setFlagged:(NSInteger)flagged;
-@end
-
-@interface REMReminderUrgentAlarmContextChangeItem : NSObject
-- (void)setIsUrgentStateEnabledForCurrentUser:(BOOL)value;
 @end
 
 @interface REMReminder : NSObject
@@ -671,8 +667,9 @@ static void applyPrivateMetadataToChange(REMReminderChangeItem *change, NSDictio
     if (cmd[@"flagged"] && cmd[@"flagged"] != [NSNull null]) {
         [[change flaggedContext] setFlagged:[cmd[@"flagged"] boolValue] ? 1 : 0];
     }
-    if (cmd[@"urgent"] && cmd[@"urgent"] != [NSNull null]) {
-        [[change urgentAlarmContext] setIsUrgentStateEnabledForCurrentUser:[cmd[@"urgent"] boolValue]];
+    if (cmd[@"urgent"] && cmd[@"urgent"] != [NSNull null]
+        && [change respondsToSelector:@selector(setPrefersUrgentPresentationStyleForDateAlarms:)]) {
+        [change setPrefersUrgentPresentationStyleForDateAlarms:[cmd[@"urgent"] boolValue]];
     }
     addLocationToChange(change, cmd);
 }
@@ -1585,7 +1582,10 @@ int main(int argc, const char * argv[]) {
             [[change flaggedContext] setFlagged:[cmd[@"flagged"] boolValue] ? 1 : 0];
             details[@"flagged"] = @([cmd[@"flagged"] boolValue]);
         } else if ([action isEqualToString:@"set_urgent"]) {
-            [[change urgentAlarmContext] setIsUrgentStateEnabledForCurrentUser:[cmd[@"urgent"] boolValue]];
+            if (![change respondsToSelector:@selector(setPrefersUrgentPresentationStyleForDateAlarms:)]) {
+                fail(@"set_urgent unsupported on this macOS: REMReminder exposes no urgent-presentation selector.");
+            }
+            [change setPrefersUrgentPresentationStyleForDateAlarms:[cmd[@"urgent"] boolValue]];
             details[@"urgent"] = @([cmd[@"urgent"] boolValue]);
         } else if ([action isEqualToString:@"set_early_reminder"]) {
             id context = [change dueDateDeltaAlertContext];

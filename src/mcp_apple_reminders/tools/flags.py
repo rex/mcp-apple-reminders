@@ -42,13 +42,15 @@ def _run(fn, *args, **kwargs) -> dict:
     title="Set Urgent",
     annotations=MUTATE,
     description=(
-        "Toggle the 'urgent' state on a reminder by its UUID (the urgency flag "
-        "Reminders.app surfaces with an exclamation badge). Pass `urgent=true` "
-        "to mark urgent, false to clear. Private ReminderKit API."
+        "Toggle the urgent / time-sensitive presentation for a reminder's date "
+        "alarms (REMReminder.prefersUrgentPresentationStyleForDateAlarms) so its "
+        "alarms break through Focus / Do Not Disturb. Pass `urgent=true` to enable, "
+        "false to clear; most meaningful on reminders that have a due date or alarm. "
+        "Write-only — not surfaced on read-back. Private ReminderKit API."
     ),
 )
 async def set_urgent(reminder_id: str, urgent: bool, ctx: Context) -> WriteResult:
-    """Mark a reminder urgent (true) or not (false)."""
+    """Enable/clear urgent (time-sensitive) presentation for the reminder's date alarms."""
     if not reminder_id or not reminder_id.strip():
         raise ValueError("reminder_id is required and must be non-empty")
     resp = _run(helper_set_urgent, reminder_id, urgent)

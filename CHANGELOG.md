@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.93] — 2026-05-30 — Agent: Claude
+### Fixed
+- fix: set_urgent no longer crashes the ReminderKit helper. The urgentAlarmContext selector + REMReminderUrgentAlarmContextChangeItem class were removed on current macOS ([save updateReminder:] returns a REMReminderStorage lacking urgentAlarmContext → uncaught NSException). Now calls setPrefersUrgentPresentationStyleForDateAlarms: on REMReminderStorage, guarded by respondsToSelector (clean fail() otherwise). Recompiled rem_reminderkit; tool description updated (urgent date-alarm presentation, write-only); integration test flipped to success (166 green); AGENTS §9 gotcha added.
+
 ## [0.1.92] — 2026-05-30 — Agent: Claude
 ### Changed
 - docs: integration suite COMPLETE — record in AGENTS §9 + TASK_STATE §0. 165 wire-level checks across all tool families/resources/prompts; 2 real bugs found (set_urgent helper crash, create_smart_list filterData) encoded as self-flipping known-issues with fix tasks queued.
