@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.100] — 2026-05-30 — Agent: Claude
+### Fixed
+- fix: Reminders list icons are a curated EMBLEM catalog, NOT SF Symbols. SF Symbol names (star.fill, cart.fill, sparkles) stored blank. New emblems.py extracts the 86-emblem catalog from RemindersUICore (categories: food/weather/work/sport/education/…); suggest_emblem keyword-matches list titles to best-fit emblems (auto-suggest feature restored). icons.py rebuilt on emblems: validate explicit tokens, reject invalid with clear error, auto-suggest from title when icon omitted. set_list_appearance rejects SF symbol names and group ids. reminders://appearance resource corrected (was 'any SF Symbol renders' — false). AGENTS §9 gotcha added.
+
 ## [0.1.99] — 2026-05-30 — Agent: Claude
 ### Changed
 - chore: delete the hand-seeded Alarm Lab / CL29-Alarm-Tests integration fixture (8 alarm/recurrence items) now that integration testing is complete. No test fixtures remain in the store. TASK_STATE §0 updated.

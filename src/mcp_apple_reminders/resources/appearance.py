@@ -1,20 +1,22 @@
-"""Appearance-options resource — the canonical list colors + icon guidance.
+"""Appearance-options resource — canonical list colors + the emblem catalog.
 
-Lets a client discover the valid values to pass to the appearance tools
+Lets a client discover the valid values for the appearance tools
 (`set_list_appearance`, `create_calendar`, `create_smart_list`,
-`update_smart_list`, `set_list_appearance` on groups) without guessing.
+`update_smart_list`) without guessing.
 
-The color palette is AUTHORITATIVE: it mirrors exactly the named colors the
-Obj-C helper's `makeREMColor()` accepts (`_native/src/rem_reminderkit.m`). Any
-`#RRGGBB` hex is also accepted. Icons are SF Symbols — the helper accepts any
-SF Symbol name (or any emoji); Reminders.app's picker shows a curated subset,
-but the server does not restrict to it.
+The color palette is AUTHORITATIVE: it mirrors the named colors the Obj-C
+helper's `makeREMColor()` accepts (`_native/src/rem_reminderkit.m`); any `#RRGGBB`
+hex also works. Icons are a curated EMBLEM catalog (see `emblems.py`, extracted
+from RemindersUICore) — NOT SF Symbols (an SF Symbol name like 'star.fill' is
+accepted by the API but renders BLANK). Pass an emblem id or an emoji, or let
+`create_calendar` auto-suggest one from the list name.
 """
 
 from __future__ import annotations
 
 import json
 
+from ..emblems import EMBLEMS, EMBLEMS_BY_CATEGORY
 from ..server import mcp
 
 # Canonical Apple Reminders list palette. MUST stay in sync with
@@ -32,59 +34,6 @@ LIST_COLORS: list[dict[str, str]] = [
     {"name": "teal", "hex": "#30B0C7"},
 ]
 
-# Common SF Symbols seen in Reminders.app's icon picker. NOT exhaustive and NOT
-# enforced — any valid SF Symbol name works as `symbol`, any emoji as `emoji`.
-COMMON_ICONS: list[str] = [
-    "list.bullet",
-    "star.fill",
-    "flag.fill",
-    "house.fill",
-    "briefcase.fill",
-    "cart.fill",
-    "gift.fill",
-    "book.fill",
-    "graduationcap.fill",
-    "heart.fill",
-    "airplane",
-    "car.fill",
-    "fork.knife",
-    "cup.and.saucer.fill",
-    "dumbbell.fill",
-    "figure.run",
-    "leaf.fill",
-    "pawprint.fill",
-    "music.note",
-    "gamecontroller.fill",
-    "creditcard.fill",
-    "dollarsign.circle.fill",
-    "stethoscope",
-    "pills.fill",
-    "sun.max.fill",
-    "moon.fill",
-    "calendar",
-    "clock.fill",
-    "bell.fill",
-    "tag.fill",
-    "paperclip",
-    "folder.fill",
-    "lightbulb.fill",
-    "bolt.fill",
-    "flame.fill",
-    "camera.fill",
-    "paintbrush.fill",
-    "hammer.fill",
-    "wrench.and.screwdriver.fill",
-    "key.fill",
-    "lock.fill",
-    "gearshape.fill",
-    "person.2.fill",
-    "phone.fill",
-    "envelope.fill",
-    "globe",
-    "map.fill",
-    "building.2.fill",
-]
-
 _PAYLOAD = {
     "colors": {
         "named": LIST_COLORS,
@@ -96,22 +45,26 @@ _PAYLOAD = {
         ),
     },
     "icons": {
-        "kind": "SF Symbols",
-        "accepts_any": True,
-        "note": (
-            "`symbol` accepts ANY SF Symbol name (e.g. 'star.fill', 'cart.fill', 'house.fill'); "
-            "`emoji` accepts any emoji character. The server does NOT restrict to a list — "
-            "Reminders.app's picker shows a curated subset, but any valid SF Symbol renders. "
-            "`common` below are frequent picker choices, not an exhaustive set."
+        "kind": "Reminders emblem catalog (NOT SF Symbols)",
+        "warning": (
+            "Reminders list icons are a CURATED EMBLEM SET. SF Symbol names like 'star.fill' or "
+            "'cart.fill' are accepted by the API but render BLANK — do NOT use them. Pass an "
+            "emblem id from `by_category` below, or an `emoji` for an arbitrary glyph."
         ),
+        "count": len(EMBLEMS),
+        "by_category": EMBLEMS_BY_CATEGORY,
         "usage": (
-            "The caller chooses the icon — there is no server-side guesser. Pass any "
-            "`symbol` (SF Symbol name) or `emoji` to set_list_appearance, or an `icon` "
-            "to create_calendar / create_smart_list. create_calendar with no icon "
-            "badges the list 'sparkles' (the agent-created marker); pass icon='none' "
-            "to skip. Pick from `common` below or any valid SF Symbol."
+            "Pass `symbol` = an emblem id (e.g. 'food', 'weather5', 'work1') or an `emoji` to "
+            "set_list_appearance; or `icon` to create_calendar / create_smart_list. Omit the icon "
+            "(or pass 'auto') and create_calendar AUTO-SUGGESTS an emblem from the list name; pass "
+            "icon='none' to skip. An unrecognised emblem is rejected (set_list_appearance) or "
+            "warned + skipped (create tools)."
         ),
-        "common": COMMON_ICONS,
+        "auto_suggest": (
+            "create_calendar / create_smart_list map the list title to a best-fit emblem via a "
+            "keyword heuristic (groceries->food, work->work1, gym->fitness, school->education1, …)."
+        ),
+        "note": "Groups (sidebar folders) have NO color/icon in Reminders — only rename applies to a group.",
     },
 }
 
@@ -120,9 +73,9 @@ _PAYLOAD = {
     "reminders://appearance",
     name="Appearance options",
     title="Appearance Options",
-    description="Canonical list colors (name + hex) and icon (SF Symbol / emoji) guidance for the appearance tools.",
+    description="Canonical list colors (name + hex) and the curated emblem catalog for list icons.",
     mime_type="application/json",
 )
 def appearance_options() -> str:
-    """Return the valid color palette + icon guidance as JSON."""
+    """Return the valid color palette + emblem catalog as JSON."""
     return json.dumps(_PAYLOAD, indent=2)

@@ -149,13 +149,14 @@ async def search_calendars(query: str, ctx: Context) -> list[Calendar]:
         "Create a new reminder calendar (list) in Apple Reminders. The name "
         "must be unique among existing non-deleted lists. Optional `color` "
         "accepts a named palette token (e.g. 'red', 'blue', 'green'). `icon` "
-        "sets the list badge: pass any SF Symbol name (e.g. 'cart.fill') or an "
-        "emoji, 'none' to skip, or omit it to get the agent-made marker "
-        "('sparkles'). The caller chooses the icon — the server does not guess; "
-        "see the reminders://appearance resource for valid colors + example "
-        "symbols. Returns the new calendar with its deeplink. Backed by the "
-        "Swift EventKit helper (_native/bin/rem_eventkit), plus the ReminderKit "
-        "helper for the icon."
+        "sets the list badge: pass a Reminders EMBLEM id (e.g. 'food', "
+        "'weather5', 'work1' — a curated catalog, NOT an SF Symbol; see the "
+        "reminders://appearance resource), an emoji for an arbitrary glyph, "
+        "'none' to skip, or omit it / pass 'auto' to let the server auto-suggest "
+        "an emblem from the list name. An unrecognised emblem warns and is "
+        "skipped (it would render blank). Returns the new calendar with its "
+        "deeplink. Backed by the Swift EventKit helper + the ReminderKit helper "
+        "for the icon."
     ),
 )
 async def create_calendar(
@@ -169,9 +170,10 @@ async def create_calendar(
     Args:
         name: The list name (must be unique among existing non-deleted lists).
         color: Optional named-palette token. Optional.
-        icon: List badge — an SF Symbol name or emoji to set explicitly, 'none'
-            to skip, or omit to get the agent-default glyph ('sparkles'). The
-            caller chooses; the server does not guess. Optional.
+        icon: List badge — a Reminders emblem id (e.g. 'food', 'weather5'; see
+            reminders://appearance) or an emoji to set explicitly, 'none' to
+            skip, or omit / 'auto' to auto-suggest an emblem from the name.
+            Optional.
     """
     if not name or not name.strip():
         raise ValueError("name is required and must be non-empty")
@@ -206,10 +208,10 @@ async def create_calendar(
 
     await ctx.info(f"Created calendar {created.id} ({name!r})")
 
-    # Best-effort badge. EventKit's create sets color; the SF Symbol / emoji
-    # badge is a ReminderKit concept, applied here as a follow-up. The caller
-    # picks it (or omits → agent default); a ReminderKit miss warns, never fails.
-    resolved = resolve_icon(icon)
+    # Best-effort badge. EventKit's create sets color; the emblem / emoji badge
+    # is a ReminderKit concept, applied here as a follow-up. The caller picks it,
+    # or omits → auto-suggest from the name; a ReminderKit miss warns, never fails.
+    resolved = resolve_icon(icon, title=name)
     if await apply_list_icon(ctx, created.id, resolved):
         badge = resolved.symbol or resolved.emoji
         await ctx.info(f"Set list icon {badge!r} (source={resolved.source}).")

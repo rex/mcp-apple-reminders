@@ -44,10 +44,12 @@ def _helper_call(fn, ctx_error, *args, **kwargs) -> dict:
     annotations=CREATE,
     description=(
         "Create a custom smart list (a saved-filter list) in Reminders.app. "
-        "Pass a `name` and optional appearance (`color`, `symbol` SF-symbol, "
-        "`emoji`). `icon` is a convenience badge knob: 'none' (default) leaves "
-        "it iconless; 'auto' uses the agent glyph; or pass a symbol/emoji "
-        "directly. An explicit `symbol` or `emoji` overrides `icon`. The filter "
+        "Pass a `name` and optional appearance (`color`, `symbol` = a Reminders "
+        "emblem id like 'food'/'weather5' — NOT an SF Symbol; see "
+        "reminders://appearance — or `emoji`). `icon` is a convenience badge knob: "
+        "'none' (default) leaves it iconless; 'auto' auto-suggests an emblem from "
+        "the name; or pass an emblem id / emoji directly. An explicit `symbol` or "
+        "`emoji` overrides `icon`. The filter "
         "itself is an opaque base64 blob: omit `filter_data_b64` to create a "
         "named smart list whose filter you refine in Reminders.app, or pass a "
         "previously-captured blob. Requires an iCloud account that supports "
@@ -66,7 +68,12 @@ async def create_smart_list(
     """Create a custom smart list. See the tool description for `icon` / `filter_data_b64`."""
     if not name or not name.strip():
         raise ValueError("name is required and must be non-empty")
-    resolved = resolve_icon(icon, explicit_symbol=symbol, explicit_emoji=emoji)
+    resolved = resolve_icon(icon, title=name, explicit_symbol=symbol, explicit_emoji=emoji)
+    if resolved.source == "invalid":
+        await ctx.warning(
+            f"Smart-list icon {resolved.requested!r} is not a valid Reminders emblem "
+            f"(curated set — see reminders://appearance, or pass an emoji). Icon skipped."
+        )
     resp = _helper_call(
         helper_create_smart_list,
         ctx,

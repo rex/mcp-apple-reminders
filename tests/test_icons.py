@@ -1,64 +1,76 @@
-"""Tests for icon resolution (caller-supplied; no server-side guesser)."""
+"""Unit tests for icons.resolve_icon — emblem-based, with title auto-suggest.
+
+Reminders list icons are a curated emblem catalog (NOT SF Symbols). resolve_icon
+auto-suggests an emblem from the title when none is given, validates explicit
+tokens against the catalog, and flags SF-symbol names as `invalid`.
+"""
 
 from __future__ import annotations
 
-import asyncio
-
-from mcp_apple_reminders.icons import AGENT_DEFAULT_SYMBOL, _looks_like_emoji, resolve_icon
+from mcp_apple_reminders.icons import _looks_like_emoji, resolve_icon
 
 
-def test_agent_default_is_sparkles():
-    assert AGENT_DEFAULT_SYMBOL == "sparkles"
+def test_auto_suggest_from_title() -> None:
+    r = resolve_icon(None, title="Grocery Shopping")
+    assert r.symbol == "food"
+    assert r.source == "suggested"
 
 
-def test_omitted_icon_uses_agent_default():
+def test_auto_keyword_word() -> None:
+    r = resolve_icon("auto", title="Gym Routine")
+    assert r.symbol == "fitness"
+    assert r.source == "suggested"
+
+
+def test_no_title_is_iconless() -> None:
     r = resolve_icon(None)
-    assert r.symbol == AGENT_DEFAULT_SYMBOL
-    assert r.source == "default"
-
-
-def test_auto_aliases_agent_default():
-    r = resolve_icon("auto")
-    assert r.symbol == AGENT_DEFAULT_SYMBOL
-    assert r.source == "default"
-
-
-def test_none_opts_out():
-    r = resolve_icon("none")
     assert r.symbol is None
     assert r.emoji is None
     assert r.source == "none"
 
 
-def test_explicit_sf_symbol():
-    r = resolve_icon("cart.fill")
-    assert r.symbol == "cart.fill"
-    assert r.emoji is None
+def test_no_keyword_match_is_iconless() -> None:
+    assert resolve_icon(None, title="Zxqy Blorp").source == "none"
+
+
+def test_none_skips() -> None:
+    r = resolve_icon("none")
+    assert r.symbol is None
+    assert r.source == "none"
+
+
+def test_valid_emblem_explicit() -> None:
+    r = resolve_icon("weather5")
+    assert r.symbol == "weather5"
     assert r.source == "explicit"
 
 
-def test_explicit_emoji():
+def test_sf_symbol_name_is_invalid() -> None:
+    r = resolve_icon("star.fill")
+    assert r.source == "invalid"
+    assert r.requested == "star.fill"
+    assert r.symbol is None
+
+
+def test_emoji_used_as_is() -> None:
     r = resolve_icon("🎉")
     assert r.emoji == "🎉"
-    assert r.symbol is None
     assert r.source == "explicit"
 
 
-def test_low_level_symbol_overrides_icon_arg():
-    r = resolve_icon("none", explicit_symbol="flag.fill")
-    assert r.symbol == "flag.fill"
+def test_explicit_symbol_overrides_and_is_validated() -> None:
+    r = resolve_icon("auto", explicit_symbol="food")
+    assert r.symbol == "food"
     assert r.source == "explicit"
 
 
-def test_looks_like_emoji():
-    assert _looks_like_emoji("🎯")
+def test_explicit_invalid_symbol_flagged() -> None:
+    r = resolve_icon(None, explicit_symbol="cart.fill")
+    assert r.source == "invalid"
+    assert r.requested == "cart.fill"
+
+
+def test_looks_like_emoji() -> None:
+    assert not _looks_like_emoji("weather5")
     assert not _looks_like_emoji("star.fill")
-    assert not _looks_like_emoji("airplane")
-
-
-def test_suggester_tool_gone_create_calendar_remains():
-    from mcp_apple_reminders.server import mcp
-
-    names = {t.name for t in asyncio.run(mcp.list_tools())}
-    assert "suggest_list_icon" not in names
-    assert "create_calendar" in names
+    assert _looks_like_emoji("🎉")

@@ -10,9 +10,23 @@ async def run(c: WireClient, store: TestStore, r: Reporter) -> None:
     lid = store.list_id
 
     app = await c.call_ok(
-        "set_list_appearance", {"list_id": lid, "color": "purple", "symbol": "star.fill"}, label="set_list_appearance"
+        "set_list_appearance",
+        {"list_id": lid, "color": "purple", "symbol": "weather5"},
+        label="set_list_appearance(emblem)",
     )
     r.check("set_list_appearance -> status", bool(app) and bool(app.get("status")))
+    # SF Symbol names are NOT valid Reminders emblems -> rejected (no more silent blank).
+    await c.call_expect_error(
+        "set_list_appearance",
+        {"list_id": lid, "symbol": "star.fill"},
+        label="set_list_appearance(SF symbol) -> isError",
+    )
+    # Groups have no color/icon -> styling a group is rejected.
+    await c.call_expect_error(
+        "set_list_appearance",
+        {"list_id": store.group_id, "color": "red"},
+        label="set_list_appearance(group) -> isError",
+    )
     pin = await c.call_ok("set_list_pinned", {"list_id": lid, "pinned": True}, label="set_list_pinned(true)")
     r.check("set_list_pinned -> status", bool(pin) and bool(pin.get("status")))
     await c.call_ok("set_list_pinned", {"list_id": lid, "pinned": False}, label="set_list_pinned(false)")

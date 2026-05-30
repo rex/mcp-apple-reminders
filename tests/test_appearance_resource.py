@@ -32,5 +32,7 @@ def test_appearance_payload_has_ten_named_colors():
         "teal",
     }
     assert all(c["hex"].startswith("#") and len(c["hex"]) == 7 for c in named)
-    assert payload["icons"]["accepts_any"] is True
-    assert len(payload["icons"]["common"]) > 0
+    assert "emblem" in payload["icons"]["kind"].lower()
+    assert payload["icons"]["count"] > 0
+    assert "food" in payload["icons"]["by_category"]["food"]
+    assert "SF Symbol" in payload["icons"]["warning"]
