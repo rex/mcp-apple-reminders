@@ -15,9 +15,9 @@ Pydantic v2 · PyObjC/EventKit + compiled Swift/Obj-C helper subprocesses.
 | Lifespan | Async lifespan → `AppContext` (SQLite path, helper paths, `open_sqlite()`) | `src/mcp_apple_reminders/lifespan.py` | @pierce |
 | Models | Frozen Pydantic v2 (`Reminder`, `Calendar`, …) + deeplinks (CONTRACT FREEZE) | `src/mcp_apple_reminders/models.py` | @pierce |
 | Formatting | Datetime / priority parsing helpers | `src/mcp_apple_reminders/formatting.py` | @pierce |
-| Tools (10 modules, 41 tools) | `@mcp.tool` functions per domain | `src/mcp_apple_reminders/tools/` | @pierce |
-| Resources (4 views) | Read-only SQLite-backed `@mcp.resource` views | `src/mcp_apple_reminders/resources/` | @pierce |
-| Prompts (4) | Canned `@mcp.prompt` workflows | `src/mcp_apple_reminders/prompts/workflows.py` | @pierce |
+| Tools (17 modules, 58 tools) | `@mcp.tool` functions per domain | `src/mcp_apple_reminders/tools/` | @pierce |
+| Resources (8 views) | Read-only SQLite-backed `@mcp.resource` views | `src/mcp_apple_reminders/resources/` | @pierce |
+| Prompts (5) | Canned `@mcp.prompt` workflows | `src/mcp_apple_reminders/prompts/workflows.py` | @pierce |
 | Native — SQLite reads | Direct CoreData SQLite reader + row→model helpers | `src/mcp_apple_reminders/_native/sqlite.py`, `_sqlite_helpers.py` | @pierce |
 | Native — EventKit writes | Python wrapper for the Swift `rem_eventkit` helper (public API) | `src/mcp_apple_reminders/_native/eventkit.py` | @pierce |
 | Native — ReminderKit writes | Transport + typed actions for the Obj-C `rem_reminderkit` helper (private fw) | `src/mcp_apple_reminders/_native/reminderkit.py`, `reminderkit_actions.py` | @pierce |
@@ -29,13 +29,20 @@ Pydantic v2 · PyObjC/EventKit + compiled Swift/Obj-C helper subprocesses.
 | Module | # | Tools |
 |---|---|---|
 | `calendars.py` | 8 | create/delete/update/get calendar, get_calendar_by_id, get_default_calendar, list_calendars, search_calendars |
-| `reminders.py` | 6 | create/update/delete/complete/uncomplete/get reminder |
-| `queries.py` | 6 | get_reminders, get_today_reminders, get_overdue_reminders, get_next_reminder, get_completed_in_range, search_reminders |
+| `reminders.py` | 4 | create/update/delete/get reminder |
+| `completion.py` | 2 | complete_reminder, uncomplete_reminder |
+| `queries.py` | 7 | get_reminders, get_today_reminders, get_overdue_reminders, get_next_reminder, get_completed_in_range, search_reminders, get_recently_deleted |
 | `workflow.py` | 6 | move_reminder_{active,on_deck,blocked,done,to_list}, get_workflow_lists |
 | `groups.py` | 4 | create_group, list_groups, delete_group, move_list_to_group |
 | `alarms.py` | 3 | set_alarm, set_location_alarm, set_recurrence |
 | `bulk.py` | 3 | bulk_complete, bulk_move, bulk_delete_completed |
 | `sections.py` | 3 | get_subtasks, set_parent, assign_section |
+| `smartlists.py` | 3 | create_smart_list, update_smart_list, delete_smart_list |
+| `appearance.py` | 3 | set_list_appearance, set_list_pinned, set_smart_list_pinned |
+| `templates.py` | 3 | create_template, apply_template, delete_template |
+| `flags.py` | 3 | set_urgent, set_early_reminder, add_section_and_assign |
+| `attachments.py` | 3 | add_url_attachment, add_metadata, add_file_attachment |
+| `grocery.py` | 1 | categorize_grocery_items |
 | `agents.py` | 1 | bootstrap_agent_list |
 | `sampling.py` | 1 | triage_brain_dump |
 
@@ -45,7 +52,7 @@ Full per-tool reference: `docs/TOOLS.md`.
 
 | URI | Module |
 |---|---|
-| `reminders://default`, `reminders://overdue`, `reminders://today`, `reminders://list/{calendar_id}` | `resources/reminders.py` |
+| `reminders://default`, `reminders://overdue`, `reminders://today`, `reminders://list/{calendar_id}`, `reminders://recently-deleted`, `reminders://tags`, `reminders://appearance` | `resources/reminders.py`, `resources/appearance.py` |
 | `agents://current/{project_name}` | `resources/agents.py` |
 
 ### Native binaries

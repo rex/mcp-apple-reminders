@@ -12,7 +12,7 @@ an Objective-C ReminderKit helper). See [Architecture](#architecture).
 
 ## Features
 
-- **41 MCP tools** across 10 categories (full catalog in [`docs/TOOLS.md`](docs/TOOLS.md)).
+- **58 MCP tools** across 17 modules (full catalog in [`docs/TOOLS.md`](docs/TOOLS.md)).
 - **Calendar/list management** — create, delete, update, search lists.
 - **Reminder CRUD** — create, update, complete/uncomplete, delete, fetch by ID.
 - **Rich queries** — today, overdue, next-up, completed-in-range, text search, filters.
@@ -137,20 +137,27 @@ Without the grant the server cannot read or write reminders.
 
 ## Tools, Resources & Prompts
 
-The 41 tools are grouped into 10 modules under `src/mcp_apple_reminders/tools/`.
+The 58 tools are grouped into 17 modules under `src/mcp_apple_reminders/tools/`.
 The exhaustive, always-current catalog (parameters + return shapes) lives in
 [`docs/TOOLS.md`](docs/TOOLS.md). Summary by category:
 
 | Category | Count | What it does |
 |---|---|---|
 | **calendars** | 8 | create/delete/update lists, get by name/ID, default, list, search |
-| **reminders** | 6 | create, update, delete, complete, uncomplete, get by ID |
-| **queries** | 6 | get/filter, today, overdue, next-up, completed-in-range, search |
+| **reminders** | 4 | create, update, delete, get by ID |
+| **completion** | 2 | complete / uncomplete shortcuts |
+| **queries** | 7 | get/filter, today, overdue, next-up, completed-in-range, search, recently-deleted |
 | **workflow** | 6 | move across `Claude-*` board lists; list the board |
 | **groups** | 4 | create/list/delete sidebar folders; move a list into a group |
 | **alarms** | 3 | time alarm, location alarm, recurrence rule |
 | **bulk** | 3 | bulk complete, bulk move, bulk delete-completed |
 | **sections** | 3 | get subtasks, set parent, assign section |
+| **smartlists** | 3 | create/update/delete custom smart lists |
+| **appearance** | 3 | list/smart-list appearance + pinning |
+| **templates** | 3 | create/apply/delete list templates |
+| **flags** | 3 | set urgent, set early reminder, add section + assign |
+| **attachments** | 3 | add URL / metadata / file attachments |
+| **grocery** | 1 | `categorize_grocery_items` |
 | **agents** | 1 | `bootstrap_agent_list` — agent-visibility plane |
 | **sampling** | 1 | `triage_brain_dump` — server-initiated LLM sampling |
 
@@ -161,9 +168,11 @@ Reminders.app sidebar folders.
 Beyond tools, the server also exposes:
 
 - **MCP Resources** (read-only views): `reminders://default`, `reminders://today`,
-  `reminders://overdue`, `reminders://list/{calendar_id}`, and
-  `agents://current/{project_name}` (the agent-visibility plane).
-- **MCP Prompts**: `daily_review`, `weekly_retro`, `brain_dump_triage`, `agent_visibility_sync`.
+  `reminders://overdue`, `reminders://list/{calendar_id}`, `reminders://recently-deleted`,
+  `reminders://tags`, `reminders://appearance`, and `agents://current/{project_name}`
+  (the agent-visibility plane).
+- **MCP Prompts**: `daily_review`, `weekly_retro`, `brain_dump_triage`, `agent_visibility_sync`,
+  `organize_into_sections`.
 - **Elicitation guards** on destructive operations (e.g. deletes/purges).
 - **Server-initiated Sampling** via `triage_brain_dump`.
 - **Progress reporting** on long-running operations.

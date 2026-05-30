@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.84] — 2026-05-30 — Agent: Claude
+### Changed
+- CL-2.13: docs sweep — regenerated docs/TOOLS.md (58 tools, 8 resources, 5 prompts); refreshed README + docs/MAP.md tool/resource/prompt tables (17 modules) + AGENTS.md §4/§9 + TASK_STATE §0 counts. CL-2 capability expansion is COMPLETE.
+
 ## [0.1.83] — 2026-05-30 — Agent: Claude
 ### Changed
 - CL-2.12: resources/prompts polish — title= on all 8 resources + 5 prompts; new organize_into_sections prompt; per-param Field(description=) on the high-traffic tools (create_reminder/update_reminder/get_reminders/search_reminders) so their inputSchema params are documented. Split complete/uncomplete into tools/completion.py to keep reminders.py under the 400-line cap after the Annotated expansion.
