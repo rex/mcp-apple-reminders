@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.87] — 2026-05-30 — Agent: Claude
+### Changed
+- docs: TASK_STATE §0 — record integration-suite progress (CRUD + alarms scenarios green, set_urgent bug found + task spawned, remaining-coverage TODO).
+
 ## [0.1.86] — 2026-05-30 — Agent: Claude
 ### Changed
 - Integration: alarms/recurrence/early-reminder read-back scenario (ADR 0002) — validates set_recurrence/set_alarm/set_location_alarm/set_early_reminder write + get_reminder EventKit read-back over the wire. FOUND a real bug: set_urgent crashes the ReminderKit helper ('-[REMReminderStorage urgentAlarmContext]: unrecognized selector', uncaught NSException) — encoded as an expected-error known-issue; dedicated fix task spawned.
