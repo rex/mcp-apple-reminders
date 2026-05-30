@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.88] — 2026-05-30 — Agent: Claude
+### Changed
+- Integration: read-surface scenario (scenarios_reads.py) — all 7 query tools + all 7 reminders:// resources reflect live writes (overdue/today/future seeds by id, completed-in-range, delete→recently-deleted). Added WireClient.call_value (unwraps result-wrapped list/Optional returns). reminders://tags has hashtag-propagation lag in SQLite → polled (not a bug). 70 checks green.
+
 ## [0.1.87] — 2026-05-30 — Agent: Claude
 ### Changed
 - docs: TASK_STATE §0 — record integration-suite progress (CRUD + alarms scenarios green, set_urgent bug found + task spawned, remaining-coverage TODO).

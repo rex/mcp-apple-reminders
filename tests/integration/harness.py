@@ -76,6 +76,13 @@ class WireClient:
         self.r.check(label or f"call {name}", ok, "" if ok else _err_text(res))
         return res.structuredContent if ok else None
 
+    async def call_value(self, name: str, args: Optional[dict] = None, *, label: str = "") -> Any:
+        """Call a tool whose structuredContent wraps a list / Optional in ``result``."""
+        sc = await self.call_ok(name, args, label=label)
+        if isinstance(sc, dict) and list(sc.keys()) == ["result"]:
+            return sc["result"]
+        return sc
+
     async def call_expect_error(self, name: str, args: Optional[dict] = None, *, label: str = "") -> str:
         """Call a tool expecting ``isError`` (negative test). Returns the error text."""
         res = await self.s.call_tool(name, args or {})
