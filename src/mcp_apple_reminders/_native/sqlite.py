@@ -19,6 +19,7 @@ from ._sqlite_helpers import (
     _calendar_from_row,
     _reminder_from_row,
     _resolve_section_name,
+    _stream_reminders,
 )
 
 DEFAULT_STORE_PATH = (
@@ -281,6 +282,7 @@ class Reader:
         completion_after: Optional[datetime] = None,
         completion_before: Optional[datetime] = None,
         tags: Optional[list[str]] = None,
+        flagged: Optional[bool] = None,
         limit: Optional[int] = None,
     ) -> Iterator[Reminder]:
         """Stream reminders that match the supplied filters."""
@@ -293,12 +295,18 @@ class Reader:
             calendar_ids=calendar_ids,
             completion_after=completion_after,
             completion_before=completion_before,
+            flagged=flagged,
         )
-        if limit and limit > 0:
-            sql += " LIMIT ?"
-            params.append(int(limit))
-        for row in self._conn.execute(sql, params):
-            yield _reminder_from_row(row, str(row["list_ckid"] or ""))
+        yield from _stream_reminders(self._conn, sql, params, limit)
+
+    def iter_recently_deleted(self, *, limit: Optional[int] = None) -> Iterator[Reminder]:
+        """Stream reminders marked for deletion (the Recently Deleted view).
+
+        These rows have ``ZMARKEDFORDELETION = 1`` and are still recoverable in
+        Reminders.app until purged. Read-only — this does not restore or purge.
+        """
+        sql, params = _build_reminders_query(None, None, None, None, marked_for_deletion=True)
+        yield from _stream_reminders(self._conn, sql, params, limit)
 
     def get_reminder_by_id(self, reminder_id: str) -> Optional[Reminder]:
         """Look up a reminder by its `ZCKIDENTIFIER` UUID.

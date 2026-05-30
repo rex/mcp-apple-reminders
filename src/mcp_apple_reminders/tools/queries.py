@@ -57,8 +57,8 @@ def _matches_priority(reminder_priority: int, bucket: Priority) -> bool:
     name="get_reminders",
     description=(
         "Get reminders with optional filters. You can filter by: due date range, "
-        "completion status, priority level, and specific calendar. Without "
-        "filters, returns all reminders from all calendars."
+        "completion status, priority level, flagged state, tags, and specific "
+        "calendar(s). Without filters, returns all reminders from all calendars."
     ),
 )
 async def get_reminders(
@@ -70,6 +70,7 @@ async def get_reminders(
     calendar_id: Optional[str] = None,
     calendar_ids: Optional[list[str]] = None,
     tags: Optional[list[str]] = None,
+    flagged: Optional[bool] = None,
     limit: Optional[int] = None,
 ) -> list[Reminder]:
     """Get reminders with optional filters (SQLite-first; EventKit fallback).
@@ -80,6 +81,7 @@ async def get_reminders(
         is_completed: Filter by completion status. Optional.
         priority: Filter by priority bucket: 'none', 'low', 'medium', or 'high'. Optional.
         calendar_id: Only return reminders from this specific calendar. Optional.
+        flagged: Filter by flagged state (True = only flagged, False = only unflagged). Optional.
         limit: Maximum number of reminders to return. Optional.
     """
     app = _app_context(ctx)
@@ -96,6 +98,7 @@ async def get_reminders(
                 due_after=due_after_dt,
                 due_before=due_before_dt,
                 tags=tags,
+                flagged=flagged,
             )
             results: list[Reminder] = []
             for r in stream:
@@ -120,9 +123,36 @@ async def get_reminders(
         if calendar_id:
             kwargs["calendar_id"] = calendar_id
         results = [native_reminder_to_pydantic(r) for r in app.bridge.get_reminders(**kwargs)]
+        if flagged is not None:
+            results = [r for r in results if r.flagged == flagged]
         if limit and limit > 0:
             results = results[:limit]
         return results
+
+
+@mcp.tool(
+    name="get_recently_deleted",
+    description=(
+        "List reminders in Recently Deleted — items marked for deletion but not "
+        "yet purged (still recoverable in Reminders.app). Read-only: does NOT "
+        "restore or permanently delete. Sourced via the SQLite reader."
+    ),
+)
+async def get_recently_deleted(ctx: Context, limit: Optional[int] = None) -> list[Reminder]:
+    """Return reminders in the Recently Deleted view (SQLite-only).
+
+    Args:
+        limit: Maximum number of reminders to return. Optional.
+    """
+    app = _app_context(ctx)
+    try:
+        with app.open_sqlite() as conn:
+            results = list(Reader(conn).iter_recently_deleted(limit=limit))
+            await ctx.debug(f"get_recently_deleted: {len(results)} item(s)")
+            return results
+    except RemindersDBUnavailable as e:
+        await ctx.error(f"SQLite unavailable; Recently Deleted needs the SQLite reader: {e}")
+        raise ValueError(f"Recently Deleted requires the SQLite read path ({e}).") from e
 
 
 @mcp.tool(

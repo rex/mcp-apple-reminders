@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.75] — 2026-05-30 — Agent: Claude
+### Changed
+- CL-2.7 Read-side: get_recently_deleted tool + reminders://recently-deleted resource (invert ZMARKEDFORDELETION); flagged filter on get_reminders; fix the ZPARENTREMINDER discard so parent_reminder_id + subtasks populate. urgent filter deferred to CL-2.9 (model tail-append under ADR 0002).
+
 ## [0.1.74] — 2026-05-29 — Agent: Claude
 ### Changed
 - CL-2.6 Attachments: add_url_attachment + add_metadata (unprivileged web URLs / hashtags) and add_file_attachment (local files). Unlocked GENERIC file attachments in rem_reminderkit.m (addFileAttachmentWithURL: — the prior images-only limit was the helper's, not ReminderKit's). add_file_attachment is opt-in behind MCP_APPLE_REMINDERS_ENABLE_FILE_ATTACHMENTS=1 (default OFF) + path validation. Requires make build-native.

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime
-from typing import Optional
+from typing import Iterator, Optional
 
 from ..models import Calendar, Reminder, calendar_deeplink, reminder_deeplink
 
@@ -22,7 +22,10 @@ _REMINDER_COLS = (
     "l.ZCKIDENTIFIER AS list_ckid, "
     "(SELECT group_concat(h.ZNAME, ',') FROM ZREMCDOBJECT o "
     "JOIN ZREMCDHASHTAGLABEL h ON o.ZHASHTAGLABEL = h.Z_PK "
-    "WHERE o.ZREMINDER3 = r.Z_PK) AS tags_csv"
+    "WHERE o.ZREMINDER3 = r.Z_PK) AS tags_csv, "
+    "(SELECT p.ZCKIDENTIFIER FROM ZREMCDREMINDER p WHERE p.Z_PK = r.ZPARENTREMINDER) AS parent_ckid, "
+    "(SELECT group_concat(c.ZCKIDENTIFIER, ',') FROM ZREMCDREMINDER c "
+    "WHERE c.ZPARENTREMINDER = r.Z_PK AND c.ZMARKEDFORDELETION = 0) AS subtask_ckids"
 )
 
 
@@ -68,6 +71,9 @@ def _reminder_from_row(row: sqlite3.Row, list_uuid: str) -> Reminder:
     row_keys = row.keys()  # noqa: SIM118
     tags_csv = row["tags_csv"] if "tags_csv" in row_keys else None
     tags = [t for t in (tags_csv or "").split(",") if t]
+    parent_ckid = row["parent_ckid"] if "parent_ckid" in row_keys else None
+    subtasks_csv = row["subtask_ckids"] if "subtask_ckids" in row_keys else None
+    subtasks = [s for s in (subtasks_csv or "").split(",") if s]
     return Reminder(
         id=reminder_id,
         title=row["ZTITLE"] or "",
@@ -80,8 +86,8 @@ def _reminder_from_row(row: sqlite3.Row, list_uuid: str) -> Reminder:
         created_date=_ts(row["ZCREATIONDATE"]),
         modified_date=_ts(row["ZLASTMODIFIEDDATE"]) if "ZLASTMODIFIEDDATE" in row_keys else None,
         flagged=bool(row["ZFLAGGED"]),
-        parent_reminder_id=None,
-        subtasks=[],
+        parent_reminder_id=str(parent_ckid) if parent_ckid else None,
+        subtasks=subtasks,
         tags=tags,
         section_name=None,
         completion_date=_ts(row["ZCOMPLETIONDATE"]),
@@ -99,9 +105,11 @@ def _build_reminders_query(
     calendar_ids: Optional[list[str]] = None,
     completion_after: Optional[datetime] = None,
     completion_before: Optional[datetime] = None,
+    flagged: Optional[bool] = None,
+    marked_for_deletion: bool = False,
 ) -> tuple[str, list]:
-    where = ["r.ZMARKEDFORDELETION = 0", "r.ZACCOUNT IS NOT NULL"]
-    params: list = []
+    where = ["r.ZMARKEDFORDELETION = ?", "r.ZACCOUNT IS NOT NULL"]
+    params: list = [1 if marked_for_deletion else 0]
     if calendar_id is not None:
         where.append("lower(l.ZCKIDENTIFIER) = lower(?)")
         params.append(calendar_id)
@@ -112,6 +120,9 @@ def _build_reminders_query(
     if completed is not None:
         where.append("r.ZCOMPLETED = ?")
         params.append(1 if completed else 0)
+    if flagged is not None:
+        where.append("r.ZFLAGGED = ?")
+        params.append(1 if flagged else 0)
     if due_after is not None:
         where.append("r.ZDUEDATE >= ?")
         params.append(due_after.timestamp() - APPLE_EPOCH_OFFSET)
@@ -139,6 +150,24 @@ def _build_reminders_query(
         f"WHERE {' AND '.join(where)} ORDER BY r.ZDUEDATE NULLS LAST, r.Z_PK"
     )
     return sql, params
+
+
+def _stream_reminders(
+    conn: sqlite3.Connection,
+    sql: str,
+    params: list,
+    limit: Optional[int],
+) -> Iterator[Reminder]:
+    """Apply an optional LIMIT, execute the query, and yield mapped reminders.
+
+    Shared by `Reader.iter_reminders` and `Reader.iter_recently_deleted` so the
+    streaming tail lives in one place.
+    """
+    if limit and limit > 0:
+        sql += " LIMIT ?"
+        params.append(int(limit))
+    for row in conn.execute(sql, params):
+        yield _reminder_from_row(row, str(row["list_ckid"] or ""))
 
 
 def _resolve_section_name(conn: sqlite3.Connection, reminder_uuid: str) -> Optional[str]:
@@ -186,5 +215,6 @@ __all__ = [
     "_calendar_from_row",
     "_reminder_from_row",
     "_resolve_section_name",
+    "_stream_reminders",
     "_ts",
 ]

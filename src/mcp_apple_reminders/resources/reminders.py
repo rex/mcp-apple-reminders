@@ -6,6 +6,7 @@ URI patterns:
 - `reminders://overdue` — incomplete reminders whose due date is past.
 - `reminders://today` — reminders due in the current local day.
 - `reminders://list/{calendar_id}` — a specific list by UUID.
+- `reminders://recently-deleted` — items marked for deletion, not yet purged.
 
 Each resource returns JSON: `{"reminders": [Reminder, …], "context": {...}}`.
 
@@ -126,5 +127,24 @@ def list_by_id(calendar_id: str) -> str:
                 results,
                 calendar=cal.model_dump(mode="json"),
             )
+    except RemindersDBUnavailable as e:
+        return _reminders_payload([], error=f"SQLite unavailable: {e}")
+
+
+@mcp.resource(
+    uri="reminders://recently-deleted",
+    name="Recently deleted",
+    description=(
+        "Reminders marked for deletion but not yet purged (recoverable in "
+        "Reminders.app). Read-only recovery view via the SQLite reader."
+    ),
+    mime_type="application/json",
+)
+def recently_deleted_reminders() -> str:
+    """Return reminders in the Recently Deleted view."""
+    try:
+        with connect() as conn:
+            results = list(Reader(conn).iter_recently_deleted())
+            return _reminders_payload(results, marked_for_deletion=True)
     except RemindersDBUnavailable as e:
         return _reminders_payload([], error=f"SQLite unavailable: {e}")
