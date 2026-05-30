@@ -54,11 +54,11 @@ def test_delete_smart_list_requires_id():
 def test_live_smart_list_round_trip():
     """Create a custom smart list, then delete it (self-cleaning)."""
     resp = create_smart_list("REM-TEST-SMARTLIST-CL21", emoji="🧪")
-    sid = str(resp.get("id") or "")
+    sid = str(resp.id or "")
     assert sid, f"no id returned: {resp!r}"
     try:
         upd = update_smart_list(sid, name="REM-TEST-SMARTLIST-CL21b")
-        assert upd.get("status") in {"updated", "ok"}
+        assert upd.status in {"updated", "ok"}
     finally:
         import contextlib
 

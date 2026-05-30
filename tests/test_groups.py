@@ -192,7 +192,7 @@ def test_live_group_round_trip():
 
     try:
         move_resp = move_list_to_group(child_id, group_id)
-        assert move_resp["status"] == "moved"
+        assert move_resp.status == "moved"
 
         time.sleep(0.5)
 

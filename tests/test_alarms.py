@@ -107,9 +107,9 @@ def test_live_set_and_clear_alarm():
     try:
         r = rk.create_reminder(title="Alarm target", calendar_id=cal.id)
         result_set = set_alarm(r.id, "30m")
-        assert result_set["status"] == "updated"
+        assert result_set.status == "updated"
         result_clear = set_alarm(r.id, None, clear=True)
-        assert result_clear["status"] == "updated"
+        assert result_clear.status == "updated"
     except EventKitHelperError as e:
         raise AssertionError(f"Live alarm round-trip failed: {e.message}") from e
     finally:

@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.82] — 2026-05-30 — Agent: Claude
+### Changed
+- CL-2.11: typed result models (results.py) — the 27 write/bulk/triage tools return frozen WriteResult/DeleteResult/BulkResult/TriageResult instead of bare dict, so each declares an outputSchema and emits structuredContent. extra='allow' envelopes preserve helper echo keys (additionalProperties:true → wire-safe); a _Result.of(**fields) factory keeps construction mypy-clean over extras. New test_result_models.py locks the contract; wire-tested via fresh stdio server.
+
 ## [0.1.81] — 2026-05-30 — Agent: Claude
 ### Changed
 - CL-2.10: ToolAnnotations on all 58 tools — readOnly/destructive/idempotent hints + openWorldHint=False (closed local domain) + human titles, via shared READ/CREATE/MUTATE/DESTROY presets in tools/_annotations.py; new test_tool_annotations.py locks the contract.

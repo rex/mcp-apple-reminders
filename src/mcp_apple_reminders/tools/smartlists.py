@@ -23,6 +23,7 @@ from .._native.reminderkit_lists import (
     update_smart_list as helper_update_smart_list,
 )
 from ..icons import resolve_icon
+from ..results import DeleteResult, WriteResult
 from ..server import mcp
 from ._annotations import CREATE, DESTROY, MUTATE
 
@@ -61,7 +62,7 @@ async def create_smart_list(
     emoji: Optional[str] = None,
     icon: Optional[str] = "none",
     filter_data_b64: Optional[str] = None,
-) -> dict:
+) -> WriteResult:
     """Create a custom smart list. See the tool description for `icon` / `filter_data_b64`."""
     if not name or not name.strip():
         raise ValueError("name is required and must be non-empty")
@@ -77,7 +78,7 @@ async def create_smart_list(
     )
     sid = str(resp.get("id") or "")
     await ctx.info(f"Created smart list {sid} ({name!r})")
-    return {"id": sid, "name": name, "url": resp.get("url", ""), "status": resp.get("status", "created")}
+    return WriteResult.of(status=resp.get("status", "created"), id=sid, name=name, url=resp.get("url", ""))
 
 
 @mcp.tool(
@@ -99,7 +100,7 @@ async def update_smart_list(
     symbol: Optional[str] = None,
     emoji: Optional[str] = None,
     filter_data_b64: Optional[str] = None,
-) -> dict:
+) -> WriteResult:
     """Update a custom smart list. At least one of name/appearance/filter is required."""
     if not smart_list_id or not smart_list_id.strip():
         raise ValueError("smart_list_id is required and must be non-empty")
@@ -114,7 +115,7 @@ async def update_smart_list(
         filter_data_b64=filter_data_b64,
     )
     await ctx.info(f"Updated smart list {smart_list_id}")
-    return {"id": smart_list_id, "status": resp.get("status", "updated")}
+    return WriteResult.of(status=resp.get("status", "updated"), id=smart_list_id)
 
 
 @mcp.tool(
@@ -127,11 +128,11 @@ async def update_smart_list(
         "DESTRUCTIVE — cannot be undone. Private ReminderKit API."
     ),
 )
-async def delete_smart_list(smart_list_id: str, ctx: Context) -> dict:
+async def delete_smart_list(smart_list_id: str, ctx: Context) -> DeleteResult:
     """Delete a custom smart list by UUID."""
     if not smart_list_id or not smart_list_id.strip():
         raise ValueError("smart_list_id is required and must be non-empty")
     await ctx.warning(f"Deleting smart list {smart_list_id} (destructive)")
     resp = _helper_call(helper_delete_smart_list, ctx, smart_list_id)
     await ctx.info(f"Deleted smart list {smart_list_id}")
-    return {"id": smart_list_id, "status": resp.get("status", "deleted")}
+    return DeleteResult.of(deleted=True, id=smart_list_id, status=resp.get("status", "deleted"))

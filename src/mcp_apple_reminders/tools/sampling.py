@@ -24,6 +24,7 @@ from mcp.server.fastmcp import Context
 
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
+from ..results import TriageResult
 from ..server import mcp
 from ._annotations import READ
 
@@ -100,7 +101,7 @@ async def triage_brain_dump(
     ctx: Context,
     from_list: str = "Claude-Brain-Dump",
     max_items: Optional[int] = 25,
-) -> dict:
+) -> TriageResult:
     """Triage the brain-dump list via sampling.
 
     Args:
@@ -124,7 +125,7 @@ async def triage_brain_dump(
 
     if not items:
         await ctx.info(f"triage_brain_dump: {from_list!r} is empty; nothing to do.")
-        return {"from_list": from_list, "items": [], "routing": {}}
+        return TriageResult(from_list=from_list)
 
     prompt = _build_triage_prompt(items)
     await ctx.debug(f"triage_brain_dump: prompting LLM for {len(items)} item(s) via sampling.")
@@ -161,13 +162,13 @@ async def triage_brain_dump(
         f"triage_brain_dump: client routed {len(routing)}/{len(items)} item(s). " f"Apply via move_reminder_* tools."
     )
 
-    return {
-        "from_list": from_list,
-        "items": [r.model_dump(mode="json") for r in items],
-        "routing": routing,
-        "valid_destinations": list(_VALID_ROUTES.keys()),
-        "model_response": response_text,
-    }
+    return TriageResult(
+        from_list=from_list,
+        items=items,
+        routing=routing,
+        valid_destinations=list(_VALID_ROUTES.keys()),
+        model_response=response_text,
+    )
 
 
 __all__ = ["triage_brain_dump"]

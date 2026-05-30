@@ -20,6 +20,7 @@ from .._native.reminderkit_content import (
 from .._native.reminderkit_content import (
     delete_template as helper_delete_template,
 )
+from ..results import DeleteResult, WriteResult
 from ..server import mcp
 from ._annotations import CREATE, DESTROY
 
@@ -50,7 +51,7 @@ async def create_template(
     source_list_id: str,
     ctx: Context,
     include_completed: bool = False,
-) -> dict:
+) -> WriteResult:
     """Save `source_list_id` as a template named `name`."""
     if not name or not name.strip():
         raise ValueError("name is required and must be non-empty")
@@ -59,7 +60,7 @@ async def create_template(
     resp = _run(helper_create_template, name, source_list_id, include_completed=include_completed)
     tid = str(resp.get("id") or "")
     await ctx.info(f"Created template {tid} ({name!r}) from list {source_list_id}")
-    return {"id": tid, "name": name, "source_list_id": source_list_id, "status": resp.get("status", "created")}
+    return WriteResult.of(status=resp.get("status", "created"), id=tid, name=name, source_list_id=source_list_id)
 
 
 @mcp.tool(
@@ -70,14 +71,14 @@ async def create_template(
         "Create a new list from a template by its UUID. Returns the new list's " "id. Private ReminderKit API."
     ),
 )
-async def apply_template(template_id: str, ctx: Context) -> dict:
+async def apply_template(template_id: str, ctx: Context) -> WriteResult:
     """Instantiate a new list from `template_id`."""
     if not template_id or not template_id.strip():
         raise ValueError("template_id is required and must be non-empty")
     resp = _run(helper_apply_template, template_id)
     new_id = str(resp.get("id") or "")
     await ctx.info(f"Applied template {template_id} -> new list {new_id}")
-    return {"template_id": template_id, "id": new_id, "status": resp.get("status", "created")}
+    return WriteResult.of(status=resp.get("status", "created"), template_id=template_id, id=new_id)
 
 
 @mcp.tool(
@@ -89,11 +90,11 @@ async def apply_template(template_id: str, ctx: Context) -> dict:
         "already created from it. DESTRUCTIVE. Private ReminderKit API."
     ),
 )
-async def delete_template(template_id: str, ctx: Context) -> dict:
+async def delete_template(template_id: str, ctx: Context) -> DeleteResult:
     """Delete a template by UUID."""
     if not template_id or not template_id.strip():
         raise ValueError("template_id is required and must be non-empty")
     await ctx.warning(f"Deleting template {template_id} (destructive)")
     resp = _run(helper_delete_template, template_id)
     await ctx.info(f"Deleted template {template_id}")
-    return {"id": template_id, "status": resp.get("status", "deleted")}
+    return DeleteResult.of(deleted=True, id=template_id, status=resp.get("status", "deleted"))

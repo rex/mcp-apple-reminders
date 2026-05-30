@@ -22,6 +22,7 @@ from .._native.reminderkit_flags import (
 from .._native.reminderkit_flags import (
     set_urgent as helper_set_urgent,
 )
+from ..results import WriteResult
 from ..server import mcp
 from ._annotations import CREATE, MUTATE
 
@@ -46,13 +47,13 @@ def _run(fn, *args, **kwargs) -> dict:
         "to mark urgent, false to clear. Private ReminderKit API."
     ),
 )
-async def set_urgent(reminder_id: str, urgent: bool, ctx: Context) -> dict:
+async def set_urgent(reminder_id: str, urgent: bool, ctx: Context) -> WriteResult:
     """Mark a reminder urgent (true) or not (false)."""
     if not reminder_id or not reminder_id.strip():
         raise ValueError("reminder_id is required and must be non-empty")
     resp = _run(helper_set_urgent, reminder_id, urgent)
     await ctx.info(f"Set urgent={urgent} on reminder {reminder_id}")
-    return {"id": reminder_id, "urgent": bool(urgent), "status": resp.get("status", "updated")}
+    return WriteResult.of(status=resp.get("status", "updated"), id=reminder_id, urgent=bool(urgent))
 
 
 @mcp.tool(
@@ -73,13 +74,13 @@ async def set_early_reminder(
     unit: Optional[int] = None,
     count: Optional[int] = None,
     clear: bool = False,
-) -> dict:
+) -> WriteResult:
     """Set (unit+count) or clear an Early Reminder lead-time alert."""
     if not reminder_id or not reminder_id.strip():
         raise ValueError("reminder_id is required and must be non-empty")
     resp = _run(helper_set_early_reminder, reminder_id, unit=unit, count=count, clear=clear)
     await ctx.info(f"Updated early reminder on {reminder_id} (clear={clear})")
-    return {"id": reminder_id, "status": resp.get("status", "updated"), "cleared": bool(clear)}
+    return WriteResult.of(status=resp.get("status", "updated"), id=reminder_id, cleared=bool(clear))
 
 
 @mcp.tool(
@@ -93,7 +94,7 @@ async def set_early_reminder(
         "ReminderKit API."
     ),
 )
-async def add_section_and_assign(reminder_id: str, section_name: str, ctx: Context) -> dict:
+async def add_section_and_assign(reminder_id: str, section_name: str, ctx: Context) -> WriteResult:
     """Create section `section_name` in the reminder's list and assign the reminder to it."""
     if not reminder_id or not reminder_id.strip():
         raise ValueError("reminder_id is required and must be non-empty")
@@ -101,4 +102,4 @@ async def add_section_and_assign(reminder_id: str, section_name: str, ctx: Conte
         raise ValueError("section_name is required and must be non-empty")
     resp = _run(helper_add_section_and_assign, reminder_id, section_name)
     await ctx.info(f"Created section {section_name!r} and assigned reminder {reminder_id}")
-    return {"id": reminder_id, "section_name": section_name, "status": resp.get("status", "updated")}
+    return WriteResult.of(status=resp.get("status", "updated"), id=reminder_id, section_name=section_name)

@@ -24,6 +24,7 @@ from .._native.reminderkit import ReminderKitHelperError, ReminderKitHelperUnava
 from .._native.reminderkit_content import add_file_attachments as helper_add_file_attachments
 from .._native.reminderkit_content import add_private_metadata as helper_add_private_metadata
 from .._native.reminderkit_content import add_url_attachments as helper_add_url_attachments
+from ..results import WriteResult
 from ..server import mcp
 from ._annotations import CREATE
 
@@ -84,7 +85,7 @@ def _classify_and_validate(paths: list[str]) -> tuple[list[str], list[str]]:
         "Unprivileged: no filesystem access. Private ReminderKit API."
     ),
 )
-async def add_url_attachment(reminder_id: str, urls: list[str], ctx: Context) -> dict:
+async def add_url_attachment(reminder_id: str, urls: list[str], ctx: Context) -> WriteResult:
     """Attach web URLs to a reminder. See the tool description."""
     if not reminder_id or not reminder_id.strip():
         raise ValueError("reminder_id is required and must be non-empty")
@@ -92,11 +93,11 @@ async def add_url_attachment(reminder_id: str, urls: list[str], ctx: Context) ->
         raise ValueError("urls is required and must contain at least one URL")
     resp = _run(helper_add_url_attachments, reminder_id, urls)
     await ctx.info(f"Attached {resp.get('urlsAdded', len(urls))} URL(s) to {reminder_id}")
-    return {
-        "reminder_id": reminder_id,
-        "urls_added": resp.get("urlsAdded", len(urls)),
-        "status": resp.get("status", "updated"),
-    }
+    return WriteResult.of(
+        status=resp.get("status", "updated"),
+        reminder_id=reminder_id,
+        urls_added=resp.get("urlsAdded", len(urls)),
+    )
 
 
 @mcp.tool(
@@ -114,7 +115,7 @@ async def add_metadata(
     ctx: Context,
     urls: Optional[list[str]] = None,
     tags: Optional[list[str]] = None,
-) -> dict:
+) -> WriteResult:
     """Attach web URLs and/or hashtags to a reminder. See the tool description."""
     if not reminder_id or not reminder_id.strip():
         raise ValueError("reminder_id is required and must be non-empty")
@@ -124,12 +125,12 @@ async def add_metadata(
     await ctx.info(
         f"Added metadata to {reminder_id} (urls={resp.get('urlsAdded', 0)}, tags={resp.get('tagsAdded', 0)})"
     )
-    return {
-        "reminder_id": reminder_id,
-        "urls_added": resp.get("urlsAdded", 0),
-        "tags_added": resp.get("tagsAdded", 0),
-        "status": resp.get("status", "updated"),
-    }
+    return WriteResult.of(
+        status=resp.get("status", "updated"),
+        reminder_id=reminder_id,
+        urls_added=resp.get("urlsAdded", 0),
+        tags_added=resp.get("tagsAdded", 0),
+    )
 
 
 @mcp.tool(
@@ -145,7 +146,7 @@ async def add_metadata(
         "readable regular file, and be under 100 MB. Additive. Private ReminderKit API."
     ),
 )
-async def add_file_attachment(reminder_id: str, paths: list[str], ctx: Context) -> dict:
+async def add_file_attachment(reminder_id: str, paths: list[str], ctx: Context) -> WriteResult:
     """Attach local files/images to a reminder by path. Opt-in gated; see description."""
     if not reminder_id or not reminder_id.strip():
         raise ValueError("reminder_id is required and must be non-empty")
@@ -160,9 +161,9 @@ async def add_file_attachment(reminder_id: str, paths: list[str], ctx: Context) 
     files, images = _classify_and_validate(paths)
     resp = _run(helper_add_file_attachments, reminder_id, files=files or None, images=images or None)
     await ctx.info(f"Attached {len(files) + len(images)} local file(s) to {reminder_id}")
-    return {
-        "reminder_id": reminder_id,
-        "files_added": resp.get("filesAdded", len(files)),
-        "images_added": resp.get("imagesAdded", len(images)),
-        "status": resp.get("status", "updated"),
-    }
+    return WriteResult.of(
+        status=resp.get("status", "updated"),
+        reminder_id=reminder_id,
+        files_added=resp.get("filesAdded", len(files)),
+        images_added=resp.get("imagesAdded", len(images)),
+    )

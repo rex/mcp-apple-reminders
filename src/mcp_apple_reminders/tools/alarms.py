@@ -23,6 +23,7 @@ from .._native.eventkit import (
 from .._native.eventkit import (
     set_recurrence as helper_set_recurrence,
 )
+from ..results import WriteResult
 from ..server import mcp
 from ._annotations import CREATE, MUTATE
 
@@ -44,7 +45,7 @@ async def set_alarm(
     ctx: Context,
     when: Optional[str] = None,
     clear: bool = False,
-) -> dict:
+) -> WriteResult:
     """Set or clear a reminder's time-based alarm via the Swift helper.
 
     Args:
@@ -67,7 +68,7 @@ async def set_alarm(
         raise ValueError(e.message) from e
 
     await ctx.info(f"Updated alarms on reminder {reminder_id}: clear={clear}, when={when!r}")
-    return result
+    return WriteResult.of(**result)
 
 
 @mcp.tool(
@@ -89,7 +90,7 @@ async def set_location_alarm(
     location_title: Optional[str] = None,
     radius_m: float = 100.0,
     proximity: str = "enter",
-) -> dict:
+) -> WriteResult:
     """Add a location-based alarm via the Swift helper.
 
     Args:
@@ -120,7 +121,7 @@ async def set_location_alarm(
         f"Set location alarm on reminder {reminder_id}: "
         f"({latitude}, {longitude}) r={radius_m}m proximity={proximity}"
     )
-    return result
+    return WriteResult.of(**result)
 
 
 @mcp.tool(
@@ -143,7 +144,7 @@ async def set_recurrence(
     days_of_week: Optional[list[int]] = None,
     days_of_month: Optional[list[int]] = None,
     end_iso: Optional[str] = None,
-) -> dict:
+) -> WriteResult:
     """Set a recurrence rule on a reminder via the Swift helper.
 
     Args:
@@ -171,4 +172,4 @@ async def set_recurrence(
         raise ValueError(e.message) from e
 
     await ctx.info(f"Set recurrence on reminder {reminder_id}: {frequency} every {interval}")
-    return result
+    return WriteResult.of(**result)

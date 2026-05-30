@@ -35,6 +35,7 @@ from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..icons import apply_list_icon, resolve_icon
 from ..lifespan import app_context as _app_context
 from ..models import Calendar, native_calendar_to_pydantic
+from ..results import DeleteResult
 from ..server import mcp
 from ._annotations import CREATE, DESTROY, MUTATE, READ
 
@@ -229,7 +230,7 @@ async def create_calendar(
         "this action cannot be undone."
     ),
 )
-async def delete_calendar(name: str, ctx: Context, force: bool = False) -> dict:
+async def delete_calendar(name: str, ctx: Context, force: bool = False) -> DeleteResult:
     """Delete a reminder list.
 
     Args:
@@ -294,12 +295,13 @@ async def delete_calendar(name: str, ctx: Context, force: bool = False) -> dict:
         raise ValueError(e.message) from e
 
     await ctx.info(f"Deleted calendar {name!r} (cascade={force})")
-    return {
-        "id": cal.id,
-        "name": name,
-        "deleted_reminders": reminder_count or 0,
-        "force": force,
-    }
+    return DeleteResult.of(
+        deleted=True,
+        id=cal.id,
+        name=name,
+        deleted_reminders=reminder_count or 0,
+        force=force,
+    )
 
 
 @mcp.tool(

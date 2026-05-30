@@ -22,6 +22,7 @@ from .._native.reminderkit_lists import (
 from .._native.reminderkit_lists import (
     set_smart_list_pinned as helper_set_smart_list_pinned,
 )
+from ..results import WriteResult
 from ..server import mcp
 from ._annotations import MUTATE
 
@@ -56,13 +57,13 @@ async def set_list_appearance(
     color: Optional[str] = None,
     symbol: Optional[str] = None,
     emoji: Optional[str] = None,
-) -> dict:
+) -> WriteResult:
     """Rename/restyle a list or group. See description for color/symbol/emoji."""
     if not list_id or not list_id.strip():
         raise ValueError("list_id is required and must be non-empty")
     resp = _run(helper_set_list_appearance, list_id, name=name, color=color, symbol=symbol, emoji=emoji)
     await ctx.info(f"Updated appearance of list {list_id}")
-    return {"list_id": list_id, "name": resp.get("name", name), "status": resp.get("status", "updated")}
+    return WriteResult.of(status=resp.get("status", "updated"), list_id=list_id, name=resp.get("name", name))
 
 
 @mcp.tool(
@@ -75,13 +76,13 @@ async def set_list_appearance(
         "Private ReminderKit API."
     ),
 )
-async def set_list_pinned(list_id: str, pinned: bool, ctx: Context) -> dict:
+async def set_list_pinned(list_id: str, pinned: bool, ctx: Context) -> WriteResult:
     """Pin (true) or unpin (false) a list/group."""
     if not list_id or not list_id.strip():
         raise ValueError("list_id is required and must be non-empty")
     resp = _run(helper_set_list_pinned, list_id, pinned)
     await ctx.info(f"{'Pinned' if pinned else 'Unpinned'} list {list_id}")
-    return {"list_id": list_id, "pinned": bool(pinned), "status": resp.get("status", "updated")}
+    return WriteResult.of(status=resp.get("status", "updated"), list_id=list_id, pinned=bool(pinned))
 
 
 @mcp.tool(
@@ -93,10 +94,10 @@ async def set_list_pinned(list_id: str, pinned: bool, ctx: Context) -> dict:
         "Pass the smart-list UUID and `pinned`. Private ReminderKit API."
     ),
 )
-async def set_smart_list_pinned(smart_list_id: str, pinned: bool, ctx: Context) -> dict:
+async def set_smart_list_pinned(smart_list_id: str, pinned: bool, ctx: Context) -> WriteResult:
     """Pin (true) or unpin (false) a custom smart list."""
     if not smart_list_id or not smart_list_id.strip():
         raise ValueError("smart_list_id is required and must be non-empty")
     resp = _run(helper_set_smart_list_pinned, smart_list_id, pinned)
     await ctx.info(f"{'Pinned' if pinned else 'Unpinned'} smart list {smart_list_id}")
-    return {"smart_list_id": smart_list_id, "pinned": bool(pinned), "status": resp.get("status", "updated")}
+    return WriteResult.of(status=resp.get("status", "updated"), smart_list_id=smart_list_id, pinned=bool(pinned))

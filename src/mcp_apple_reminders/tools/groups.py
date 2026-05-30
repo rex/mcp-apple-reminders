@@ -34,6 +34,7 @@ from .._native.reminderkit_actions import (
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
 from ..models import Calendar, calendar_deeplink
+from ..results import DeleteResult, WriteResult
 from ..server import mcp
 from ._annotations import CREATE, DESTROY, MUTATE, READ
 
@@ -128,7 +129,7 @@ async def list_groups(ctx: Context) -> list[Calendar]:
         "`move_list_to_group`. DESTRUCTIVE — this action cannot be undone."
     ),
 )
-async def delete_group(group_id: str, ctx: Context) -> dict:
+async def delete_group(group_id: str, ctx: Context) -> DeleteResult:
     """Delete a group by UUID.
 
     Args:
@@ -168,7 +169,7 @@ async def delete_group(group_id: str, ctx: Context) -> dict:
         raise ValueError(e.message) from e
 
     await ctx.info(f"Deleted group {name!r} ({group_id})")
-    return {"id": group_id, "name": name, "status": "deleted_group"}
+    return DeleteResult.of(deleted=True, id=group_id, name=name, status="deleted_group")
 
 
 @mcp.tool(
@@ -187,7 +188,7 @@ async def move_list_to_group(
     list_id: str,
     ctx: Context,
     group_id: Optional[str] = None,
-) -> dict:
+) -> WriteResult:
     """Reparent a list under a group, or detach it.
 
     Args:
@@ -212,8 +213,4 @@ async def move_list_to_group(
         await ctx.info(f"Moved list {list_id} into group {group_id} ({action})")
     else:
         await ctx.info(f"Detached list {list_id} from its group ({action})")
-    return {
-        "list_id": list_id,
-        "group_id": group_id,
-        "status": action,
-    }
+    return WriteResult.of(status=action, list_id=list_id, group_id=group_id)

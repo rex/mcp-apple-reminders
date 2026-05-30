@@ -48,14 +48,16 @@ def test_bulk_complete_with_empty_list_returns_zero_processed():
     from mcp_apple_reminders.tools.bulk import bulk_complete
 
     out = asyncio.run(bulk_complete(reminder_ids=[], ctx=None))
-    assert out == {"processed": 0, "failed": []}
+    assert out.processed == 0
+    assert out.failed == []
 
 
 def test_bulk_move_with_empty_list_returns_zero_processed():
     from mcp_apple_reminders.tools.bulk import bulk_move
 
     out = asyncio.run(bulk_move(reminder_ids=[], calendar_id="X", ctx=None))
-    assert out == {"processed": 0, "failed": []}
+    assert out.processed == 0
+    assert out.failed == []
 
 
 # pytest config — we don't yield from any external state, suppress xdist warnings.

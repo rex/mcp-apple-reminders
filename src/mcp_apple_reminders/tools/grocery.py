@@ -11,6 +11,7 @@ from mcp.server.fastmcp import Context
 
 from .._native.reminderkit import ReminderKitHelperError, ReminderKitHelperUnavailable
 from .._native.reminderkit_content import categorize_grocery_items as helper_categorize_grocery_items
+from ..results import WriteResult
 from ..server import mcp
 from ._annotations import MUTATE
 
@@ -26,7 +27,7 @@ from ._annotations import MUTATE
         "Reminders.app. Private ReminderKit API."
     ),
 )
-async def categorize_grocery_items(list_id: str, reminder_ids: list[str], ctx: Context) -> dict:
+async def categorize_grocery_items(list_id: str, reminder_ids: list[str], ctx: Context) -> WriteResult:
     """Categorize `reminder_ids` within grocery list `list_id`."""
     if not list_id or not list_id.strip():
         raise ValueError("list_id is required and must be non-empty")
@@ -40,4 +41,4 @@ async def categorize_grocery_items(list_id: str, reminder_ids: list[str], ctx: C
         raise ValueError(e.message) from e
     n = resp.get("remindersCategorized", len(reminder_ids))
     await ctx.info(f"Categorized {n} grocery item(s) in list {list_id}")
-    return {"list_id": list_id, "reminders_categorized": n, "status": resp.get("status", "updated")}
+    return WriteResult.of(status=resp.get("status", "updated"), list_id=list_id, reminders_categorized=n)

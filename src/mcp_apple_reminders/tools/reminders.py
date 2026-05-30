@@ -34,6 +34,7 @@ from ..formatting import parse_datetime, parse_priority
 from ..lifespan import app_context as _app_context
 from ..lifespan import bridge_from_ctx as _bridge_from_ctx
 from ..models import Reminder, native_reminder_to_pydantic, reminder_deeplink
+from ..results import DeleteResult
 from ..server import mcp
 from ._annotations import CREATE, DESTROY, MUTATE, READ
 
@@ -365,7 +366,7 @@ async def get_reminder(reminder_id: str, ctx: Context) -> Reminder:
         "reminder will be removed from Apple Reminders entirely."
     ),
 )
-async def delete_reminder(reminder_id: str, ctx: Context) -> dict:
+async def delete_reminder(reminder_id: str, ctx: Context) -> DeleteResult:
     """Permanently delete a reminder.
 
     Args:
@@ -378,10 +379,10 @@ async def delete_reminder(reminder_id: str, ctx: Context) -> dict:
         await ctx.info(f"Deleted reminder {reminder_id}")
     else:
         await ctx.error(f"Failed to delete reminder {reminder_id}")
-    return {
-        "reminder_id": reminder_id,
-        "deleted": bool(success),
-        "message": (
+    return DeleteResult.of(
+        deleted=bool(success),
+        message=(
             f"Reminder {reminder_id} deleted successfully." if success else f"Failed to delete reminder {reminder_id}."
         ),
-    }
+        reminder_id=reminder_id,
+    )

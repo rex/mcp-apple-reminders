@@ -21,6 +21,7 @@ from .._native.bulk import bulk_iter
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
 from ..models import Reminder
+from ..results import BulkResult, BulkWindow
 from ..server import mcp
 from ._annotations import DESTROY, MUTATE
 
@@ -35,10 +36,10 @@ from ._annotations import DESTROY, MUTATE
         "reminders). Reports progress as it goes."
     ),
 )
-async def bulk_complete(reminder_ids: list[str], ctx: Context) -> dict:
+async def bulk_complete(reminder_ids: list[str], ctx: Context) -> BulkResult:
     """Mark each reminder in `reminder_ids` as completed."""
     if not reminder_ids:
-        return {"processed": 0, "failed": []}
+        return BulkResult.of(processed=0, failed=[])
 
     app = _app_context(ctx)
     processed = 0
@@ -51,7 +52,7 @@ async def bulk_complete(reminder_ids: list[str], ctx: Context) -> dict:
             failed.append({"id": rid, "error": str(e)})
 
     await ctx.info(f"bulk_complete: processed={processed} failed={len(failed)}")
-    return {"processed": processed, "failed": failed}
+    return BulkResult.of(processed=processed, failed=failed)
 
 
 @mcp.tool(
@@ -62,10 +63,10 @@ async def bulk_complete(reminder_ids: list[str], ctx: Context) -> dict:
         "Move a list of reminder IDs to a target calendar. Returns a per-item " "outcome and reports progress."
     ),
 )
-async def bulk_move(reminder_ids: list[str], calendar_id: str, ctx: Context) -> dict:
+async def bulk_move(reminder_ids: list[str], calendar_id: str, ctx: Context) -> BulkResult:
     """Move each reminder in `reminder_ids` to `calendar_id`."""
     if not reminder_ids:
-        return {"processed": 0, "failed": []}
+        return BulkResult.of(processed=0, failed=[])
 
     app = _app_context(ctx)
     processed = 0
@@ -78,7 +79,7 @@ async def bulk_move(reminder_ids: list[str], calendar_id: str, ctx: Context) -> 
             failed.append({"id": rid, "error": str(e)})
 
     await ctx.info(f"bulk_move: processed={processed} failed={len(failed)}")
-    return {"processed": processed, "failed": failed, "target_calendar_id": calendar_id}
+    return BulkResult.of(processed=processed, failed=failed, target_calendar_id=calendar_id)
 
 
 class _ConfirmBulkDelete(BaseModel):
@@ -101,7 +102,7 @@ async def bulk_delete_completed(
     end: str,
     ctx: Context,
     calendar_id: Optional[str] = None,
-) -> dict:
+) -> BulkResult:
     """Delete completed reminders whose completion_date is in [start, end)."""
     start_dt = datetime.fromisoformat(start)
     end_dt = datetime.fromisoformat(end)
@@ -125,7 +126,7 @@ async def bulk_delete_completed(
 
     if not candidates:
         await ctx.info("bulk_delete_completed: nothing in window.")
-        return {"processed": 0, "failed": [], "window": {"start": start, "end": end}}
+        return BulkResult.of(processed=0, failed=[], window=BulkWindow(start=start, end=end))
 
     # Elicitation guard — best-effort. Clients without elicitation support (no
     # ctx.elicit method, or no advertised capability) fall through to the delete.
@@ -155,8 +156,4 @@ async def bulk_delete_completed(
             failed.append({"id": r.id, "error": str(e)})
 
     await ctx.info(f"bulk_delete_completed: processed={processed} failed={len(failed)}")
-    return {
-        "processed": processed,
-        "failed": failed,
-        "window": {"start": start, "end": end},
-    }
+    return BulkResult.of(processed=processed, failed=failed, window=BulkWindow(start=start, end=end))
