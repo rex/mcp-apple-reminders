@@ -22,6 +22,7 @@ GROUP_NAME = "MCP-IntegTest"
 class TestStore:
     client: WireClient
     marker: str
+    keep: bool = False
     group_id: Optional[str] = None
     list_id: Optional[str] = None
     list_name: str = ""

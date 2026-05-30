@@ -2,11 +2,13 @@
 
 Run from the repo root (the interpreter must hold Reminders permission):
 
-    ./venv/bin/python -m tests.integration.run
+    ./venv/bin/python -m tests.integration.run [marker] [--keep]
 
 Spins up a fresh stdio server, builds the isolated `MCP-IntegTest` fixture, runs
 every scenario module, tears the fixture down, prints a pass/fail report, and
-exits non-zero if any check failed.
+exits non-zero if any check failed. Pass `--keep` to SKIP teardown and leave the
+fixture in Reminders.app for inspection — sweep it afterwards with
+`./venv/bin/python -m tests.integration.cleanup`.
 """
 
 from __future__ import annotations
@@ -48,27 +50,40 @@ SCENARIOS = [
 ]
 
 
-async def main(marker: str) -> int:
+async def main(marker: str, keep: bool = False) -> int:
     r = Reporter()
-    print(f"\n=== mcp-apple-reminders integration suite (run {marker}) ===", flush=True)
+    suffix = " · KEEP (no teardown)" if keep else ""
+    print(f"\n=== mcp-apple-reminders integration suite (run {marker}{suffix}) ===", flush=True)
     async with wire_session(r) as client:
-        store = TestStore(client=client, marker=marker)
+        store = TestStore(client=client, marker=marker, keep=keep)
         try:
             if await store.setup():
                 for title, module in SCENARIOS:
                     print(f"\n-- {title} --", flush=True)
                     await module.run(client, store, r)
         finally:
-            print("\n-- teardown --", flush=True)
-            await store.cleanup()
+            if keep:
+                print("\n-- teardown SKIPPED (--keep) --", flush=True)
+                print(
+                    f"   Left in place: group 'MCP-IntegTest' -> list '{store.list_name}' ({store.list_id}).",
+                    flush=True,
+                )
+                print("   Open Reminders.app to inspect; sweep when done with:", flush=True)
+                print("     ./venv/bin/python -m tests.integration.cleanup", flush=True)
+            else:
+                print("\n-- teardown --", flush=True)
+                await store.cleanup()
     print(f"\n=== {r.summary()} ===\n", flush=True)
     return 1 if r.failed else 0
 
 
 def _entry() -> int:
-    # marker passed via argv (callers stamp the time); default is stable for reruns.
-    marker = sys.argv[1] if len(sys.argv) > 1 else "manual"
-    return asyncio.run(main(marker))
+    # marker passed via argv (callers stamp the time); `--keep` leaves the fixture in place.
+    argv = sys.argv[1:]
+    keep = "--keep" in argv
+    positional = [a for a in argv if not a.startswith("-")]
+    marker = positional[0] if positional else "manual"
+    return asyncio.run(main(marker, keep=keep))
 
 
 if __name__ == "__main__":

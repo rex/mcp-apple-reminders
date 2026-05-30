@@ -63,6 +63,8 @@ async def run(c: WireClient, store: TestStore, r: Reporter) -> None:
         early = got.get("early_reminders") or []
         r.check("read-back: >=1 early-reminder summary", len(early) >= 1, f"early={early!r}")
 
-    # exercise the clear paths (idempotent teardown of the alerts)
-    await c.call_ok("set_alarm", {"reminder_id": rid, "clear": True}, label="set_alarm(clear)")
-    await c.call_ok("set_early_reminder", {"reminder_id": rid, "clear": True}, label="set_early_reminder(clear)")
+    # exercise the clear paths (idempotent teardown of the alerts) — skipped under --keep
+    # so the reminder keeps its alarm + early reminder on display for inspection.
+    if not store.keep:
+        await c.call_ok("set_alarm", {"reminder_id": rid, "clear": True}, label="set_alarm(clear)")
+        await c.call_ok("set_early_reminder", {"reminder_id": rid, "clear": True}, label="set_early_reminder(clear)")

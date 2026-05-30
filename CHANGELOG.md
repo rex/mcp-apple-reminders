@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.96] — 2026-05-30 — Agent: Claude
+### Changed
+- Integration: add --keep (inspect) mode to run.py — skips teardown and leaves the MCP-IntegTest fixture in Reminders.app for eyeballing; under --keep the alarms scenario keeps its alarm + early reminder on display. New tests/integration/cleanup.py sweeps leftover IntegTest-* lists + the MCP-IntegTest group (run after --keep or post-crash).
+
 ## [0.1.95] — 2026-05-30 — Agent: Claude
 ### Changed
 - docs: TASK_STATE §0 — both integration-found bugs (set_urgent, create_smart_list) now FIXED; suite at 173/173 with no remaining known-issues.
