@@ -22,7 +22,7 @@ from .._native.reminderkit_lists import (
 from .._native.reminderkit_lists import (
     update_smart_list as helper_update_smart_list,
 )
-from ..icon_suggest import resolve_icon
+from ..icons import resolve_icon
 from ..server import mcp
 
 
@@ -41,14 +41,13 @@ def _helper_call(fn, ctx_error, *args, **kwargs) -> dict:
     description=(
         "Create a custom smart list (a saved-filter list) in Reminders.app. "
         "Pass a `name` and optional appearance (`color`, `symbol` SF-symbol, "
-        "`emoji`). `icon` is the high-level badge knob: 'none' (default) leaves "
-        "it iconless; 'auto' suggests an SF Symbol from the name — falling back "
-        "to an agent glyph; 'ask' prompts; or pass a symbol/emoji directly. An "
-        "explicit `symbol` or `emoji` overrides `icon`. The filter itself is an "
-        "opaque base64 blob: omit `filter_data_b64` to create a named smart list "
-        "whose filter you refine in Reminders.app, or pass a previously-captured "
-        "blob. Requires an iCloud account that supports custom smart lists. "
-        "Private ReminderKit API."
+        "`emoji`). `icon` is a convenience badge knob: 'none' (default) leaves "
+        "it iconless; 'auto' uses the agent glyph; or pass a symbol/emoji "
+        "directly. An explicit `symbol` or `emoji` overrides `icon`. The filter "
+        "itself is an opaque base64 blob: omit `filter_data_b64` to create a "
+        "named smart list whose filter you refine in Reminders.app, or pass a "
+        "previously-captured blob. Requires an iCloud account that supports "
+        "custom smart lists. Private ReminderKit API."
     ),
 )
 async def create_smart_list(
@@ -63,7 +62,7 @@ async def create_smart_list(
     """Create a custom smart list. See the tool description for `icon` / `filter_data_b64`."""
     if not name or not name.strip():
         raise ValueError("name is required and must be non-empty")
-    resolved = await resolve_icon(ctx, name, icon, explicit_symbol=symbol, explicit_emoji=emoji)
+    resolved = resolve_icon(icon, explicit_symbol=symbol, explicit_emoji=emoji)
     resp = _helper_call(
         helper_create_smart_list,
         ctx,

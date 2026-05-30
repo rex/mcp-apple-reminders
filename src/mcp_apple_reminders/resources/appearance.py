@@ -104,11 +104,12 @@ _PAYLOAD = {
             "Reminders.app's picker shows a curated subset, but any valid SF Symbol renders. "
             "`common` below are frequent picker choices, not an exhaustive set."
         ),
-        "auto_suggest": (
-            "Unsure which symbol to pass? Call the `suggest_list_icon` tool with a "
-            "proposed list title for ranked SF Symbol candidates. `create_calendar` "
-            "and `create_smart_list` also accept icon='auto' (default, picks one from "
-            "the title), icon='ask' (prompt to choose), or icon='none'."
+        "usage": (
+            "The caller chooses the icon — there is no server-side guesser. Pass any "
+            "`symbol` (SF Symbol name) or `emoji` to set_list_appearance, or an `icon` "
+            "to create_calendar / create_smart_list. create_calendar with no icon "
+            "badges the list 'sparkles' (the agent-created marker); pass icon='none' "
+            "to skip. Pick from `common` below or any valid SF Symbol."
         ),
         "common": COMMON_ICONS,
     },

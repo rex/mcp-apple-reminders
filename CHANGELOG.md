@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.73] — 2026-05-29 — Agent: Claude
+### Changed
+- Simplify list icons: remove the keyword table + sampling suggester + suggest_list_icon tool. The calling client chooses the icon — create_calendar takes an explicit SF Symbol/emoji, 'none' to skip, or omits to the 'sparkles' agent badge; create_smart_list stays icon-less. reminders://appearance documents usage.
+
 ## [0.1.72] — 2026-05-29 — Agent: Claude
 ### Changed
 - create_smart_list is icon-less by default (icon defaults to 'none' rather than 'auto'); regular list creation still auto-suggests.

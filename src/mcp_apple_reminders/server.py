@@ -47,7 +47,6 @@ from .tools import calendars as _calendars  # noqa: E402, F401
 from .tools import flags as _flags  # noqa: E402, F401
 from .tools import grocery as _grocery  # noqa: E402, F401
 from .tools import groups as _groups  # noqa: E402, F401
-from .tools import icons as _icons  # noqa: E402, F401
 from .tools import queries as _queries  # noqa: E402, F401
 from .tools import reminders as _reminders  # noqa: E402, F401
 from .tools import sampling as _sampling  # noqa: E402, F401
