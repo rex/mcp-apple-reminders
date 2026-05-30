@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.90] — 2026-05-30 — Agent: Claude
+### Changed
+- Integration: smart-lists/appearance/pinning + subtasks/sections scenarios. Appearance + pinning green; subtask parent-linkage + section assignment validated (polled past SQLite lag); set_parent confirmed deferred. FOUND a 2nd bug: create_smart_list without filter_data_b64 errors 'filterData is required' (contradicts its docs) — encoded as known-issue, fix task spawned. 129 checks green.
+
 ## [0.1.89] — 2026-05-30 — Agent: Claude
 ### Changed
 - Integration: calendars + groups + workflow scenarios — list lifecycle (list/get/search/default/create/rename/delete), group create→move-list→delete, get_workflow_lists + move_reminder_to_list + tolerant named-board moves (Claude-* may be absent). 111 checks green.

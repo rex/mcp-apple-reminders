@@ -19,7 +19,9 @@ from . import (
     scenarios_calendars,
     scenarios_crud,
     scenarios_groups,
+    scenarios_lists,
     scenarios_reads,
+    scenarios_sections,
     scenarios_workflow,
 )
 from .fixtures import TestStore
@@ -33,6 +35,8 @@ SCENARIOS = [
     ("calendars (list lifecycle)", scenarios_calendars),
     ("groups (sidebar folders)", scenarios_groups),
     ("workflow board moves", scenarios_workflow),
+    ("smart lists + appearance + pinning", scenarios_lists),
+    ("subtasks + sections", scenarios_sections),
 ]
 
 
