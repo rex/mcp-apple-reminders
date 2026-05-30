@@ -17,18 +17,30 @@ async def run(c: WireClient, store: TestStore, r: Reporter) -> None:
     r.check("set_list_pinned -> status", bool(pin) and bool(pin.get("status")))
     await c.call_ok("set_list_pinned", {"list_id": lid, "pinned": False}, label="set_list_pinned(false)")
 
-    # KNOWN ISSUE (found by this suite): create_smart_list without filter_data_b64 errors
-    # "filterData is required", yet the tool docs say omitting it creates a named smart list
-    # to refine in Reminders.app — and there's no agent-accessible way to synthesize a valid
-    # opaque filter blob. Either the helper must default an empty filter or the tool must
-    # require/document filter_data_b64. Dedicated fix task spawned; asserted as expected-error
-    # so the suite stays green and flips loudly when repaired. update_smart_list /
-    # set_smart_list_pinned / delete_smart_list are blocked behind this (need a created id).
-    err = await c.call_expect_error(
-        "create_smart_list",
-        {"name": f"IT-smart-{store.marker}", "emoji": "🧪"},
-        label="create_smart_list (KNOWN: filterData required)",
+    # create_smart_list with NO filter_data_b64 creates a named custom smart list to refine
+    # in Reminders.app (filterData is now optional — fixed v0.1.94).
+    sl = await c.call_ok(
+        "create_smart_list", {"name": f"IT-smart-{store.marker}", "emoji": "🧪"}, label="create_smart_list (no filter)"
     )
-    r.check(
-        "create_smart_list known-issue signature", "filterdata" in err.lower() or "filter" in err.lower(), err[:120]
+    sid = str(sl.get("id")) if sl else ""
+    r.check("create_smart_list -> id", bool(sid))
+    if not sid:
+        return
+    store.smart_list_ids.append(sid)  # teardown safety net if a later step throws
+
+    upd = await c.call_ok(
+        "update_smart_list", {"smart_list_id": sid, "name": f"IT-smart2-{store.marker}"}, label="update_smart_list"
     )
+    r.check("update_smart_list -> status", bool(upd) and bool(upd.get("status")))
+    slpin = await c.call_ok(
+        "set_smart_list_pinned", {"smart_list_id": sid, "pinned": True}, label="set_smart_list_pinned(true)"
+    )
+    r.check("set_smart_list_pinned -> status", bool(slpin) and bool(slpin.get("status")))
+    await c.call_ok(
+        "set_smart_list_pinned", {"smart_list_id": sid, "pinned": False}, label="set_smart_list_pinned(false)"
+    )
+
+    deleted = await c.call_ok("delete_smart_list", {"smart_list_id": sid}, label="delete_smart_list")
+    r.check("delete_smart_list -> deleted=True", bool(deleted) and deleted.get("deleted") is True)
+    if sid in store.smart_list_ids:
+        store.smart_list_ids.remove(sid)

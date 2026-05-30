@@ -964,7 +964,14 @@ int main(int argc, const char * argv[]) {
             if (![name isKindOfClass:[NSString class]] || name.length == 0) {
                 fail(@"name is required");
             }
-            NSData *filterData = decodedBase64Data(cmd[@"filterData"], @"filterData");
+            // filterData is OPTIONAL: omit it to create a named custom smart list the
+            // user refines in Reminders.app (the helper used to hard-require it, which
+            // contradicted that documented path — there is no agent-accessible way to
+            // synthesize a valid opaque filter archive).
+            NSData *filterData = nil;
+            if (cmd[@"filterData"] && cmd[@"filterData"] != [NSNull null]) {
+                filterData = decodedBase64Data(cmd[@"filterData"], @"filterData");
+            }
             NSError *error = nil;
             REMStore *store = [REMStore new];
             REMAccount *account = [store fetchPrimaryActiveCloudKitAccountWithError:&error];
@@ -1003,10 +1010,15 @@ int main(int argc, const char * argv[]) {
             if (customContext && [customContext respondsToSelector:@selector(setName:)]) {
                 [(REMSmartListCustomContextChangeItem *)customContext setName:name];
             }
-            // Reminders' edit UI ignores filterData when this stays at the default 0.
-            setCustomSmartListSupportedVersion(change);
             [change setSmartListType:@"com.apple.reminders.smartlist.custom"];
-            [change setFilterData:filterData];
+            if (filterData) {
+                // A custom filter was supplied — bump the supported version so Reminders
+                // honors it (filterData is ignored while the version stays at the default 0).
+                setCustomSmartListSupportedVersion(change);
+                [change setFilterData:filterData];
+            }
+            // No filterData: leave the supported version at its default so the empty filter
+            // is accepted; the result is a named custom smart list to configure in the UI.
 
             NSMutableDictionary *details = [NSMutableDictionary dictionaryWithDictionary:@{
                 @"status": @"created",
