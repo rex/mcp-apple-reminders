@@ -20,6 +20,9 @@ from .._native.reminderkit_actions import (
     add_tags as helper_add_tags,
 )
 from .._native.reminderkit_actions import (
+    clear_tags as helper_clear_tags,
+)
+from .._native.reminderkit_actions import (
     create_subtask as helper_create_subtask,
 )
 from .._native.reminderkit_actions import (
@@ -157,9 +160,11 @@ async def create_reminder(
 @mcp.tool(
     name="update_reminder",
     description=(
-        "Update an existing reminder. You can modify any combination of: "
-        "title, due date, notes, priority, URL, and completion status. Only "
-        "the fields you specify will be updated; others remain unchanged."
+        "Update an existing reminder. You can modify any combination of: title, "
+        "due date, notes, priority, URL, completion status, flag, and tags (add "
+        "and/or clear). Only the fields you specify are updated; others remain "
+        "unchanged. For tag replacement, pass clear_tags=true together with "
+        "add_tags=[...] (the clear is applied first)."
     ),
 )
 async def update_reminder(
@@ -173,6 +178,7 @@ async def update_reminder(
     is_completed: Optional[bool] = None,
     flagged: Optional[bool] = None,
     add_tags: Optional[list[str]] = None,
+    clear_tags: bool = False,
 ) -> Reminder:
     """Update an existing reminder.
 
@@ -185,7 +191,9 @@ async def update_reminder(
         url: New URL to associate with the reminder. Optional.
         is_completed: Mark the reminder as completed (true) or incomplete (false). Optional.
         flagged: Set or clear the reminder's flag (via the ReminderKit helper). Optional.
-        add_tags: Tags to add (merged with existing, not replaced; via the ReminderKit helper). Optional.
+        add_tags: Tags to add (merged with existing; via the ReminderKit helper). Optional.
+        clear_tags: Remove all existing tags first (via the ReminderKit helper). Combine
+            with add_tags for replacement semantics. Default False.
     """
     kwargs: dict = {}
     if title:
@@ -220,6 +228,18 @@ async def update_reminder(
             raise ValueError(e.message) from e
         updated = updated.model_copy(update={"flagged": bool(flagged)})
 
+    # Clear before add so (clear_tags + add_tags) yields replacement semantics.
+    if clear_tags:
+        try:
+            helper_clear_tags(reminder_id)
+        except ReminderKitHelperUnavailable as e:
+            await ctx.error(f"clear_tags via ReminderKit unavailable: {e}")
+            raise ValueError(f"ReminderKit helper not built. Run `make build-native`. ({e})") from e
+        except ReminderKitHelperError as e:
+            await ctx.error(f"clear_tags failed: {e.message}")
+            raise ValueError(e.message) from e
+        updated = updated.model_copy(update={"tags": []})
+
     if add_tags:
         try:
             helper_add_tags(reminder_id, add_tags)
@@ -235,6 +255,8 @@ async def update_reminder(
     fields = sorted(kwargs.keys())
     if flagged is not None:
         fields.append("flagged")
+    if clear_tags:
+        fields.append("tags-cleared")
     if add_tags:
         fields.append("tags+=")
     await ctx.info(f"Updated reminder {reminder_id}: fields={fields}")

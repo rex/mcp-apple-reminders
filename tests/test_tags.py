@@ -10,17 +10,20 @@ Coverage:
 
 from __future__ import annotations
 
+import asyncio
 import os
 import time
 
 import pytest
 
+from mcp_apple_reminders._native import reminderkit_actions as actions_mod
 from mcp_apple_reminders._native.eventkit import DEFAULT_HELPER_PATH as EVENTKIT_HELPER
 from mcp_apple_reminders._native.reminderkit import (
     DEFAULT_HELPER_PATH as REMINDERKIT_HELPER,
 )
 from mcp_apple_reminders._native.reminderkit_actions import (
     add_tags,
+    clear_tags,
 )
 from mcp_apple_reminders._native.sqlite import Reader, RemindersDBUnavailable, connect
 
@@ -47,6 +50,34 @@ def test_add_tags_rejects_empty_tag_list():
         add_tags("UUID", [])
     with pytest.raises(ValueError, match="tags"):
         add_tags("UUID", ["", "   "])
+
+
+def test_clear_tags_requires_reminder_id():
+    with pytest.raises(ValueError, match="reminder_id"):
+        clear_tags("")
+    with pytest.raises(ValueError, match="reminder_id"):
+        clear_tags("   ")
+
+
+def test_clear_tags_payload_shape(monkeypatch):
+    captured: dict = {}
+    monkeypatch.setattr(actions_mod, "_invoke", lambda payload: captured.update(payload) or {"status": "ok"})
+    clear_tags("rem-1")
+    assert captured == {"action": "clear_tags", "id": "rem-1"}
+
+
+def test_update_reminder_exposes_clear_tags():
+    from mcp_apple_reminders.server import mcp
+
+    tools = {t.name: t for t in asyncio.run(mcp.list_tools())}
+    assert "clear_tags" in tools["update_reminder"].inputSchema.get("properties", {})
+
+
+def test_tags_resource_registered():
+    from mcp_apple_reminders.server import mcp
+
+    uris = {str(r.uri) for r in asyncio.run(mcp.list_resources())}
+    assert "reminders://tags" in uris
 
 
 def test_iter_reminders_with_unknown_tag_filter_returns_empty():

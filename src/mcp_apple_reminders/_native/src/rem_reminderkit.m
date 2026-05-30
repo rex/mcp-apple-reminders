@@ -143,6 +143,7 @@
 
 @interface REMReminderHashtagContextChangeItem : NSObject
 - (id)addHashtagWithType:(NSInteger)type name:(NSString *)name;
+- (void)removeAllHashtags;
 @end
 
 @interface REMReminderFlaggedContextChangeItem : NSObject
@@ -705,6 +706,7 @@ int main(int argc, const char * argv[]) {
             @"add_private_metadata",
             @"add_url_attachments",
             @"add_tags",
+            @"clear_tags",
             @"add_subtasks",
             @"assign_section",
             @"add_section_and_assign",
@@ -1493,6 +1495,9 @@ int main(int argc, const char * argv[]) {
             if (urls.count == 0) fail(@"At least one URL is required");
         } else if ([action isEqualToString:@"add_tags"]) {
             if (tags.count == 0) fail(@"At least one tag is required");
+        } else if ([action isEqualToString:@"clear_tags"]) {
+            [[change hashtagContext] removeAllHashtags];
+            details[@"tagsCleared"] = @YES;
         } else if ([action isEqualToString:@"add_subtasks"]) {
             NSArray<NSDictionary *> *subtaskSpecs = subtaskSpecArray(cmd);
             if (subtaskSpecs.count == 0) fail(@"At least one subtask is required");

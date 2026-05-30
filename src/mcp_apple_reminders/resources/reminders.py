@@ -7,6 +7,7 @@ URI patterns:
 - `reminders://today` — reminders due in the current local day.
 - `reminders://list/{calendar_id}` — a specific list by UUID.
 - `reminders://recently-deleted` — items marked for deletion, not yet purged.
+- `reminders://tags` — every distinct tag in use on live reminders.
 
 Each resource returns JSON: `{"reminders": [Reminder, …], "context": {...}}`.
 
@@ -148,3 +149,26 @@ def recently_deleted_reminders() -> str:
             return _reminders_payload(results, marked_for_deletion=True)
     except RemindersDBUnavailable as e:
         return _reminders_payload([], error=f"SQLite unavailable: {e}")
+
+
+@mcp.resource(
+    uri="reminders://tags",
+    name="All tags",
+    description="Every distinct hashtag/tag in use on live (non-deleted) reminders, sorted. Sub-millisecond via SQLite.",
+    mime_type="application/json",
+)
+def all_tags() -> str:
+    """Return the sorted list of distinct tags currently in use."""
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT h.ZNAME FROM ZREMCDHASHTAGLABEL h "
+                "JOIN ZREMCDOBJECT o ON o.ZHASHTAGLABEL = h.Z_PK "
+                "JOIN ZREMCDREMINDER r ON o.ZREMINDER3 = r.Z_PK "
+                "WHERE r.ZMARKEDFORDELETION = 0 AND h.ZNAME IS NOT NULL AND h.ZNAME != '' "
+                "ORDER BY h.ZNAME"
+            ).fetchall()
+            tags = [str(row[0]) for row in rows]
+            return json.dumps({"tags": tags, "count": len(tags)}, default=str)
+    except RemindersDBUnavailable as e:
+        return json.dumps({"tags": [], "error": f"SQLite unavailable: {e}"})

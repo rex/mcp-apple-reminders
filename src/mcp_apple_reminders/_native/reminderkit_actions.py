@@ -44,8 +44,8 @@ def set_flagged(reminder_id: str, flagged: bool) -> dict:
 def add_tags(reminder_id: str, tags: list[str]) -> dict:
     """Append tags to a reminder via the `add_tags` action (additive only).
 
-    Existing tags are preserved. A `clear_tags` action will land in a
-    follow-up patch to enable replacement semantics.
+    Existing tags are preserved. For replacement semantics, call
+    `clear_tags` first, then `add_tags`.
 
     Raises:
         ValueError: blank `reminder_id` or empty `tags` list.
@@ -56,6 +56,21 @@ def add_tags(reminder_id: str, tags: list[str]) -> dict:
     if not cleaned:
         raise ValueError("tags is required and must contain at least one non-empty value")
     return _invoke({"action": "add_tags", "id": reminder_id, "tags": cleaned})
+
+
+def clear_tags(reminder_id: str) -> dict:
+    """Remove ALL tags from a reminder via the `clear_tags` action.
+
+    Pairs with `add_tags` for replacement semantics (clear, then add). Backed by
+    `REMReminderHashtagContextChangeItem.removeAllHashtags`.
+
+    Raises:
+        ValueError: blank `reminder_id`.
+        ReminderKitHelperUnavailable / ReminderKitHelperError on helper failure.
+    """
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    return _invoke({"action": "clear_tags", "id": reminder_id})
 
 
 def assign_section(reminder_id: str, section_id: str) -> dict:
@@ -120,6 +135,7 @@ def move_list_to_group(list_id: str, group_id: Optional[str]) -> dict:
 __all__ = [
     "add_tags",
     "assign_section",
+    "clear_tags",
     "create_group",
     "create_subtask",
     "delete_group",

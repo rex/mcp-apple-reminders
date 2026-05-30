@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.76] — 2026-05-30 — Agent: Claude
+### Changed
+- CL-2.8 clear_tags: new clear_tags ReminderKit action (removeAllHashtags) + make build-native recompile; clear_tags param on update_reminder (pair with add_tags for tag replacement); reminders://tags resource listing distinct tags on live reminders.
+
 ## [0.1.75] — 2026-05-30 — Agent: Claude
 ### Changed
 - CL-2.7 Read-side: get_recently_deleted tool + reminders://recently-deleted resource (invert ZMARKEDFORDELETION); flagged filter on get_reminders; fix the ZPARENTREMINDER discard so parent_reminder_id + subtasks populate. urgent filter deferred to CL-2.9 (model tail-append under ADR 0002).
