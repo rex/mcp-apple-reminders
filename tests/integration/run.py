@@ -14,7 +14,14 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from . import scenarios_alarms, scenarios_crud, scenarios_reads
+from . import (
+    scenarios_alarms,
+    scenarios_calendars,
+    scenarios_crud,
+    scenarios_groups,
+    scenarios_reads,
+    scenarios_workflow,
+)
 from .fixtures import TestStore
 from .harness import Reporter, wire_session
 
@@ -23,6 +30,9 @@ SCENARIOS = [
     ("CRUD + read paths", scenarios_crud),
     ("alarms / recurrence / early-reminder read-back", scenarios_alarms),
     ("queries + reminders:// resources", scenarios_reads),
+    ("calendars (list lifecycle)", scenarios_calendars),
+    ("groups (sidebar folders)", scenarios_groups),
+    ("workflow board moves", scenarios_workflow),
 ]
 
 
