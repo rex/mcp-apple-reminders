@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.85] — 2026-05-30 — Agent: Claude
+### Changed
+- Integration suite foundation: tests/integration/ — wire-level harness (fresh stdio server vs live store) + self-cleaning MCP-IntegTest fixture + CRUD/read scenario. Asserts typed structuredContent + RFC-3339 datetimes + negative cases. Run: ./venv/bin/python -m tests.integration.run. NOT collected by the unit gate (__test__=False).
+
 ## [0.1.84] — 2026-05-30 — Agent: Claude
 ### Changed
 - CL-2.13: docs sweep — regenerated docs/TOOLS.md (58 tools, 8 resources, 5 prompts); refreshed README + docs/MAP.md tool/resource/prompt tables (17 modules) + AGENTS.md §4/§9 + TASK_STATE §0 counts. CL-2 capability expansion is COMPLETE.
