@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Iterator, Optional
 
 from ..models import Calendar, Reminder, calendar_deeplink, reminder_deeplink
+from ._color import decode_list_color
 
 APPLE_EPOCH_OFFSET = 978_307_200
 
@@ -87,7 +88,7 @@ def _calendar_from_row(
     return Calendar(
         id=cal_id,
         name=row["ZNAME"] or "",
-        color=str(row["ZCOLOR"] or ""),
+        color=decode_list_color(row["ZCOLOR"]),
         is_default=(cal_id == default_uuid),
         owner=None,
         deeplink=calendar_deeplink(cal_id),

@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.97] — 2026-05-30 — Agent: Claude
+### Fixed
+- fix: Calendar.color decodes the archived ZCOLOR blob. ZREMCDBASELIST.ZCOLOR is NULL or an NSKeyedArchiver REMColor binary plist (never a plain string); the reader's str(ZCOLOR) leaked a b'bplist00...' repr into Calendar.color for every colored list (list_calendars/get_calendar*). New _native/_color.py::decode_list_color parses it → hex (#RRGGBB) or palette name. Unit test + integration assertion added. Found by the integration suite's --keep inspect mode.
+
 ## [0.1.96] — 2026-05-30 — Agent: Claude
 ### Changed
 - Integration: add --keep (inspect) mode to run.py — skips teardown and leaves the MCP-IntegTest fixture in Reminders.app for eyeballing; under --keep the alarms scenario keeps its alarm + early reminder on display. New tests/integration/cleanup.py sweeps leftover IntegTest-* lists + the MCP-IntegTest group (run after --keep or post-crash).

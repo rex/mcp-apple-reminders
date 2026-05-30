@@ -12,6 +12,11 @@ async def run(c: WireClient, store: TestStore, r: Reporter) -> None:
     cals = await c.call_value("list_calendars", {}, label="list_calendars")
     r.check("list_calendars includes fixture list", lid in {x.get("id") for x in cals or []})
 
+    # ZCOLOR is an archived REMColor blob — it must decode to hex/name, never a raw b'...' repr.
+    colors = [str(x.get("color") or "") for x in cals or []]
+    r.check("no list color is a raw blob repr", not any(col.startswith("b'") for col in colors))
+    r.check("colored lists decode to hex/name", any(col.startswith("#") or col.isalpha() for col in colors))
+
     grouped = await c.call_value("list_calendars", {"include_groups": True}, label="list_calendars(include_groups)")
     r.check("list_calendars(include_groups) surfaces a group", any(x.get("is_group") for x in grouped or []))
 
