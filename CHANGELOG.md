@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.80] — 2026-05-30 — Agent: Claude
+### Changed
+- Pre-compaction handoff: refresh TASK_STATE §0 (2.1-2.9 shipped, v0.1.79, 59 tools; remaining polish 2.10-2.13 + autonomous-then-exhaustive-integration directive + Alarm Lab fixture) and AGENTS §9 (current capability state + 4 durable gotchas: datetime offset serialization, broad elicitation guards, recurrence/alarms CloudKit-blob-only, stale connected server + fresh-server wire-test pattern).
+
 ## [0.1.79] — 2026-05-30 — Agent: Claude
 ### Changed
 - CL-2.9 read-back (ADR 0002): tail-append recurrence/alarms/early_reminders to the Reminder model. early_reminders decode from SQLite (everywhere); recurrence + alarm summaries from EventKit on get_reminder only (urgent + 'when messaging' dropped — CloudKit-blob-only). Validated end-to-end against seeded alarm data.
