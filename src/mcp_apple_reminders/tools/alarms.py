@@ -24,10 +24,13 @@ from .._native.eventkit import (
     set_recurrence as helper_set_recurrence,
 )
 from ..server import mcp
+from ._annotations import CREATE, MUTATE
 
 
 @mcp.tool(
     name="set_alarm",
+    title="Set Alarm",
+    annotations=CREATE,
     description=(
         "Set or clear time-based alarm(s) on a reminder. `when` accepts a "
         "relative duration (e.g. '1h', '30m', '2d') OR an ISO-format absolute "
@@ -69,6 +72,8 @@ async def set_alarm(
 
 @mcp.tool(
     name="set_location_alarm",
+    title="Set Location Alarm",
+    annotations=CREATE,
     description=(
         "Add a geofenced (location-based) alarm to a reminder. Fires when "
         "the user enters or leaves a circular geofence centered on the "
@@ -120,6 +125,8 @@ async def set_location_alarm(
 
 @mcp.tool(
     name="set_recurrence",
+    title="Set Recurrence",
+    annotations=MUTATE,
     description=(
         "Set a recurrence rule on a reminder. `frequency` must be one of "
         "`daily`, `weekly`, `monthly`, `yearly`. `interval` defaults to 1 "

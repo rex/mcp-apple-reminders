@@ -12,10 +12,13 @@ from mcp.server.fastmcp import Context
 from .._native.reminderkit import ReminderKitHelperError, ReminderKitHelperUnavailable
 from .._native.reminderkit_content import categorize_grocery_items as helper_categorize_grocery_items
 from ..server import mcp
+from ._annotations import MUTATE
 
 
 @mcp.tool(
     name="categorize_grocery_items",
+    title="Categorize Grocery Items",
+    annotations=MUTATE,
     description=(
         "Auto-categorize grocery reminders (produce, dairy, bakery, …) within a "
         "grocery-enabled list. Pass the list UUID and the reminder UUIDs to "

@@ -23,6 +23,7 @@ from .._native.reminderkit_lists import (
     set_smart_list_pinned as helper_set_smart_list_pinned,
 )
 from ..server import mcp
+from ._annotations import MUTATE
 
 
 def _run(fn, *args, **kwargs) -> dict:
@@ -37,6 +38,8 @@ def _run(fn, *args, **kwargs) -> dict:
 
 @mcp.tool(
     name="set_list_appearance",
+    title="Set List Appearance",
+    annotations=MUTATE,
     description=(
         "Rename and/or restyle a list OR group (sidebar folder) by its UUID. "
         "`color` accepts a named palette token (red/orange/yellow/green/blue/"
@@ -64,6 +67,8 @@ async def set_list_appearance(
 
 @mcp.tool(
     name="set_list_pinned",
+    title="Pin or Unpin List",
+    annotations=MUTATE,
     description=(
         "Pin or unpin a list/group at the top of the Reminders sidebar. Pass "
         "the list (or group) UUID and `pinned` (true to pin, false to unpin). "
@@ -81,6 +86,8 @@ async def set_list_pinned(list_id: str, pinned: bool, ctx: Context) -> dict:
 
 @mcp.tool(
     name="set_smart_list_pinned",
+    title="Pin or Unpin Smart List",
+    annotations=MUTATE,
     description=(
         "Pin or unpin a custom smart list at the top of the Reminders sidebar. "
         "Pass the smart-list UUID and `pinned`. Private ReminderKit API."

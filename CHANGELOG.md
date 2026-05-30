@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.81] — 2026-05-30 — Agent: Claude
+### Changed
+- CL-2.10: ToolAnnotations on all 58 tools — readOnly/destructive/idempotent hints + openWorldHint=False (closed local domain) + human titles, via shared READ/CREATE/MUTATE/DESTROY presets in tools/_annotations.py; new test_tool_annotations.py locks the contract.
+
 ## [0.1.80] — 2026-05-30 — Agent: Claude
 ### Changed
 - Pre-compaction handoff: refresh TASK_STATE §0 (2.1-2.9 shipped, v0.1.79, 59 tools; remaining polish 2.10-2.13 + autonomous-then-exhaustive-integration directive + Alarm Lab fixture) and AGENTS §9 (current capability state + 4 durable gotchas: datetime offset serialization, broad elicitation guards, recurrence/alarms CloudKit-blob-only, stale connected server + fresh-server wire-test pattern).

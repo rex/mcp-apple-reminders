@@ -25,6 +25,7 @@ from .._native.reminderkit_content import add_file_attachments as helper_add_fil
 from .._native.reminderkit_content import add_private_metadata as helper_add_private_metadata
 from .._native.reminderkit_content import add_url_attachments as helper_add_url_attachments
 from ..server import mcp
+from ._annotations import CREATE
 
 # Opt-in env var that unlocks the privileged local-file attachment tool.
 _ENABLE_ENV = "MCP_APPLE_REMINDERS_ENABLE_FILE_ATTACHMENTS"
@@ -75,6 +76,8 @@ def _classify_and_validate(paths: list[str]) -> tuple[list[str], list[str]]:
 
 @mcp.tool(
     name="add_url_attachment",
+    title="Add URL Attachment",
+    annotations=CREATE,
     description=(
         "Attach one or more web URLs (links) to a reminder by its UUID. Additive "
         "— existing attachments are preserved. URLs must be web URLs (http/https). "
@@ -98,6 +101,8 @@ async def add_url_attachment(reminder_id: str, urls: list[str], ctx: Context) ->
 
 @mcp.tool(
     name="add_metadata",
+    title="Add Metadata",
+    annotations=CREATE,
     description=(
         "Attach web URLs and/or hashtags (tags) to a reminder by its UUID in one "
         "call. Additive. At least one URL or tag is required. Unprivileged: no "
@@ -129,6 +134,8 @@ async def add_metadata(
 
 @mcp.tool(
     name="add_file_attachment",
+    title="Add File Attachment",
+    annotations=CREATE,
     description=(
         "Attach one or more LOCAL files to a reminder by its UUID, by absolute "
         "path. Image files render with a thumbnail; any other file type attaches "

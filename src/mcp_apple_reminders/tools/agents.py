@@ -29,6 +29,7 @@ from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
 from ..models import Calendar, native_calendar_to_pydantic
 from ..server import mcp
+from ._annotations import MUTATE
 
 AGENT_LIST_PREFIX = "Agents-"
 DEFAULT_AGENT_LIST_COLOR = "gray"
@@ -36,6 +37,8 @@ DEFAULT_AGENT_LIST_COLOR = "gray"
 
 @mcp.tool(
     name="bootstrap_agent_list",
+    title="Bootstrap Agent List",
+    annotations=MUTATE,
     description=(
         "Idempotently ensure the `Agents-<project_name>` reminder list "
         "exists. Creates it via the Swift EventKit helper if missing. "

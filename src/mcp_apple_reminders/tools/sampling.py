@@ -25,6 +25,7 @@ from mcp.server.fastmcp import Context
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
 from ..server import mcp
+from ._annotations import READ
 
 _VALID_ROUTES = {
     "Claude-Active": "Working on it now.",
@@ -85,6 +86,8 @@ def _parse_routing(response_text: str, valid_ids: set[str]) -> dict[str, str]:
 
 @mcp.tool(
     name="triage_brain_dump",
+    title="Triage Brain Dump",
+    annotations=READ,
     description=(
         "Triage the brain-dump list using the client's LLM via MCP Sampling. "
         "Reads every incomplete item from `from_list` (default Claude-Brain-Dump), "

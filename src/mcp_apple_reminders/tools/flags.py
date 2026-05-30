@@ -23,6 +23,7 @@ from .._native.reminderkit_flags import (
     set_urgent as helper_set_urgent,
 )
 from ..server import mcp
+from ._annotations import CREATE, MUTATE
 
 
 def _run(fn, *args, **kwargs) -> dict:
@@ -37,6 +38,8 @@ def _run(fn, *args, **kwargs) -> dict:
 
 @mcp.tool(
     name="set_urgent",
+    title="Set Urgent",
+    annotations=MUTATE,
     description=(
         "Toggle the 'urgent' state on a reminder by its UUID (the urgency flag "
         "Reminders.app surfaces with an exclamation badge). Pass `urgent=true` "
@@ -54,6 +57,8 @@ async def set_urgent(reminder_id: str, urgent: bool, ctx: Context) -> dict:
 
 @mcp.tool(
     name="set_early_reminder",
+    title="Set Early Reminder",
+    annotations=MUTATE,
     description=(
         "Set or clear an Early Reminder (a lead-time alert that fires before the "
         "reminder's due date). `unit`: 0=minutes, 1=hours, 2=days, 3=weeks, "
@@ -79,6 +84,8 @@ async def set_early_reminder(
 
 @mcp.tool(
     name="add_section_and_assign",
+    title="Add Section and Assign",
+    annotations=CREATE,
     description=(
         "Create a new section (named divider) in the reminder's parent list and "
         "move the reminder into it. Use this when the target section does not yet "

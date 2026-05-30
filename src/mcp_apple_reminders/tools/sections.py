@@ -22,10 +22,13 @@ from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
 from ..models import Reminder
 from ..server import mcp
+from ._annotations import MUTATE, READ
 
 
 @mcp.tool(
     name="get_subtasks",
+    title="Get Subtasks",
+    annotations=READ,
     description=(
         "Get the subtasks of a reminder. Returns Reminder objects whose "
         "parent_reminder_id is the supplied id. Reads from the SQLite cache "
@@ -48,6 +51,8 @@ async def get_subtasks(reminder_id: str, ctx: Context) -> list[Reminder]:
 
 @mcp.tool(
     name="set_parent",
+    title="Set Parent (Make Subtask)",
+    annotations=MUTATE,
     description=(
         "Reassign or detach a reminder's parent. DEFERRED — the borrowed "
         "Obj-C helper does not currently expose a parent-reassignment "
@@ -74,6 +79,8 @@ async def set_parent(
 
 @mcp.tool(
     name="assign_section",
+    title="Assign Section",
+    annotations=MUTATE,
     description=(
         "Move a reminder into a section within its parent list. Sections are "
         "the in-list dividers exposed by Reminders.app. Pass the reminder ID "

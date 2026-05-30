@@ -24,6 +24,7 @@ from .._native.reminderkit_lists import (
 )
 from ..icons import resolve_icon
 from ..server import mcp
+from ._annotations import CREATE, DESTROY, MUTATE
 
 
 def _helper_call(fn, ctx_error, *args, **kwargs) -> dict:
@@ -38,6 +39,8 @@ def _helper_call(fn, ctx_error, *args, **kwargs) -> dict:
 
 @mcp.tool(
     name="create_smart_list",
+    title="Create Smart List",
+    annotations=CREATE,
     description=(
         "Create a custom smart list (a saved-filter list) in Reminders.app. "
         "Pass a `name` and optional appearance (`color`, `symbol` SF-symbol, "
@@ -79,6 +82,8 @@ async def create_smart_list(
 
 @mcp.tool(
     name="update_smart_list",
+    title="Update Smart List",
+    annotations=MUTATE,
     description=(
         "Update a custom smart list by its UUID: rename it, change its "
         "appearance (`color`, `symbol`, `emoji`), and/or replace its filter "
@@ -114,6 +119,8 @@ async def update_smart_list(
 
 @mcp.tool(
     name="delete_smart_list",
+    title="Delete Smart List",
+    annotations=DESTROY,
     description=(
         "Permanently delete a custom smart list by its UUID. Does NOT delete the "
         "reminders the smart list surfaced (it is only a saved filter). "

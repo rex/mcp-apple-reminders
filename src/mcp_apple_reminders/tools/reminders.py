@@ -35,10 +35,13 @@ from ..lifespan import app_context as _app_context
 from ..lifespan import bridge_from_ctx as _bridge_from_ctx
 from ..models import Reminder, native_reminder_to_pydantic, reminder_deeplink
 from ..server import mcp
+from ._annotations import CREATE, DESTROY, MUTATE, READ
 
 
 @mcp.tool(
     name="create_reminder",
+    title="Create Reminder",
+    annotations=CREATE,
     description=(
         "Create a new reminder in Apple Reminders. You can specify the title, "
         "due date, notes, priority, URL, and which calendar (list) to add it "
@@ -160,6 +163,8 @@ async def create_reminder(
 
 @mcp.tool(
     name="update_reminder",
+    title="Update Reminder",
+    annotations=MUTATE,
     description=(
         "Update an existing reminder. You can modify any combination of: title, "
         "due date, notes, priority, URL, completion status, flag, and tags (add "
@@ -266,6 +271,8 @@ async def update_reminder(
 
 @mcp.tool(
     name="complete_reminder",
+    title="Complete Reminder",
+    annotations=MUTATE,
     description=(
         "Mark a reminder as completed. This is a convenience tool that's "
         "equivalent to calling update_reminder with is_completed=true."
@@ -285,6 +292,8 @@ async def complete_reminder(reminder_id: str, ctx: Context) -> Reminder:
 
 @mcp.tool(
     name="uncomplete_reminder",
+    title="Uncomplete Reminder",
+    annotations=MUTATE,
     description=(
         "Mark a reminder as incomplete/not done. This is useful for reopening "
         "a reminder that was previously completed."
@@ -304,6 +313,8 @@ async def uncomplete_reminder(reminder_id: str, ctx: Context) -> Reminder:
 
 @mcp.tool(
     name="get_reminder",
+    title="Get Reminder",
+    annotations=READ,
     description=(
         "Get a specific reminder by its unique ID. Returns all details about "
         "the reminder including title, due date, notes, priority, completion "
@@ -347,6 +358,8 @@ async def get_reminder(reminder_id: str, ctx: Context) -> Reminder:
 
 @mcp.tool(
     name="delete_reminder",
+    title="Delete Reminder",
+    annotations=DESTROY,
     description=(
         "Permanently delete a reminder. This action cannot be undone. The "
         "reminder will be removed from Apple Reminders entirely."

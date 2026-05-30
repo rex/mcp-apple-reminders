@@ -21,6 +21,7 @@ from mcp.server.fastmcp import Context
 from ..lifespan import bridge_from_ctx as _bridge_from_ctx
 from ..models import Calendar, Reminder, native_calendar_to_pydantic, native_reminder_to_pydantic
 from ..server import mcp
+from ._annotations import MUTATE, READ
 
 
 async def _move_to_named_list(bridge, reminder_id: str, list_name: str, ctx: Context) -> Reminder:
@@ -37,6 +38,8 @@ async def _move_to_named_list(bridge, reminder_id: str, list_name: str, ctx: Con
 
 @mcp.tool(
     name="get_workflow_lists",
+    title="Get Workflow Lists",
+    annotations=READ,
     description=(
         "Get all workflow lists (calendars starting with 'Claude-'). These "
         "are special lists used for workflow management with Claude, such as "
@@ -55,6 +58,8 @@ async def get_workflow_lists(ctx: Context) -> list[Calendar]:
 
 @mcp.tool(
     name="move_reminder_to_list",
+    title="Move Reminder to List",
+    annotations=MUTATE,
     description=(
         "Move a reminder to a different calendar/list. This allows you to "
         "organize reminders by moving them between different lists."
@@ -75,6 +80,8 @@ async def move_reminder_to_list(reminder_id: str, calendar_id: str, ctx: Context
 
 @mcp.tool(
     name="move_reminder_on_deck",
+    title="Move Reminder: On Deck",
+    annotations=MUTATE,
     description=(
         "Move a reminder to the 'Claude-On-Deck' workflow list. This indicates "
         "the task is queued and ready to be worked on next. Convenience "
@@ -92,6 +99,8 @@ async def move_reminder_on_deck(reminder_id: str, ctx: Context) -> Reminder:
 
 @mcp.tool(
     name="move_reminder_active",
+    title="Move Reminder: Active",
+    annotations=MUTATE,
     description=(
         "Move a reminder to the 'Claude-Active' workflow list. This indicates "
         "the task is currently being worked on. Convenience function for "
@@ -109,6 +118,8 @@ async def move_reminder_active(reminder_id: str, ctx: Context) -> Reminder:
 
 @mcp.tool(
     name="move_reminder_done",
+    title="Move Reminder: Done",
+    annotations=MUTATE,
     description=(
         "Move a reminder to the 'Claude-Done' workflow list. This indicates "
         "the task has been completed. Convenience function for workflow "
@@ -126,6 +137,8 @@ async def move_reminder_done(reminder_id: str, ctx: Context) -> Reminder:
 
 @mcp.tool(
     name="move_reminder_blocked",
+    title="Move Reminder: Blocked",
+    annotations=MUTATE,
     description=(
         "Move a reminder to the 'Claude-Waiting' workflow list. This indicates "
         "the task is blocked or waiting for external input. Convenience "

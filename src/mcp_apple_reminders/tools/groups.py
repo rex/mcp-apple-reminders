@@ -35,10 +35,13 @@ from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
 from ..models import Calendar, calendar_deeplink
 from ..server import mcp
+from ._annotations import CREATE, DESTROY, MUTATE, READ
 
 
 @mcp.tool(
     name="create_group",
+    title="Create Group",
+    annotations=CREATE,
     description=(
         "Create a new Reminders.app group (sidebar folder). Groups are "
         "containers — they hold lists, not reminders. Use `move_list_to_group` "
@@ -95,6 +98,8 @@ async def create_group(name: str, ctx: Context) -> Calendar:
 
 @mcp.tool(
     name="list_groups",
+    title="List Groups",
+    annotations=READ,
     description=(
         "List all Reminders.app groups (sidebar folders). Each returned "
         "Calendar has `is_group=True`. Use `iter_lists_in_group(group_id)` "
@@ -115,6 +120,8 @@ async def list_groups(ctx: Context) -> list[Calendar]:
 
 @mcp.tool(
     name="delete_group",
+    title="Delete Group",
+    annotations=DESTROY,
     description=(
         "Permanently delete a Reminders.app group. The group must be empty — "
         "if it has children, detach or reparent them first with "
@@ -166,6 +173,8 @@ async def delete_group(group_id: str, ctx: Context) -> dict:
 
 @mcp.tool(
     name="move_list_to_group",
+    title="Move List to Group",
+    annotations=MUTATE,
     description=(
         "Move an existing list under a group, or detach it back to the "
         "account root. Pass `group_id` to attach; omit it (or pass empty) "

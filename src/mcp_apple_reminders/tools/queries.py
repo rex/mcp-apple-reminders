@@ -26,6 +26,7 @@ from ..formatting import parse_datetime
 from ..lifespan import app_context as _app_context
 from ..models import Reminder, native_reminder_to_pydantic
 from ..server import mcp
+from ._annotations import READ
 
 
 def _resolve_priority(priority_str: Optional[str]) -> Optional[Priority]:
@@ -55,6 +56,8 @@ def _matches_priority(reminder_priority: int, bucket: Priority) -> bool:
 
 @mcp.tool(
     name="get_reminders",
+    title="Get Reminders",
+    annotations=READ,
     description=(
         "Get reminders with optional filters. You can filter by: due date range, "
         "completion status, priority level, flagged state, tags, and specific "
@@ -132,6 +135,8 @@ async def get_reminders(
 
 @mcp.tool(
     name="get_recently_deleted",
+    title="Get Recently Deleted",
+    annotations=READ,
     description=(
         "List reminders in Recently Deleted — items marked for deletion but not "
         "yet purged (still recoverable in Reminders.app). Read-only: does NOT "
@@ -157,6 +162,8 @@ async def get_recently_deleted(ctx: Context, limit: Optional[int] = None) -> lis
 
 @mcp.tool(
     name="search_reminders",
+    title="Search Reminders",
+    annotations=READ,
     description=(
         "Search for reminders by text query. Searches both the reminder title "
         "and notes fields. Case-insensitive partial matching."
@@ -188,6 +195,8 @@ async def search_reminders(query: str, ctx: Context, limit: Optional[int] = None
 
 @mcp.tool(
     name="get_next_reminder",
+    title="Get Next Reminder",
+    annotations=READ,
     description=(
         "Get the next upcoming incomplete reminder based on due date. Returns "
         "the soonest incomplete reminder that has a due date set. Returns "
@@ -214,6 +223,8 @@ async def get_next_reminder(ctx: Context) -> Optional[Reminder]:
 
 @mcp.tool(
     name="get_overdue_reminders",
+    title="Get Overdue Reminders",
+    annotations=READ,
     description=(
         "Get all incomplete reminders that are overdue (due date is in the "
         "past). Useful for finding tasks that need immediate attention."
@@ -242,6 +253,8 @@ async def get_overdue_reminders(ctx: Context, limit: Optional[int] = None) -> li
 
 @mcp.tool(
     name="get_completed_in_range",
+    title="Get Completed in Range",
+    annotations=READ,
     description=(
         "Return reminders whose completion_date falls in [start, end). "
         "Completion ranges are closed on the start and open on the end so "
@@ -292,6 +305,8 @@ async def get_completed_in_range(
 
 @mcp.tool(
     name="get_today_reminders",
+    title="Get Today's Reminders",
+    annotations=READ,
     description=(
         "Get all reminders due today (both completed and incomplete). Useful " "for daily task management and review."
     ),

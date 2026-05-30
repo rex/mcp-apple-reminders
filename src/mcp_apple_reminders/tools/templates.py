@@ -21,6 +21,7 @@ from .._native.reminderkit_content import (
     delete_template as helper_delete_template,
 )
 from ..server import mcp
+from ._annotations import CREATE, DESTROY
 
 
 def _run(fn, *args, **kwargs) -> dict:
@@ -35,6 +36,8 @@ def _run(fn, *args, **kwargs) -> dict:
 
 @mcp.tool(
     name="create_template",
+    title="Create Template",
+    annotations=CREATE,
     description=(
         "Save an existing list as a reusable template. Pass `name` for the "
         "template and `source_list_id` (the list UUID to snapshot). Set "
@@ -61,6 +64,8 @@ async def create_template(
 
 @mcp.tool(
     name="apply_template",
+    title="Apply Template",
+    annotations=CREATE,
     description=(
         "Create a new list from a template by its UUID. Returns the new list's " "id. Private ReminderKit API."
     ),
@@ -77,6 +82,8 @@ async def apply_template(template_id: str, ctx: Context) -> dict:
 
 @mcp.tool(
     name="delete_template",
+    title="Delete Template",
+    annotations=DESTROY,
     description=(
         "Permanently delete a list template by its UUID. Does not affect lists "
         "already created from it. DESTRUCTIVE. Private ReminderKit API."

@@ -22,10 +22,13 @@ from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
 from ..models import Reminder
 from ..server import mcp
+from ._annotations import DESTROY, MUTATE
 
 
 @mcp.tool(
     name="bulk_complete",
+    title="Bulk Complete",
+    annotations=MUTATE,
     description=(
         "Mark a list of reminder IDs as completed. Returns a per-item "
         "outcome so the caller can see which ids failed (e.g. missing "
@@ -53,6 +56,8 @@ async def bulk_complete(reminder_ids: list[str], ctx: Context) -> dict:
 
 @mcp.tool(
     name="bulk_move",
+    title="Bulk Move",
+    annotations=MUTATE,
     description=(
         "Move a list of reminder IDs to a target calendar. Returns a per-item " "outcome and reports progress."
     ),
@@ -82,6 +87,8 @@ class _ConfirmBulkDelete(BaseModel):
 
 @mcp.tool(
     name="bulk_delete_completed",
+    title="Bulk Delete Completed",
+    annotations=DESTROY,
     description=(
         "Permanently delete every completed reminder whose completion_date "
         "falls in [start, end). DESTRUCTIVE — surfaces an elicitation prompt "

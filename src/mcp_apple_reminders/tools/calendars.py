@@ -36,10 +36,13 @@ from ..icons import apply_list_icon, resolve_icon
 from ..lifespan import app_context as _app_context
 from ..models import Calendar, native_calendar_to_pydantic
 from ..server import mcp
+from ._annotations import CREATE, DESTROY, MUTATE, READ
 
 
 @mcp.tool(
     name="list_calendars",
+    title="List Calendars",
+    annotations=READ,
     description=(
         "List all available reminder calendars (lists). Returns all reminder "
         "lists accessible to the user, including their IDs, names, colors, "
@@ -65,6 +68,8 @@ async def list_calendars(ctx: Context, include_groups: bool = False) -> list[Cal
 
 @mcp.tool(
     name="get_calendar",
+    title="Get List by Name",
+    annotations=READ,
     description=(
         "Get a specific calendar (list) by name. Searches for a reminder " "list with the exact name provided."
     ),
@@ -89,6 +94,8 @@ async def get_calendar(name: str, ctx: Context) -> Calendar:
 
 @mcp.tool(
     name="get_calendar_by_id",
+    title="Get List by ID",
+    annotations=READ,
     description=("Get a specific calendar (list) by its unique ID. More reliable than " "searching by name."),
 )
 async def get_calendar_by_id(calendar_id: str, ctx: Context) -> Calendar:
@@ -111,6 +118,8 @@ async def get_calendar_by_id(calendar_id: str, ctx: Context) -> Calendar:
 
 @mcp.tool(
     name="search_calendars",
+    title="Search Lists",
+    annotations=READ,
     description=(
         "Search for calendars (lists) by partial name match. Case-insensitive "
         "search that returns all calendars containing the query string."
@@ -133,6 +142,8 @@ async def search_calendars(query: str, ctx: Context) -> list[Calendar]:
 
 @mcp.tool(
     name="create_calendar",
+    title="Create List",
+    annotations=CREATE,
     description=(
         "Create a new reminder calendar (list) in Apple Reminders. The name "
         "must be unique among existing non-deleted lists. Optional `color` "
@@ -207,6 +218,8 @@ async def create_calendar(
 
 @mcp.tool(
     name="delete_calendar",
+    title="Delete List",
+    annotations=DESTROY,
     description=(
         "Delete a reminder calendar (list). By default, refuses to delete a "
         "list that contains any reminders — set force=true to cascade-delete "
@@ -291,6 +304,8 @@ async def delete_calendar(name: str, ctx: Context, force: bool = False) -> dict:
 
 @mcp.tool(
     name="update_calendar",
+    title="Rename List",
+    annotations=MUTATE,
     description=(
         "Rename an existing reminder calendar (list). Pass the current name "
         "and the new name. The new name must not collide with another existing "
@@ -348,6 +363,8 @@ async def update_calendar(name: str, new_name: str, ctx: Context) -> Calendar:
 
 @mcp.tool(
     name="get_default_calendar",
+    title="Get Default List",
+    annotations=READ,
     description=(
         "Get the default calendar (list) for new reminders. This is the list "
         "that Apple Reminders uses by default when creating new items."
