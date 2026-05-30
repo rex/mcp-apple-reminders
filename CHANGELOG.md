@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.92] — 2026-05-30 — Agent: Claude
+### Changed
+- docs: integration suite COMPLETE — record in AGENTS §9 + TASK_STATE §0. 165 wire-level checks across all tool families/resources/prompts; 2 real bugs found (set_urgent helper crash, create_smart_list filterData) encoded as self-flipping known-issues with fix tasks queued.
+
 ## [0.1.91] — 2026-05-30 — Agent: Claude
 ### Changed
 - Integration: templates/grocery + attachments + bulk + prompts scenarios. create/apply/delete_template (+ applied-list cleanup), categorize_grocery_items (tolerant), add_url_attachment/add_metadata + file-attachment kill-switch refusal, bulk_complete/delete_completed(scoped)/move with typed BulkResult counts, and all 5 prompts render over the wire. FULL COVERAGE: 165 checks green across every tool family, all 7 resources, all 5 prompts.
