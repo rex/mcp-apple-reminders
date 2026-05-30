@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.98] — 2026-05-30 — Agent: Claude
+### Changed
+- docs: TASK_STATE §0 — record --keep inspect mode + cleanup.py (v0.1.96) and the ZCOLOR-blob Calendar.color fix (v0.1.97, 3rd integration-found bug). Suite now 175 checks.
+
 ## [0.1.97] — 2026-05-30 — Agent: Claude
 ### Fixed
 - fix: Calendar.color decodes the archived ZCOLOR blob. ZREMCDBASELIST.ZCOLOR is NULL or an NSKeyedArchiver REMColor binary plist (never a plain string); the reader's str(ZCOLOR) leaked a b'bplist00...' repr into Calendar.color for every colored list (list_calendars/get_calendar*). New _native/_color.py::decode_list_color parses it → hex (#RRGGBB) or palette name. Unit test + integration assertion added. Found by the integration suite's --keep inspect mode.
