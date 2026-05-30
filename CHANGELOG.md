@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.95] — 2026-05-30 — Agent: Claude
+### Changed
+- docs: TASK_STATE §0 — both integration-found bugs (set_urgent, create_smart_list) now FIXED; suite at 173/173 with no remaining known-issues.
+
 ## [0.1.94] — 2026-05-30 — Agent: Claude
 ### Fixed
 - fix: create_smart_list filter_data_b64 is now optional. The .m hard-required filterData (decodedBase64Data → 'filterData is required'), contradicting the documented 'omit → named smart list, refine in Reminders.app' path. Now: omit the blob → skip setFilterData + leave minimumSupportedVersion at default 0 (ReminderKit ignores the absent filter) → a named custom smart list; supply a blob → bump version to 20220430 so it's honored. Recompiled rem_reminderkit; integration test flipped to the full create→update→pin→delete chain (173 green); AGENTS §9 gotcha added.
