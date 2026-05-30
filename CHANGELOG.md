@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.91] — 2026-05-30 — Agent: Claude
+### Changed
+- Integration: templates/grocery + attachments + bulk + prompts scenarios. create/apply/delete_template (+ applied-list cleanup), categorize_grocery_items (tolerant), add_url_attachment/add_metadata + file-attachment kill-switch refusal, bulk_complete/delete_completed(scoped)/move with typed BulkResult counts, and all 5 prompts render over the wire. FULL COVERAGE: 165 checks green across every tool family, all 7 resources, all 5 prompts.
+
 ## [0.1.90] — 2026-05-30 — Agent: Claude
 ### Changed
 - Integration: smart-lists/appearance/pinning + subtasks/sections scenarios. Appearance + pinning green; subtask parent-linkage + section assignment validated (polled past SQLite lag); set_parent confirmed deferred. FOUND a 2nd bug: create_smart_list without filter_data_b64 errors 'filterData is required' (contradicts its docs) — encoded as known-issue, fix task spawned. 129 checks green.

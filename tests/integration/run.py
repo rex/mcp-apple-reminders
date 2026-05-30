@@ -16,12 +16,16 @@ import sys
 
 from . import (
     scenarios_alarms,
+    scenarios_attachments,
+    scenarios_bulk,
     scenarios_calendars,
     scenarios_crud,
     scenarios_groups,
     scenarios_lists,
+    scenarios_prompts,
     scenarios_reads,
     scenarios_sections,
+    scenarios_templates,
     scenarios_workflow,
 )
 from .fixtures import TestStore
@@ -37,6 +41,10 @@ SCENARIOS = [
     ("workflow board moves", scenarios_workflow),
     ("smart lists + appearance + pinning", scenarios_lists),
     ("subtasks + sections", scenarios_sections),
+    ("templates + grocery", scenarios_templates),
+    ("attachments (URL / metadata / file gate)", scenarios_attachments),
+    ("bulk operations", scenarios_bulk),
+    ("prompts", scenarios_prompts),
 ]
 
 
