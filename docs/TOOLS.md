@@ -93,13 +93,13 @@ Create a new reminder in Apple Reminders. You can specify the title, due date, n
 
 ### `create_smart_list`
 
-Create a custom smart list (a saved-filter list) in Reminders.app. Pass a `name` and optional appearance (`color`, `symbol` SF-symbol, `emoji`). `icon` is the high-level badge knob: 'auto' (default) suggests an SF Symbol from the name — falling back to an agent glyph; 'ask' prompts; 'none' skips; or pass a symbol/emoji directly. An explicit `symbol` or `emoji` overrides `icon`. The filter itself is an opaque base64 blob: omit `filter_data_b64` to create a named smart list whose filter you refine in Reminders.app, or pass a previously-captured blob. Requires an iCloud account that supports custom smart lists. Private ReminderKit API.
+Create a custom smart list (a saved-filter list) in Reminders.app. Pass a `name` and optional appearance (`color`, `symbol` SF-symbol, `emoji`). `icon` is the high-level badge knob: 'none' (default) leaves it iconless; 'auto' suggests an SF Symbol from the name — falling back to an agent glyph; 'ask' prompts; or pass a symbol/emoji directly. An explicit `symbol` or `emoji` overrides `icon`. The filter itself is an opaque base64 blob: omit `filter_data_b64` to create a named smart list whose filter you refine in Reminders.app, or pass a previously-captured blob. Requires an iCloud account that supports custom smart lists. Private ReminderKit API.
 
 - `name` (string, required)
 - `color` (string, optional)
 - `symbol` (string, optional)
 - `emoji` (string, optional)
-- `icon` (string, optional, default='auto')
+- `icon` (string, optional, default='none')
 - `filter_data_b64` (string, optional)
 
 ### `create_template`

@@ -41,9 +41,9 @@ def _helper_call(fn, ctx_error, *args, **kwargs) -> dict:
     description=(
         "Create a custom smart list (a saved-filter list) in Reminders.app. "
         "Pass a `name` and optional appearance (`color`, `symbol` SF-symbol, "
-        "`emoji`). `icon` is the high-level badge knob: 'auto' (default) "
-        "suggests an SF Symbol from the name — falling back to an agent glyph; "
-        "'ask' prompts; 'none' skips; or pass a symbol/emoji directly. An "
+        "`emoji`). `icon` is the high-level badge knob: 'none' (default) leaves "
+        "it iconless; 'auto' suggests an SF Symbol from the name — falling back "
+        "to an agent glyph; 'ask' prompts; or pass a symbol/emoji directly. An "
         "explicit `symbol` or `emoji` overrides `icon`. The filter itself is an "
         "opaque base64 blob: omit `filter_data_b64` to create a named smart list "
         "whose filter you refine in Reminders.app, or pass a previously-captured "
@@ -57,7 +57,7 @@ async def create_smart_list(
     color: Optional[str] = None,
     symbol: Optional[str] = None,
     emoji: Optional[str] = None,
-    icon: Optional[str] = "auto",
+    icon: Optional[str] = "none",
     filter_data_b64: Optional[str] = None,
 ) -> dict:
     """Create a custom smart list. See the tool description for `icon` / `filter_data_b64`."""
