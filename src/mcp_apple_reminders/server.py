@@ -42,6 +42,7 @@ from .resources import reminders as _resources_reminders  # noqa: E402, F401
 from .tools import agents as _agents_tool  # noqa: E402, F401
 from .tools import alarms as _alarms  # noqa: E402, F401
 from .tools import appearance as _appearance  # noqa: E402, F401
+from .tools import attachments as _attachments  # noqa: E402, F401
 from .tools import bulk as _bulk  # noqa: E402, F401
 from .tools import calendars as _calendars  # noqa: E402, F401
 from .tools import flags as _flags  # noqa: E402, F401

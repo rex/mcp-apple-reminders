@@ -7,6 +7,8 @@ to the compiled Obj-C `rem_reminderkit` helper).
 
 from __future__ import annotations
 
+from typing import Optional
+
 from .reminderkit import _invoke
 
 
@@ -47,3 +49,54 @@ def categorize_grocery_items(list_id: str, reminder_ids: list[str]) -> dict:
     if not reminder_ids:
         raise ValueError("reminder_ids must be a non-empty list")
     return _invoke({"action": "categorize_grocery_items", "listId": list_id, "reminderIds": list(reminder_ids)})
+
+
+def add_url_attachments(reminder_id: str, urls: list[str]) -> dict:
+    """Attach one or more web URLs to a reminder (additive)."""
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    cleaned = [u for u in (urls or []) if u and u.strip()]
+    if not cleaned:
+        raise ValueError("urls must contain at least one non-empty value")
+    return _invoke({"action": "add_url_attachments", "id": reminder_id, "urls": cleaned})
+
+
+def add_private_metadata(
+    reminder_id: str,
+    *,
+    urls: Optional[list[str]] = None,
+    tags: Optional[list[str]] = None,
+) -> dict:
+    """Attach web URLs and/or hashtags to a reminder (additive)."""
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    cleaned_urls = [u for u in (urls or []) if u and u.strip()]
+    cleaned_tags = [t for t in (tags or []) if t and t.strip()]
+    if not cleaned_urls and not cleaned_tags:
+        raise ValueError("at least one URL or tag is required")
+    return _invoke({"action": "add_private_metadata", "id": reminder_id, "urls": cleaned_urls, "tags": cleaned_tags})
+
+
+def add_file_attachments(
+    reminder_id: str,
+    *,
+    files: Optional[list[str]] = None,
+    images: Optional[list[str]] = None,
+) -> dict:
+    """Attach local files and/or images to a reminder by path (additive).
+
+    `files` use ReminderKit's generic file attachment; `images` render with a
+    thumbnail. The caller MUST validate/authorize every path before calling.
+    """
+    if not reminder_id or not reminder_id.strip():
+        raise ValueError("reminder_id is required and must be non-empty")
+    cleaned_files = [f for f in (files or []) if f and f.strip()]
+    cleaned_images = [i for i in (images or []) if i and i.strip()]
+    if not cleaned_files and not cleaned_images:
+        raise ValueError("at least one file or image path is required")
+    payload: dict = {"action": "add_attachments", "id": reminder_id}
+    if cleaned_files:
+        payload["files"] = cleaned_files
+    if cleaned_images:
+        payload["images"] = cleaned_images
+    return _invoke(payload)

@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.74] — 2026-05-29 — Agent: Claude
+### Changed
+- CL-2.6 Attachments: add_url_attachment + add_metadata (unprivileged web URLs / hashtags) and add_file_attachment (local files). Unlocked GENERIC file attachments in rem_reminderkit.m (addFileAttachmentWithURL: — the prior images-only limit was the helper's, not ReminderKit's). add_file_attachment is opt-in behind MCP_APPLE_REMINDERS_ENABLE_FILE_ATTACHMENTS=1 (default OFF) + path validation. Requires make build-native.
+
 ## [0.1.73] — 2026-05-29 — Agent: Claude
 ### Changed
 - Simplify list icons: remove the keyword table + sampling suggester + suggest_list_icon tool. The calling client chooses the icon — create_calendar takes an explicit SF Symbol/emoji, 'none' to skip, or omits to the 'sparkles' agent badge; create_smart_list stays icon-less. reminders://appearance documents usage.

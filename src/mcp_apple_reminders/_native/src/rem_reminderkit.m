@@ -137,6 +137,7 @@
 
 @interface REMReminderAttachmentContextChangeItem : NSObject
 - (id)addImageAttachmentWithURL:(NSURL *)url width:(NSUInteger)width height:(NSUInteger)height error:(NSError **)error;
+- (id)addFileAttachmentWithURL:(NSURL *)url error:(NSError **)error;
 - (id)addURLAttachmentWithURL:(NSURL *)url;
 @end
 
@@ -1476,6 +1477,7 @@ int main(int argc, const char * argv[]) {
         NSInteger addedURLs = 0;
         NSInteger addedTags = 0;
         NSInteger addedImages = 0;
+        NSInteger addedFiles = 0;
         NSInteger addedSubtasks = 0;
         NSMutableDictionary *details = [NSMutableDictionary dictionaryWithDictionary:@{
             @"status": @"updated",
@@ -1543,9 +1545,18 @@ int main(int argc, const char * argv[]) {
         } else if ([action isEqualToString:@"add_attachments"]) {
             NSArray<NSString *> *files = stringArray(cmd[@"files"], @"files");
             NSArray<NSString *> *images = stringArray(cmd[@"images"], @"images");
-            if (files.count > 0) fail(@"Generic file/PDF attachments are not supported; use images only");
-            if (images.count == 0) fail(@"At least one image path is required");
+            if (files.count == 0 && images.count == 0) fail(@"At least one file or image path is required");
             id attachmentContext = [change attachmentContext];
+            for (NSString *path in files) {
+                if (![[NSFileManager defaultManager] isReadableFileAtPath:path]) {
+                    fail([NSString stringWithFormat:@"File is not readable: %@", path]);
+                }
+                NSURL *fileURL = [NSURL fileURLWithPath:path];
+                NSError *fileError = nil;
+                id attachment = [attachmentContext addFileAttachmentWithURL:fileURL error:&fileError];
+                if (!attachment) fail(fileError.localizedDescription ?: [NSString stringWithFormat:@"File attachment failed: %@", path]);
+                addedFiles += 1;
+            }
             for (NSString *path in images) {
                 if (![[NSFileManager defaultManager] isReadableFileAtPath:path]) {
                     fail([NSString stringWithFormat:@"Image is not readable: %@", path]);
@@ -1653,6 +1664,7 @@ int main(int argc, const char * argv[]) {
         details[@"urlsAdded"] = @(addedURLs);
         details[@"tagsAdded"] = @(addedTags);
         details[@"imagesAdded"] = @(addedImages);
+        details[@"filesAdded"] = @(addedFiles);
         details[@"subtasksAdded"] = @(addedSubtasks);
         output(details);
     }
