@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.86] — 2026-05-30 — Agent: Claude
+### Changed
+- Integration: alarms/recurrence/early-reminder read-back scenario (ADR 0002) — validates set_recurrence/set_alarm/set_location_alarm/set_early_reminder write + get_reminder EventKit read-back over the wire. FOUND a real bug: set_urgent crashes the ReminderKit helper ('-[REMReminderStorage urgentAlarmContext]: unrecognized selector', uncaught NSException) — encoded as an expected-error known-issue; dedicated fix task spawned.
+
 ## [0.1.85] — 2026-05-30 — Agent: Claude
 ### Changed
 - Integration suite foundation: tests/integration/ — wire-level harness (fresh stdio server vs live store) + self-cleaning MCP-IntegTest fixture + CRUD/read scenario. Asserts typed structuredContent + RFC-3339 datetimes + negative cases. Run: ./venv/bin/python -m tests.integration.run. NOT collected by the unit gate (__test__=False).

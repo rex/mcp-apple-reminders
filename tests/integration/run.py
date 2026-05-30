@@ -14,13 +14,14 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from . import scenarios_crud
+from . import scenarios_alarms, scenarios_crud
 from .fixtures import TestStore
 from .harness import Reporter, wire_session
 
 # Scenario modules run in order; each exposes `async def run(client, store, reporter)`.
 SCENARIOS = [
     ("CRUD + read paths", scenarios_crud),
+    ("alarms / recurrence / early-reminder read-back", scenarios_alarms),
 ]
 
 
