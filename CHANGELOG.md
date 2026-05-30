@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.79] — 2026-05-30 — Agent: Claude
+### Changed
+- CL-2.9 read-back (ADR 0002): tail-append recurrence/alarms/early_reminders to the Reminder model. early_reminders decode from SQLite (everywhere); recurrence + alarm summaries from EventKit on get_reminder only (urgent + 'when messaging' dropped — CloudKit-blob-only). Validated end-to-end against seeded alarm data.
+
 ## [0.1.78] — 2026-05-30 — Agent: Claude
 ### Fixed
 - Fix: delete_calendar / bulk_delete_completed no longer error on clients without elicitation capability. The confirm-guard caught only AttributeError, so a client with ctx.elicit but no advertised elicitation capability raised 'Elicitation not supported' and the destructive op failed even with force=true. delete_calendar now treats force=true as the confirmation (redundant elicitation removed; non-empty already requires force); bulk_delete_completed degrades to proceed on any elicit failure.

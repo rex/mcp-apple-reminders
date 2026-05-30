@@ -12,6 +12,7 @@ from typing import Optional
 
 from mcp.server.fastmcp import Context
 
+from .._native.eventkit_readback import summarize_alarms, summarize_recurrence
 from .._native.reminderkit import (
     ReminderKitHelperError,
     ReminderKitHelperUnavailable,
@@ -306,26 +307,42 @@ async def uncomplete_reminder(reminder_id: str, ctx: Context) -> Reminder:
     description=(
         "Get a specific reminder by its unique ID. Returns all details about "
         "the reminder including title, due date, notes, priority, completion "
-        "status, and more."
+        "status, tags, early reminders, and — enriched from EventKit on this "
+        "single-item read — its recurrence summary and alarm summaries."
     ),
 )
 async def get_reminder(reminder_id: str, ctx: Context) -> Reminder:
     """Get a reminder by its unique ID. SQLite-first; EventKit fallback.
 
+    `recurrence` + `alarms` are summarized from EventKit on this single-item read
+    (ADR 0002); bulk list queries omit them to stay on the fast SQLite path.
+
     Args:
         reminder_id: The unique identifier of the reminder.
     """
     app = _app_context(ctx)
+    base: Optional[Reminder] = None
     try:
         with app.open_sqlite() as conn:
-            cached = Reader(conn).get_reminder_by_id(reminder_id)
-            if cached is not None:
-                return cached
-            # SQLite open succeeded but no row matched — fall through to
-            # EventKit so callers get a uniform error path.
+            base = Reader(conn).get_reminder_by_id(reminder_id)
     except RemindersDBUnavailable as e:
         await ctx.warning(f"SQLite read path unavailable ({e}); falling back to EventKit.")
-    return native_reminder_to_pydantic(app.bridge.get_reminder_by_id(reminder_id))
+    if base is None:
+        base = native_reminder_to_pydantic(app.bridge.get_reminder_by_id(reminder_id))
+
+    # EventKit enrichment: recurrence + alarm summaries (single-read; ADR 0002).
+    try:
+        ek_item = app.bridge._event_store.calendarItemWithIdentifier_(reminder_id)  # noqa: SLF001
+    except Exception as e:  # best-effort — any EventKit hiccup returns the un-enriched reminder
+        await ctx.debug(f"EventKit enrichment skipped ({type(e).__name__}).")
+        return base
+    if ek_item is None:
+        return base
+    recurrence = summarize_recurrence(ek_item)
+    alarms = summarize_alarms(ek_item)
+    if recurrence is None and not alarms:
+        return base
+    return base.model_copy(update={"recurrence": recurrence, "alarms": alarms})
 
 
 @mcp.tool(

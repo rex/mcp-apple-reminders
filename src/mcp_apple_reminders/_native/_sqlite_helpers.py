@@ -7,6 +7,7 @@ Re-exported through `sqlite.py` so the public surface (`Reader`,
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime
 from typing import Iterator, Optional
@@ -25,7 +26,8 @@ _REMINDER_COLS = (
     "WHERE o.ZREMINDER3 = r.Z_PK) AS tags_csv, "
     "(SELECT p.ZCKIDENTIFIER FROM ZREMCDREMINDER p WHERE p.Z_PK = r.ZPARENTREMINDER) AS parent_ckid, "
     "(SELECT group_concat(c.ZCKIDENTIFIER, ',') FROM ZREMCDREMINDER c "
-    "WHERE c.ZPARENTREMINDER = r.Z_PK AND c.ZMARKEDFORDELETION = 0) AS subtask_ckids"
+    "WHERE c.ZPARENTREMINDER = r.Z_PK AND c.ZMARKEDFORDELETION = 0) AS subtask_ckids, "
+    "r.ZDUEDATEDELTAALERTSDATA AS early_blob"
 )
 
 
@@ -34,6 +36,35 @@ def _ts(value: Optional[float]) -> Optional[datetime]:
     if value is None:
         return None
     return datetime.fromtimestamp(value + APPLE_EPOCH_OFFSET)
+
+
+_DELTA_UNIT = {0: "day", 1: "week", 2: "month", 3: "year", 4: "hour"}
+
+
+def _early_reminders_from_blob(blob) -> list[str]:
+    """Decode ZDUEDATEDELTAALERTSDATA (JSON) into human early-reminder summaries.
+
+    e.g. {"dueDateDeltaAlerts": [{"dueDateDeltaCount": -1, "dueDateDeltaUnit": 2}]}
+    -> ["1 month before due"]. Returns [] for NULL/garbage blobs.
+    """
+    if not blob:
+        return []
+    try:
+        data = json.loads(bytes(blob))
+    except (TypeError, ValueError):
+        return []
+    out: list[str] = []
+    for alert in data.get("dueDateDeltaAlerts", []):
+        count = alert.get("dueDateDeltaCount")
+        unit = alert.get("dueDateDeltaUnit")
+        if count is None or unit is None:
+            continue
+        n = abs(int(count))
+        word = _DELTA_UNIT.get(int(unit), "unit")
+        plural = "s" if n != 1 else ""
+        when = "after due" if int(count) > 0 else "before due"
+        out.append(f"{n} {word}{plural} {when}")
+    return out
 
 
 def _calendar_from_row(
@@ -74,6 +105,7 @@ def _reminder_from_row(row: sqlite3.Row, list_uuid: str) -> Reminder:
     parent_ckid = row["parent_ckid"] if "parent_ckid" in row_keys else None
     subtasks_csv = row["subtask_ckids"] if "subtask_ckids" in row_keys else None
     subtasks = [s for s in (subtasks_csv or "").split(",") if s]
+    early = _early_reminders_from_blob(row["early_blob"] if "early_blob" in row_keys else None)
     return Reminder(
         id=reminder_id,
         title=row["ZTITLE"] or "",
@@ -93,6 +125,7 @@ def _reminder_from_row(row: sqlite3.Row, list_uuid: str) -> Reminder:
         completion_date=_ts(row["ZCOMPLETIONDATE"]),
         start_date=None,
         deeplink=reminder_deeplink(reminder_id),
+        early_reminders=early,
     )
 
 
@@ -177,8 +210,6 @@ def _resolve_section_name(conn: sqlite3.Connection, reminder_uuid: str) -> Optio
     as a JSON document keyed by reminder UUID. Returns None if the reminder
     is unsectioned or the blob is empty.
     """
-    import json
-
     row = conn.execute(
         "SELECT l.Z_PK, l.ZMEMBERSHIPSOFREMINDERSINSECTIONSASDATA AS blob "
         "FROM ZREMCDREMINDER r JOIN ZREMCDBASELIST l ON r.ZLIST = l.Z_PK "

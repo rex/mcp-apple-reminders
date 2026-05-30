@@ -168,6 +168,19 @@ class Reminder(BaseModel):
     deeplink: str = Field(
         description="x-apple-reminderkit://REMCDReminder/{id} — opens the reminder in Reminders.app.",
     )
+    # --- Read-back fields (tail-appended post-S0.3; ADR 0002, CL-2.9) ---
+    recurrence: Optional[str] = Field(
+        default=None,
+        description="Human summary of the recurrence rule (EventKit; populated on get_reminder only).",
+    )
+    alarms: list[str] = Field(
+        default_factory=list,
+        description="Human summaries of time/location alarms (EventKit; populated on get_reminder only).",
+    )
+    early_reminders: list[str] = Field(
+        default_factory=list,
+        description="Human summaries of early-reminder offsets (SQLite ZDUEDATEDELTAALERTSDATA; everywhere).",
+    )
 
     @field_serializer(
         "due_date",

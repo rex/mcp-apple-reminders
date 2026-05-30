@@ -210,7 +210,7 @@ List reminders in Recently Deleted — items marked for deletion but not yet pur
 
 ### `get_reminder`
 
-Get a specific reminder by its unique ID. Returns all details about the reminder including title, due date, notes, priority, completion status, and more.
+Get a specific reminder by its unique ID. Returns all details about the reminder including title, due date, notes, priority, completion status, tags, early reminders, and — enriched from EventKit on this single-item read — its recurrence summary and alarm summaries.
 
 - `reminder_id` (string, required)
 

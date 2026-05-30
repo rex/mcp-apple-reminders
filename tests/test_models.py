@@ -119,6 +119,10 @@ def test_reminder_field_order_is_canonical():
         "completion_date",
         "start_date",
         "deeplink",
+        # Post-S0.3 tail-appended read-back fields (ADR 0002, CL-2.9)
+        "recurrence",
+        "alarms",
+        "early_reminders",
     ]
     actual = list(Reminder.model_fields.keys())
     assert actual == expected, (
