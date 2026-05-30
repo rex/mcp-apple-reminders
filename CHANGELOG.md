@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.78] — 2026-05-30 — Agent: Claude
+### Fixed
+- Fix: delete_calendar / bulk_delete_completed no longer error on clients without elicitation capability. The confirm-guard caught only AttributeError, so a client with ctx.elicit but no advertised elicitation capability raised 'Elicitation not supported' and the destructive op failed even with force=true. delete_calendar now treats force=true as the confirmation (redundant elicitation removed; non-empty already requires force); bulk_delete_completed degrades to proceed on any elicit failure.
+
 ## [0.1.77] — 2026-05-30 — Agent: Claude
 ### Fixed
 - Fix: Reminder datetimes serialize as offset-bearing RFC 3339 so MCP structured-output validation accepts them. Naive-local datetimes serialized without an offset and failed the date-time format check, erroring every Reminder-returning tool over the wire (-32602) even though the EventKit write succeeded. A field_serializer stamps the local offset; storage stays naive-local, field order unchanged (S0.3-safe).

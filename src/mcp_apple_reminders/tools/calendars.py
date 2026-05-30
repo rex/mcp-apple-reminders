@@ -17,7 +17,6 @@ from __future__ import annotations
 from typing import Optional
 
 from mcp.server.fastmcp import Context
-from pydantic import BaseModel
 
 from .._native.eventkit import (
     EventKitHelperError,
@@ -37,10 +36,6 @@ from ..icons import apply_list_icon, resolve_icon
 from ..lifespan import app_context as _app_context
 from ..models import Calendar, native_calendar_to_pydantic
 from ..server import mcp
-
-
-class _ConfirmCascade(BaseModel):
-    """Empty elicitation schema — the user just accepts or declines the cascade."""
 
 
 @mcp.tool(
@@ -267,26 +262,10 @@ async def delete_calendar(name: str, ctx: Context, force: bool = False) -> dict:
             f"Pass force=true to delete the list and all its reminders."
         )
 
-    # Elicitation guard (S2.4): when the destructive force=True path will
-    # cascade into actual reminders, give the client a chance to confirm.
-    # `ctx.elicit` is best-effort — clients that don't support it return
-    # an "accept" automatically, so this only adds a UX touchpoint where
-    # supported.
-    if force and reminder_count and reminder_count > 0:
-        try:
-            elicitation = await ctx.elicit(
-                message=(
-                    f"About to delete calendar {name!r} and cascade-remove "
-                    f"{reminder_count} reminder(s). This cannot be undone. Confirm?"
-                ),
-                schema=_ConfirmCascade,
-            )
-            if elicitation.action != "accept":
-                raise ValueError(f"Cascade delete of {name!r} aborted by elicitation ({elicitation.action}).")
-        except AttributeError:
-            # Older SDKs without ctx.elicit — log and proceed (the warning
-            # below still fires).
-            await ctx.debug("Elicitation not available on this Context; skipping confirm.")
+    # force=true is itself the confirmation for the destructive cascade: a
+    # non-empty list already requires it (above), so we proceed directly.
+    # (Interactive elicitation was removed here - it errored on clients that
+    # lack elicitation capability, and was redundant with the force flag.)
 
     await ctx.warning(f"Deleting calendar {name!r} (force={force}, {reminder_count or 0} reminders)")
 

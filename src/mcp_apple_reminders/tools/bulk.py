@@ -120,7 +120,8 @@ async def bulk_delete_completed(
         await ctx.info("bulk_delete_completed: nothing in window.")
         return {"processed": 0, "failed": [], "window": {"start": start, "end": end}}
 
-    # Elicitation guard — best-effort. Older SDKs without ctx.elicit fall through.
+    # Elicitation guard — best-effort. Clients without elicitation support (no
+    # ctx.elicit method, or no advertised capability) fall through to the delete.
     try:
         elicitation = await ctx.elicit(
             message=(
@@ -130,10 +131,11 @@ async def bulk_delete_completed(
             ),
             schema=_ConfirmBulkDelete,
         )
+    except Exception as e:
+        await ctx.debug(f"Elicitation unavailable ({type(e).__name__}); proceeding without confirm.")
+    else:
         if elicitation.action != "accept":
             raise ValueError(f"bulk_delete_completed aborted by elicitation ({elicitation.action}).")
-    except AttributeError:
-        await ctx.debug("Elicitation not available; skipping confirm.")
 
     await ctx.warning(f"Bulk-deleting {len(candidates)} reminder(s) in [{start}, {end}).")
     processed = 0
