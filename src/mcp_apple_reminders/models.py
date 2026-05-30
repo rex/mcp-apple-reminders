@@ -35,7 +35,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 if TYPE_CHECKING:
     # Type-only imports — avoid pulling EventKit at import time so the models
@@ -168,6 +168,30 @@ class Reminder(BaseModel):
     deeplink: str = Field(
         description="x-apple-reminderkit://REMCDReminder/{id} — opens the reminder in Reminders.app.",
     )
+
+    @field_serializer(
+        "due_date",
+        "created_date",
+        "modified_date",
+        "completion_date",
+        "start_date",
+        when_used="json",
+    )
+    def _serialize_local_datetime(self, value: Optional[datetime]) -> Optional[str]:
+        """Emit RFC 3339 (offset-bearing) datetimes for MCP structured-output validation.
+
+        The model stores naive *local* datetimes, which serialize to an offset-less
+        ISO string (e.g. ``2026-06-19T04:00:00``) that fails the JSON-Schema
+        ``date-time`` (RFC 3339) format check FastMCP enforces on structured output
+        over the wire — every Reminder-returning tool would otherwise error. Stamp
+        the local UTC offset on the way out; the stored value stays naive-local and
+        the field order is unchanged (S0.3 freeze safe).
+        """
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            value = value.astimezone()
+        return value.isoformat()
 
 
 # ---------------------------------------------------------------------------

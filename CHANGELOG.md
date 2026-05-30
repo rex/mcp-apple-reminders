@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.77] — 2026-05-30 — Agent: Claude
+### Fixed
+- Fix: Reminder datetimes serialize as offset-bearing RFC 3339 so MCP structured-output validation accepts them. Naive-local datetimes serialized without an offset and failed the date-time format check, erroring every Reminder-returning tool over the wire (-32602) even though the EventKit write succeeded. A field_serializer stamps the local offset; storage stays naive-local, field order unchanged (S0.3-safe).
+
 ## [0.1.76] — 2026-05-30 — Agent: Claude
 ### Changed
 - CL-2.8 clear_tags: new clear_tags ReminderKit action (removeAllHashtags) + make build-native recompile; clear_tags param on update_reminder (pair with add_tags for tag replacement); reminders://tags resource listing distinct tags on live reminders.
