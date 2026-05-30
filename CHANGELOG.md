@@ -5,6 +5,10 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## [0.1.99] — 2026-05-30 — Agent: Claude
+### Changed
+- chore: delete the hand-seeded Alarm Lab / CL29-Alarm-Tests integration fixture (8 alarm/recurrence items) now that integration testing is complete. No test fixtures remain in the store. TASK_STATE §0 updated.
+
 ## [0.1.98] — 2026-05-30 — Agent: Claude
 ### Changed
 - docs: TASK_STATE §0 — record --keep inspect mode + cleanup.py (v0.1.96) and the ZCOLOR-blob Calendar.color fix (v0.1.97, 3rd integration-found bug). Suite now 175 checks.
