@@ -6,7 +6,7 @@
 > Spec: `specs/002-modernize-and-foundation/` (spec · plan · tasks) ·
 > ADR: `docs/adr/0001-list-group-support.md` ·
 > Audit: `docs/audits/2026-05-29-post-spec-002-cleanup-audit/`
-> Branch: `main` (trunk strategy) · Owner (human): @pierce · Last update: 2026-05-30 by Claude (CL-2.6–2.9 + 2 wire bug fixes; pre-compaction handoff)
+> Branch: `main` (trunk strategy) · Owner (human): @pierce · Last update: 2026-06-06 by Claude (TASK_STATE cleanup — stale §5/§6 archived to CHANGELOG.md)
 
 ## 0. TL;DR for a fresh agent session
 
@@ -69,16 +69,13 @@ All slices across Phases 0–5 are ✅ done: S0.1–S0.6, S1.0–S1.8, S2.1–S2
 
 ## 5. Next actions (ordered)
 
-1. Finish CL-1 batches **B5 → B6 → B7 → B8**, then the final `make sync-skeleton`.
-2. **CL-bug**: fix the CRITICAL EventKit write-swallow + add the regression test; then re-verify bulk-op `failed[]` populates.
-3. **CL-2 capability extensions** (≈3 medium slices): typed result models for the 12 bare `-> dict` tools; smart-list create/manage; templates + grocery + `clear_tags`; `ToolAnnotations` on all 41 tools. Full register: audit doc `05-...md` §5.
-4. **Exhaustive integration testing** — Pierce's stated next major phase, after cleanup lands.
-5. **S4.2** TodoWrite mirror — if/when Claude Code exposes a hookable TodoWrite surface.
+- **S4.2** TodoWrite mirror — the sole remaining stretch slice. Deferred; requires Claude Code to expose a hookable TodoWrite surface. No action until that surface exists.
+- No other planned work. The project is in maintenance mode unless Pierce opens a new spec.
 
 ## 6. Handoff note
 
-**2026-05-29 (Claude — CL-1 cleanup pass, autonomous commit-push-per-batch):**
+**2026-06-06 (TASK_STATE cleanup — archived stale §5/§6 to CHANGELOG.md):**
 
-Spec 002 is fully shipped (41 tools, phases 0–5). This session runs the CL-1 cleanup plan from the verify+expert-review workflow. Batches B0–B4 + B9 are committed & pushed; B5 (docs) is in flight. Remaining: B6 (dead code), B7 (lifespan dedup), B8 (per-module fixes), the CL-bug write-swallow fix, and the final `sync-skeleton`. The big new finding is the CRITICAL write-swallow bug in §3 — it is real (adversarially confirmed with a live PyObjC repro) and queued as its own fix+test slice after the cleanup batches.
+Everything through CL-2.13 + the full integration suite (175 checks) is shipped and pushed. Current state is v0.1.101 on `main`. 58 tools / 8 resources / 5 prompts / 2 ADRs. The only non-shipped item is S4.2 (TodoWrite mirror — stretch, no host surface yet).
 
-Before code: read `AGENTS.md` → this file §0/§2/§3 → the audit synthesis `docs/audits/2026-05-29-post-spec-002-cleanup-audit/05-verify-and-expert-review-synthesis.md`. Prior session history (spec-002 build) lives in `CHANGELOG.md` + git log. Session memories worth reading: `mem:core`, `mem:suggested_commands`, `mem:task_completion`, `mem:global/agent_model_policy`.
+Reading order for a fresh agent: `AGENTS.md` → this file §0 (the TL;DR is comprehensive) → `docs/audits/2026-05-29-post-spec-002-cleanup-audit/05-verify-and-expert-review-synthesis.md` for cleanup context. Prior build history: `CHANGELOG.md` + git log.

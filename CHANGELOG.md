@@ -5,6 +5,27 @@ follows [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+## Archived from TASK_STATE.md — 2026-06-06
+
+### §5 Next actions (as of 2026-05-29 handoff — all items now SHIPPED)
+
+1. Finish CL-1 batches **B5 → B6 → B7 → B8**, then the final `make sync-skeleton`.
+2. **CL-bug**: fix the CRITICAL EventKit write-swallow + add the regression test; then re-verify bulk-op `failed[]` populates.
+3. **CL-2 capability extensions** (≈3 medium slices): typed result models for the 12 bare `-> dict` tools; smart-list create/manage; templates + grocery + `clear_tags`; `ToolAnnotations` on all 41 tools. Full register: audit doc `05-...md` §5.
+4. **Exhaustive integration testing** — Pierce's stated next major phase, after cleanup lands.
+5. **S4.2** TodoWrite mirror — if/when Claude Code exposes a hookable TodoWrite surface.
+
+### §6 Handoff note — 2026-05-29 (Claude — CL-1 cleanup pass, autonomous commit-push-per-batch)
+
+Spec 002 is fully shipped (41 tools, phases 0–5). This session runs the CL-1 cleanup plan from the verify+expert-review workflow. Batches B0–B4 + B9 are committed & pushed; B5 (docs) is in flight. Remaining: B6 (dead code), B7 (lifespan dedup), B8 (per-module fixes), the CL-bug write-swallow fix, and the final `sync-skeleton`. The big new finding is the CRITICAL write-swallow bug in §3 — it is real (adversarially confirmed with a live PyObjC repro) and queued as its own fix+test slice after the cleanup batches.
+
+Before code: read `AGENTS.md` → this file §0/§2/§3 → the audit synthesis `docs/audits/2026-05-29-post-spec-002-cleanup-audit/05-verify-and-expert-review-synthesis.md`. Prior session history (spec-002 build) lives in `CHANGELOG.md` + git log. Session memories worth reading: `mem:core`, `mem:suggested_commands`, `mem:task_completion`, `mem:global/agent_model_policy`.
+
+
+## [0.1.102] — 2026-06-06 — Agent: Claude
+### Changed
+- _(fill in — what changed in this version)_
+
 ## [0.1.101] — 2026-05-30 — Agent: Claude
 ### Changed
 - docs: AGENTS §9 — curated emblem catalog gotcha (not SF Symbols, auto-suggest restored).
