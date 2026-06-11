@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
 """check_version_bumped.py — gate that blocks commits without a version bump.
 
 Wired into:

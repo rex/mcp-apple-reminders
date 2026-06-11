@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
 """bump_version.py — rewrite VERSION + seed a CHANGELOG header.
 
 Behavior:
@@ -56,22 +59,22 @@ follows [Semantic Versioning](https://semver.org/) and
 """
 
 
-def err(msg: str) -> None:
+def _err(msg: str) -> None:
     print(f"{_R}ERROR:{_X} {msg}", file=sys.stderr)
 
 
-def warn(msg: str) -> None:
+def _warn(msg: str) -> None:
     print(f"{_Y}WARN:{_X} {msg}", file=sys.stderr)
 
 
-def ok(msg: str) -> None:
+def _ok(msg: str) -> None:
     print(f"{_G}✓{_X} {msg}")
 
 
 def bump(current: str, level: str) -> str:
     m = SEMVER_RE.match(current)
     if not m:
-        err(f"VERSION file has non-semver content: {current}")
+        _err(f"VERSION file has non-semver content: {current}")
         sys.exit(1)
     major, minor, patch = (int(g) for g in m.groups())
     if level == "major":
@@ -80,11 +83,11 @@ def bump(current: str, level: str) -> str:
         return f"{major}.{minor + 1}.0"
     if level == "patch":
         return f"{major}.{minor}.{patch + 1}"
-    err(f"unknown bump level: {level}")
+    _err(f"unknown bump level: {level}")
     sys.exit(2)
 
 
-def section_for_note(note: str) -> str:
+def _section_for_note(note: str) -> str:
     """Choose a Keep-a-Changelog section based on note's leading verb."""
     if not note:
         return "Changed"
@@ -100,7 +103,7 @@ def section_for_note(note: str) -> str:
     return "Changed"
 
 
-def insert_changelog_block(changelog_path: Path, header: str, section: str, note: str) -> None:
+def _insert_changelog_block(changelog_path: Path, header: str, section: str, note: str) -> None:
     if changelog_path.is_file():
         text = changelog_path.read_text()
     else:
@@ -111,8 +114,11 @@ def insert_changelog_block(changelog_path: Path, header: str, section: str, note
     block_lines.append("")
     block = "\n".join(block_lines) + "\n"
 
-    # Insert above the first existing `## [` line; append if none.
-    m = re.search(r"^## \[", text, re.MULTILINE)
+    # Insert above the first REAL versioned `## [N.N.N]` heading. A
+    # plain `^## \[` would match the `## [X.Y.Z]` template inside the
+    # markdown code-fence example some CHANGELOGs carry, placing new
+    # entries INSIDE the fence. Anchoring on digits skips the template.
+    m = re.search(r"^## \[\d+\.\d+\.\d+\]", text, re.MULTILINE)
     if m:
         text = text[: m.start()] + block + text[m.start() :]
     else:
@@ -123,7 +129,31 @@ def insert_changelog_block(changelog_path: Path, header: str, section: str, note
     changelog_path.write_text(text)
 
 
-def stage_in_git(*paths: Path) -> bool:
+def _bump_package_json(new_version: str) -> Path | None:
+    """Update package.json's top-level "version" field if present.
+
+    Returns the path that was rewritten, or None if package.json is
+    absent / has no version field. Only the FIRST `"version": "x.y.z"`
+    occurrence is replaced — that's the top-level project version.
+    """
+    pkg_path = Path("package.json")
+    if not pkg_path.is_file():
+        return None
+    text = pkg_path.read_text()
+    new_text, n = re.subn(
+        r'("version"\s*:\s*)"[0-9]+\.[0-9]+\.[0-9]+"',
+        rf'\1"{new_version}"',
+        text,
+        count=1,
+    )
+    if n == 0:
+        _warn("package.json present but has no semver version field — skipping")
+        return None
+    pkg_path.write_text(new_text)
+    return pkg_path
+
+
+def _stage_in_git(*paths: Path) -> bool:
     try:
         subprocess.run(
             ["git", "rev-parse", "--git-dir"],
@@ -147,22 +177,30 @@ def main() -> int:
     version_file = Path("VERSION")
     if not version_file.is_file():
         version_file.write_text("0.1.0\n")
-        warn("VERSION file missing — seeded at 0.1.0")
+        _warn("VERSION file missing — seeded at 0.1.0")
 
     current = version_file.read_text().strip()
     new = bump(current, args.level)
     version_file.write_text(f"{new}\n")
-    ok(f"VERSION: {current} → {new}")
+    _ok(f"VERSION: {current} → {new}")
 
     today = datetime.date.today().isoformat()
     header = f"## [{new}] — {today} — Agent: {args.agent}"
-    section = section_for_note(args.changelog_note)
+    section = _section_for_note(args.changelog_note)
     changelog = Path("CHANGELOG.md")
-    insert_changelog_block(changelog, header, section, args.changelog_note)
-    ok(f"CHANGELOG: wrote header {header}")
+    _insert_changelog_block(changelog, header, section, args.changelog_note)
+    _ok(f"CHANGELOG: wrote header {header}")
 
-    if stage_in_git(version_file, changelog):
-        ok("staged VERSION + CHANGELOG.md")
+    pkg = _bump_package_json(new)
+    if pkg is not None:
+        _ok(f"package.json: version → {new}")
+
+    staged_paths = [version_file, changelog]
+    if pkg is not None:
+        staged_paths.append(pkg)
+    if _stage_in_git(*staged_paths):
+        names = " + ".join(p.name for p in staged_paths)
+        _ok(f"staged {names}")
 
     print(f"\n{_G}New version:{_X} {new}")
     return 0

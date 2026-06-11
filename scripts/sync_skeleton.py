@@ -15,7 +15,9 @@ Modes:
                      2 = cannot run (skeleton not found / corrupt).
   --apply            Copy the skeleton's current version of every
                      drifted VERBATIM file into the repo, delete any
-                     RETIRED file, and stamp `.claude/skeleton-version`.
+                     RETIRED file, stamp `.claude/skeleton-version`, and
+                     install the post-commit auto-push git hook when
+                     absent (commit = push is part of the toolchain).
 
 File classes:
   VERBATIM  — gate scripts + every file under .claude/{hooks,commands,
@@ -170,6 +172,28 @@ def _print_orphans(repo: Path, orphans: list[Path]) -> None:
         print(f"  • {f.relative_to(repo)}")
 
 
+def autopush_state(repo: Path, skeleton: Path) -> str:
+    """State of the post-commit auto-push git hook: installed | missing
+    | foreign | worktree | no-git. 'Push every commit' is part of the
+    standard toolchain, so --apply installs the hook when absent. The
+    hooks dir itself may not exist (e.g. init.templateDir pointing at a
+    missing template) — that still counts as missing, never a skip."""
+    gitdir = repo / ".git"
+    if not gitdir.exists():
+        return "no-git"
+    if not gitdir.is_dir():
+        # .git is a file → linked worktree/submodule; hooks live in the
+        # parent repo's gitdir. Surfaced, not auto-installed.
+        return "worktree"
+    dst = gitdir / "hooks" / "post-commit"
+    src = skeleton / "scripts" / "git-hooks" / "post-commit-autopush.sh"
+    if not dst.is_file():
+        return "missing"
+    if src.is_file() and file_sha(dst) == file_sha(src):
+        return "installed"
+    return "foreign"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description="Sync a repo's skeleton-owned files.")
@@ -213,10 +237,15 @@ def main() -> int:
 
     retired_present = [repo / r for r in RETIRED if (repo / r).is_file()]
     orphans = find_orphans(repo, pairs)
+    autopush = autopush_state(repo, skeleton)
 
     print(f"sync_skeleton: {repo.name} vs agentic-skeleton v{version}")
-    if not verbatim_drift and not advisory_drift and not retired_present:
+    if (not verbatim_drift and not advisory_drift and not retired_present
+            and not (args.apply and autopush == "missing")):
         print(f"{_G}✓ in sync — every skeleton-owned file is current.{_X}")
+        if autopush == "missing":
+            print(f"{_Y}• post-commit auto-push hook not installed — "
+                  f"`--apply` / `make sync-skeleton` installs it.{_X}")
         if orphans:
             _print_orphans(repo, orphans)
         return 0
@@ -232,6 +261,24 @@ def main() -> int:
             retired_path.unlink()
             print(f"  {_R}deleted{_X} {retired_path.relative_to(repo)} "
                   "(retired by the skeleton)")
+        if autopush == "missing":
+            src = skeleton / "scripts" / "git-hooks" / "post-commit-autopush.sh"
+            if src.is_file():
+                dst = repo / ".git" / "hooks" / "post-commit"
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+                dst.chmod(dst.stat().st_mode | 0o111)
+                print(f"  {_G}installed{_X} .git/hooks/post-commit "
+                      "(auto-push: commit = push)")
+            else:
+                print(f"{_Y}⚠ skeleton has no git-hooks/"
+                      f"post-commit-autopush.sh — cannot install.{_X}")
+        elif autopush == "foreign":
+            print(f"{_Y}⚠ .git/hooks/post-commit exists but is not the "
+                  f"skeleton's auto-push hook — left untouched.{_X}")
+        elif autopush == "worktree":
+            print(f"{_Y}⚠ linked worktree (.git is a file) — install the "
+                  f"auto-push hook in the parent repo.{_X}")
         (repo / ".claude").mkdir(exist_ok=True)
         (repo / ".claude" / "skeleton-version").write_text(version + "\n")
         if advisory_drift:
@@ -265,6 +312,9 @@ def main() -> int:
             print(f"  ~ {repo_path.relative_to(repo)} ({state})")
     if orphans:
         _print_orphans(repo, orphans)
+    if autopush == "missing":
+        print(f"{_Y}• post-commit auto-push hook not installed "
+              f"(--apply installs it).{_X}")
     print("Run `make sync-skeleton` to pull the verbatim files current.")
     return 1
 

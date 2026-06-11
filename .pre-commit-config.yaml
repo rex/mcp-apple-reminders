@@ -12,6 +12,11 @@
 # to move them forward. The repo-native gates under `local` have no
 # pins that can go stale.
 
+# Generated lockfiles are tool-owned: exempt from secret-scanning, size
+# caps, and whitespace rewriting (their hashes false-positive
+# detect-secrets, and rewriting them corrupts tool state).
+exclude: '(^|/)(uv\.lock|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|Cargo\.lock|poetry\.lock|Gemfile\.lock|composer\.lock|Package\.resolved|Podfile\.lock|flake\.lock|go\.sum|gradle\.lockfile)$'
+
 repos:
   # ── Hygiene + private-key detection (pure Python, no toolchain) ──────
   - repo: https://github.com/pre-commit/pre-commit-hooks

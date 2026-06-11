@@ -24,7 +24,12 @@ if [ "$STOP_ACTIVE" = "true" ]; then
   exit 0
 fi
 
-cd "${CLAUDE_PROJECT_DIR:-.}" || exit 1
+cd "${CLAUDE_PROJECT_DIR:-.}" || {
+  # Fail closed: if we cannot reach the project root, the gates cannot
+  # run — block the stop rather than silently passing.
+  jq -n '{decision: "block", reason: "stop-gate: cannot cd to project root — gates cannot run (fail closed)."}'
+  exit 0
+}
 
 # --- Helpers ---
 block() {
