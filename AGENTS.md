@@ -87,14 +87,13 @@ install.sh, shim_mcp.sh         Bootstrap + first-run permission-prompt shim
 
 1. Read this file.
 2. Check `docs/MAP.md` for the module you're touching.
-3. If `.mcp.json` declares `serena` (after PR3): `mcp__serena__activate_project` first, then `onboarding` on a fresh project else `list_memories`. Use Serena's symbolic tools (`find_symbol`, `replace_symbol_body`, `search_for_pattern`) over `Read`/`Edit`/`Grep`. Full protocol: `.claude/rules/serena.md` (after PR5).
-4. **Visibility-plane (post-S4.1)**: at session start, agents that share state with the human SHOULD call `bootstrap_agent_list(project_name="<this-project>")` to ensure the `Agents-<project>` Reminders list exists, then mirror their in-flight todos into it with `create_reminder` / `update_reminder` / `complete_reminder` / `delete_reminder`. The human pulls the live state via the `agents://current/{project_name}` Resource (or just opens Reminders.app).
-5. Run §3 commands before declaring done. Bump VERSION before commit.
+3. **Visibility-plane (post-S4.1)**: at session start, agents that share state with the human SHOULD call `bootstrap_agent_list(project_name="<this-project>")` to ensure the `Agents-<project>` Reminders list exists, then mirror their in-flight todos into it with `create_reminder` / `update_reminder` / `complete_reminder` / `delete_reminder`. The human pulls the live state via the `agents://current/{project_name}` Resource (or just opens Reminders.app).
+4. Run §3 commands before declaring done. Bump VERSION before commit.
 
 ## 11. When ending a session
 
 - Update `TASK_STATE.md` §6 Handoff (after PR4) if work continues.
-- Promote durable new facts into AGENTS.md §9 — don't accumulate tribal knowledge in Serena auto-memory.
+- Promote durable new facts into AGENTS.md §9 — don't let tribal knowledge accumulate only in transient session memory.
 
 ## 12. Subdirectory AGENTS.md (precedence: nearest wins)
 
