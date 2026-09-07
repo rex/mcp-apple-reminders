@@ -126,3 +126,12 @@ versioning:
   bump_required_per_commit: true
   changelog_path: CHANGELOG.md
   tag_prefix: "v"
+skills:
+  - id: lang-mcp
+    version: "0.1.0"
+    applied: 2026-05-28
+    source: transcript-backfill
+  - id: agentic-skeleton
+    version: "0.48.0"
+    applied: '2026-09-06'
+    source: sync
