@@ -44,7 +44,7 @@ def _param_type(spec: dict) -> str:
 
 
 def _render_tool(tool) -> list[str]:
-    schema = tool.inputSchema or {}
+    schema = tool.input_schema or {}
     props = schema.get("properties") or {}
     required = set(schema.get("required") or [])
     lines = [f"### `{tool.name}`", "", (tool.description or "").strip(), ""]
@@ -68,7 +68,7 @@ def _render_tool(tool) -> list[str]:
 async def _gather() -> str:
     tools = sorted(await mcp.list_tools(), key=lambda t: t.name)
     resources = sorted(await mcp.list_resources(), key=lambda r: str(r.uri))
-    templates = sorted(await mcp.list_resource_templates(), key=lambda t: t.uriTemplate)
+    templates = sorted(await mcp.list_resource_templates(), key=lambda t: t.uri_template)
     prompts = sorted(await mcp.list_prompts(), key=lambda p: p.name)
 
     out: list[str] = [
@@ -92,7 +92,7 @@ async def _gather() -> str:
     out += ["", "## Resource templates", ""]
     for t in templates:
         out.append(
-            f"- `{t.uriTemplate}` — {(t.name or '').strip()}"
+            f"- `{t.uri_template}` — {(t.name or '').strip()}"
             f"{(': ' + t.description.strip()) if t.description else ''}"
         )
     out += ["", "## Prompts", ""]

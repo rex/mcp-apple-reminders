@@ -30,7 +30,7 @@ def test_three_static_resources_registered():
 
 def test_one_templated_resource_registered():
     """The list-by-id template is registered."""
-    templates = {t.uriTemplate for t in _all_templates()}
+    templates = {t.uri_template for t in _all_templates()}
     assert "reminders://list/{calendar_id}" in templates
 
 

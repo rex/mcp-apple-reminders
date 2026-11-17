@@ -4,13 +4,13 @@
 - **Active branch**: `main` (trunk strategy)
 - **Active feature spec**: `specs/002-modernize-and-foundation/` + `docs/adr/0001-list-group-support.md`
 - **Active TASK_STATE**: `TASK_STATE.md`
-- **Last session**: 2026-05-29 (Claude — autonomous slice sprint + audit + ADR 0001 + S5.1)
+- **Last session**: 2026-11-17 (Codex, v0.5.0, #3): MCP SDK 2.3 migration, dual-era wire tests, sampling fallback and fail-closed bulk confirmation.
 
 ## 🎯 Where we stand
 
-- **41 MCP tools** registered.
-- **3 static MCP Resources + 2 templated** (`reminders://` + `agents://current/{project_name}`).
-- **4 Prompts** (`daily_review`, `weekly_retro`, `brain_dump_triage`, `agent_visibility_sync`).
+- **58 MCP tools** registered.
+- **6 static MCP Resources + 2 templated** (`reminders://` + `agents://current/{project_name}`).
+- **5 Prompts**, including `organize_into_sections`.
 - **74 source files** scanned; all under 400-LOC hard cap; module shape gate green across 43 modules.
 - **`make lint && make check-architecture && make typecheck`** — all green.
 - **8 live round-trips PASSED** end-to-end against the user's Reminders.app this session.

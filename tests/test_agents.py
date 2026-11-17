@@ -22,7 +22,7 @@ def test_agents_resource_registered():
     from mcp_apple_reminders.server import mcp
 
     templates = asyncio.run(mcp.list_resource_templates())
-    uris = {t.uriTemplate for t in templates}
+    uris = {t.uri_template for t in templates}
     assert "agents://current/{project_name}" in uris
 
 

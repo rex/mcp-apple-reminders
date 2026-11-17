@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from .._native.reminderkit import ReminderKitHelperError, ReminderKitHelperUnavailable
 from .._native.reminderkit_content import add_file_attachments as helper_add_file_attachments

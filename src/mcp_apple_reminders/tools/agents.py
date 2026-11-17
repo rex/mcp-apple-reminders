@@ -16,7 +16,7 @@ Slice 4.2 (TodoWrite mirror) follows.
 
 from __future__ import annotations
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from .._native.eventkit import (
     EventKitHelperError,

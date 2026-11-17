@@ -6,9 +6,13 @@ create, read, update, delete, search, and organize reminders and lists, drive a
 Claude-* workflow board, manage sidebar groups, set alarms and recurrence, run bulk
 operations, and work with subtasks, sections, and tags.
 
-The server is built on the MCP Python SDK (FastMCP) and reads/writes Apple Reminders
+The server is built on MCP Python SDK 2.3 (`MCPServer`) and reads/writes Apple Reminders
 through a three-tier native stack (direct SQLite reads + a Swift EventKit helper +
 an Objective-C ReminderKit helper). See [Architecture](#architecture).
+
+It serves modern discovery and legacy initialization. Bulk deletion requires
+client elicitation; clients without sampling receive triage items and instructions
+for classification in the calling assistant.
 
 ## Features
 

@@ -4,7 +4,7 @@ This package provides a comprehensive MCP server that enables Claude and other A
 to interact with Apple Reminders through the EventKit framework.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.5.0"
 __author__ = "Pierce"
 __license__ = "MIT"
 

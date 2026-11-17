@@ -30,9 +30,9 @@ registration.
 
 from __future__ import annotations
 
-from mcp.types import ToolAnnotations
+from mcp_types import ToolAnnotations
 
-READ = ToolAnnotations(readOnlyHint=True, openWorldHint=False)
-CREATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
-MUTATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
-DESTROY = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False)
+READ = ToolAnnotations(read_only_hint=True, open_world_hint=False)
+CREATE = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False)
+MUTATE = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
+DESTROY = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=True, open_world_hint=False)

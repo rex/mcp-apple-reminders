@@ -88,7 +88,7 @@ Mark a reminder as completed. This is a convenience tool that's equivalent to ca
 
 ### `create_calendar`
 
-Create a new reminder calendar (list) in Apple Reminders. The name must be unique among existing non-deleted lists. Optional `color` accepts a named palette token (e.g. 'red', 'blue', 'green'). `icon` sets the list badge: pass any SF Symbol name (e.g. 'cart.fill') or an emoji, 'none' to skip, or omit it to get the agent-made marker ('sparkles'). The caller chooses the icon — the server does not guess; see the reminders://appearance resource for valid colors + example symbols. Returns the new calendar with its deeplink. Backed by the Swift EventKit helper (_native/bin/rem_eventkit), plus the ReminderKit helper for the icon.
+Create a new reminder calendar (list) in Apple Reminders. The name must be unique among existing non-deleted lists. Optional `color` accepts a named palette token (e.g. 'red', 'blue', 'green'). `icon` sets the list badge: pass a Reminders EMBLEM id (e.g. 'food', 'weather5', 'work1' — a curated catalog, NOT an SF Symbol; see the reminders://appearance resource), an emoji for an arbitrary glyph, 'none' to skip, or omit it / pass 'auto' to let the server auto-suggest an emblem from the list name. An unrecognised emblem warns and is skipped (it would render blank). Returns the new calendar with its deeplink. Backed by the Swift EventKit helper + the ReminderKit helper for the icon.
 
 - `name` (string, required)
 - `color` (string, optional)
@@ -115,7 +115,7 @@ Create a new reminder in Apple Reminders. You can specify the title, due date, n
 
 ### `create_smart_list`
 
-Create a custom smart list (a saved-filter list) in Reminders.app. Pass a `name` and optional appearance (`color`, `symbol` SF-symbol, `emoji`). `icon` is a convenience badge knob: 'none' (default) leaves it iconless; 'auto' uses the agent glyph; or pass a symbol/emoji directly. An explicit `symbol` or `emoji` overrides `icon`. The filter itself is an opaque base64 blob: omit `filter_data_b64` to create a named smart list whose filter you refine in Reminders.app, or pass a previously-captured blob. Requires an iCloud account that supports custom smart lists. Private ReminderKit API.
+Create a custom smart list (a saved-filter list) in Reminders.app. Pass a `name` and optional appearance (`color`, `symbol` = a Reminders emblem id like 'food'/'weather5' — NOT an SF Symbol; see reminders://appearance — or `emoji`). `icon` is a convenience badge knob: 'none' (default) leaves it iconless; 'auto' auto-suggests an emblem from the name; or pass an emblem id / emoji directly. An explicit `symbol` or `emoji` overrides `icon`. The filter itself is an opaque base64 blob: omit `filter_data_b64` to create a named smart list whose filter you refine in Reminders.app, or pass a previously-captured blob. Requires an iCloud account that supports custom smart lists. Private ReminderKit API.
 
 - `name` (string, required)
 - `color` (string, optional)
@@ -328,7 +328,7 @@ Set or clear an Early Reminder (a lead-time alert that fires before the reminder
 
 ### `set_list_appearance`
 
-Rename and/or restyle a list OR group (sidebar folder) by its UUID. `color` accepts a named palette token (red/orange/yellow/green/blue/purple/brown/gray/etc.); `symbol` is an SF Symbol name (e.g. 'star.fill', 'cart'); `emoji` sets an emoji icon. Pass `name` to rename. At least one change should be supplied. Works on both regular lists and groups. Private ReminderKit API.
+Rename and/or restyle a list by its UUID. `color` accepts a named palette token (red/orange/yellow/green/blue/purple/brown/gray/etc.); `symbol` is a Reminders EMBLEM id (e.g. 'food', 'weather5' — a curated catalog, NOT an SF Symbol; see reminders://appearance); `emoji` sets an emoji icon. Pass `name` to rename. NOTE: Reminders GROUPS have no color/icon — only `name` (rename) applies to a group; color/symbol/emoji on a group is rejected. At least one change should be supplied. Private ReminderKit API.
 
 - `list_id` (string, required)
 - `name` (string, optional)
@@ -381,14 +381,14 @@ Pin or unpin a custom smart list at the top of the Reminders sidebar. Pass the s
 
 ### `set_urgent`
 
-Toggle the 'urgent' state on a reminder by its UUID (the urgency flag Reminders.app surfaces with an exclamation badge). Pass `urgent=true` to mark urgent, false to clear. Private ReminderKit API.
+Toggle the urgent / time-sensitive presentation for a reminder's date alarms (REMReminder.prefersUrgentPresentationStyleForDateAlarms) so its alarms break through Focus / Do Not Disturb. Pass `urgent=true` to enable, false to clear; most meaningful on reminders that have a due date or alarm. Write-only — not surfaced on read-back. Private ReminderKit API.
 
 - `reminder_id` (string, required)
 - `urgent` (boolean, required)
 
 ### `triage_brain_dump`
 
-Triage the brain-dump list using the client's LLM via MCP Sampling. Reads every incomplete item from `from_list` (default Claude-Brain-Dump), asks the client to classify each as Active / On-Deck / Waiting / Done / delete, and returns the proposed routing. This tool does NOT move anything — the caller applies the routing with `move_reminder_*` tools afterwards.
+Triage the brain-dump list using the client's LLM via MCP Sampling. Reads every incomplete item from `from_list` (default Claude-Brain-Dump), asks the client to classify each as Active / On-Deck / Waiting / Done / delete, and returns the proposed routing. Without sampling, returns the items and classification prompt for the calling agent. This tool does NOT move anything — the caller applies the routing with `move_reminder_*` tools afterwards.
 
 - `from_list` (string, optional, default='Claude-Brain-Dump')
 - `max_items` (integer, optional, default=25)
@@ -434,7 +434,7 @@ Update a custom smart list by its UUID: rename it, change its appearance (`color
 
 ## Resources
 
-- `reminders://appearance` — Appearance options: Canonical list colors (name + hex) and icon (SF Symbol / emoji) guidance for the appearance tools.
+- `reminders://appearance` — Appearance options: Canonical list colors (name + hex) and the curated emblem catalog for list icons.
 - `reminders://default` — Default list: The user's default reminder list with all incomplete reminders inside it. Sourced via the SQLite reader; sub-millisecond.
 - `reminders://overdue` — Overdue reminders: Incomplete reminders whose due date is in the past. Sub-millisecond via SQLite.
 - `reminders://recently-deleted` — Recently deleted: Reminders marked for deletion but not yet purged (recoverable in Reminders.app). Read-only recovery view via the SQLite reader.

@@ -70,7 +70,7 @@ def test_update_reminder_exposes_clear_tags():
     from mcp_apple_reminders.server import mcp
 
     tools = {t.name: t for t in asyncio.run(mcp.list_tools())}
-    assert "clear_tags" in tools["update_reminder"].inputSchema.get("properties", {})
+    assert "clear_tags" in tools["update_reminder"].input_schema.get("properties", {})
 
 
 def test_tags_resource_registered():

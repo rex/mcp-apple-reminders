@@ -21,13 +21,13 @@ import sys
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, AsyncIterator, Optional
+from typing import TYPE_CHECKING, Any, AsyncIterator, Optional, cast
 
 from ._native import RemindKit
 from ._native.sqlite import RemindersDBUnavailable, connect, find_db_path
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import Context, FastMCP
+    from mcp.server.mcpserver import Context, MCPServer
 
 
 @dataclass
@@ -49,18 +49,18 @@ class AppContext:
         return connect(self.sqlite_db_path)
 
 
-def app_context(ctx: Context) -> AppContext:
+def app_context(ctx: Context[Any]) -> AppContext:
     """Return the lifespan-owned AppContext for a tool/resource Context."""
-    return ctx.request_context.lifespan_context
+    return cast(AppContext, ctx.request_context.lifespan_context)
 
 
-def bridge_from_ctx(ctx: Context) -> RemindKit:
+def bridge_from_ctx(ctx: Context[Any]) -> RemindKit:
     """Return the RemindKit (EventKit) bridge from a tool/resource Context."""
-    return ctx.request_context.lifespan_context.bridge
+    return app_context(ctx).bridge
 
 
 @asynccontextmanager
-async def app_lifespan(server: "FastMCP") -> AsyncIterator[AppContext]:
+async def app_lifespan(server: "MCPServer") -> AsyncIterator[AppContext]:
     """Build the `RemindKit` bridge + resolve the SQLite store path on server start.
 
     On macOS the underlying EventKit init triggers the Reminders permission

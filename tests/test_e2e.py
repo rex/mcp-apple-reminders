@@ -97,7 +97,7 @@ def test_e2e_reminder_operations():
         try:
             rk.get_reminder_by_id(reminder.id)
             print("❌ Reminder should have been deleted!")
-            return False
+            raise AssertionError("Verification failed; see diagnostic output above")
         except ValueError:
             print("✅ Reminder properly deleted (not found)")
 
@@ -122,7 +122,7 @@ def test_e2e_reminder_operations():
         except Exception:
             pass
 
-        return False
+        raise AssertionError("Verification failed; see diagnostic output above") from e
 
 
 def main():

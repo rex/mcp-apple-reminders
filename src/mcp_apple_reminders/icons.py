@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 from pydantic import BaseModel
 
 from ._native.reminderkit import ReminderKitHelperError, ReminderKitHelperUnavailable

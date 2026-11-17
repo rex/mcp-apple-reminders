@@ -28,7 +28,7 @@ async def run(c: WireClient, store: TestStore, r: Reporter) -> None:
         new_id = str((applied or {}).get("id") or "")
         if new_id:  # apply creates a new list — resolve its name + delete it
             cal = await c.call_raw("get_calendar_by_id", {"calendar_id": new_id})
-            nm = (cal.structuredContent or {}).get("name") if not cal.isError else None
+            nm = (cal.structured_content or {}).get("name") if not cal.is_error else None
             if nm:
                 await c.call_ok("delete_calendar", {"name": nm, "force": True}, label="cleanup applied-template list")
         deleted = await c.call_ok("delete_template", {"template_id": tid}, label="delete_template")
@@ -46,8 +46,8 @@ async def run(c: WireClient, store: TestStore, r: Reporter) -> None:
             items.append(rid)
     if items:
         res = await c.call_raw("categorize_grocery_items", {"list_id": lid, "reminder_ids": items})
-        if not res.isError:
-            r.check("categorize_grocery_items -> status", bool((res.structuredContent or {}).get("status")))
+        if not res.is_error:
+            r.check("categorize_grocery_items -> status", bool((res.structured_content or {}).get("status")))
         else:
             err = _err(res)
             r.check(

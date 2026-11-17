@@ -54,12 +54,12 @@ def test_converted_tools_have_typed_output_schema() -> None:
     from mcp_apple_reminders.server import mcp
 
     tools = {t.name: t for t in asyncio.run(mcp.list_tools())}
-    missing = [n for n in _CONVERTED if tools[n].outputSchema is None]
-    assert not missing, f"converted tools with no outputSchema: {missing}"
+    missing = [n for n in _CONVERTED if tools[n].output_schema is None]
+    assert not missing, f"converted tools with no output_schema: {missing}"
     wrong = {
-        n: tools[n].outputSchema.get("title")
+        n: tools[n].output_schema.get("title")
         for n, title in _CONVERTED.items()
-        if (tools[n].outputSchema or {}).get("title") != title
+        if (tools[n].output_schema or {}).get("title") != title
     }
     assert not wrong, f"unexpected output-schema titles: {wrong}"
 

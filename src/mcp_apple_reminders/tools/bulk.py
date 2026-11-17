@@ -12,9 +12,9 @@ report so the caller can show a per-item outcome.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Annotated, Optional
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context, Elicit, Resolve
 from pydantic import BaseModel
 
 from .._native.bulk import bulk_iter
@@ -86,6 +86,15 @@ class _ConfirmBulkDelete(BaseModel):
     """Empty schema — the user just needs to accept/decline the elicitation."""
 
 
+async def _confirm_bulk_delete(start: str, end: str) -> Elicit[_ConfirmBulkDelete]:
+    if datetime.fromisoformat(end) < datetime.fromisoformat(start):
+        raise ValueError("end must be >= start")
+    return Elicit(
+        f"Permanently delete completed reminders in [{start}, {end})? This cannot be undone.",
+        _ConfirmBulkDelete,
+    )
+
+
 @mcp.tool(
     name="bulk_delete_completed",
     title="Bulk Delete Completed",
@@ -101,6 +110,7 @@ async def bulk_delete_completed(
     start: str,
     end: str,
     ctx: Context,
+    confirmation: Annotated[_ConfirmBulkDelete, Resolve(_confirm_bulk_delete)],
     calendar_id: Optional[str] = None,
 ) -> BulkResult:
     """Delete completed reminders whose completion_date is in [start, end)."""
@@ -128,22 +138,8 @@ async def bulk_delete_completed(
         await ctx.info("bulk_delete_completed: nothing in window.")
         return BulkResult.of(processed=0, failed=[], window=BulkWindow(start=start, end=end))
 
-    # Elicitation guard — best-effort. Clients without elicitation support (no
-    # ctx.elicit method, or no advertised capability) fall through to the delete.
-    try:
-        elicitation = await ctx.elicit(
-            message=(
-                f"About to permanently delete {len(candidates)} completed reminder(s) "
-                f"whose completion_date is in [{start}, {end}). This cannot be undone. "
-                f"Confirm?"
-            ),
-            schema=_ConfirmBulkDelete,
-        )
-    except Exception as e:
-        await ctx.debug(f"Elicitation unavailable ({type(e).__name__}); proceeding without confirm.")
-    else:
-        if elicitation.action != "accept":
-            raise ValueError(f"bulk_delete_completed aborted by elicitation ({elicitation.action}).")
+    # Resolve negotiates legacy elicitation or modern input_required before
+    # this handler runs. Decline, cancellation or no capability cannot delete.
 
     await ctx.warning(f"Bulk-deleting {len(candidates)} reminder(s) in [{start}, {end}).")
     processed = 0

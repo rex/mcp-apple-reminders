@@ -37,7 +37,7 @@ def test_imports():
 
     except ImportError as e:
         print(f"❌ Import error: {e}")
-        return False
+        raise AssertionError("Verification failed; see diagnostic output above") from e
 
 
 def test_server_structure():
@@ -56,7 +56,7 @@ def test_server_structure():
 
     except Exception as e:
         print(f"❌ Server structure error: {e}")
-        return False
+        raise AssertionError("Verification failed; see diagnostic output above") from e
 
 
 def test_remindkit_permissions():
@@ -108,14 +108,14 @@ def test_remindkit_permissions():
         print("   1. Go to System Settings → Privacy & Security → Reminders")
         print("   2. Enable access for Terminal or your Python interpreter")
         print("   3. Run this test again")
-        return False
+        raise AssertionError("Verification failed; see diagnostic output above") from e
 
     except Exception as e:
         print(f"❌ RemindKit error: {e}")
         import traceback
 
         traceback.print_exc()
-        return False
+        raise AssertionError("Verification failed; see diagnostic output above") from e
 
 
 def test_tool_definitions():
@@ -205,17 +205,19 @@ def test_tool_definitions():
             for tool in sorted(tools, key=lambda t: t.name):
                 print(f"   • {tool.name}")
 
-            return len(missing) == 0 and len(tools) >= expected_tool_count
+            assert not missing, f"Missing expected tools: {missing}"
+            assert len(tools) >= expected_tool_count
+            return True
         else:
             print(f"❌ Expected at least {expected_tool_count} tools, found {len(tools)}")
-            return False
+            raise AssertionError("Verification failed; see diagnostic output above")
 
     except Exception as e:
         print(f"❌ Tool definition error: {e}")
         import traceback
 
         traceback.print_exc()
-        return False
+        raise AssertionError("Verification failed; see diagnostic output above") from e
 
 
 def main():

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from mcp.server.fastmcp.prompts import base
+from mcp.server.mcpserver.prompts import base
 
 from .._native.sqlite import Reader, RemindersDBUnavailable, connect
 from ..server import mcp

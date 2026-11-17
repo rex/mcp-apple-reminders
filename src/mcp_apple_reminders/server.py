@@ -1,7 +1,7 @@
-"""MCP Apple Reminders Server — FastMCP edition (post-S0.4).
+"""MCP Apple Reminders Server — MCP SDK 2.x.
 
 Thin top-level orchestrator that:
-1. Builds a `FastMCP` instance with the lifespan that owns the RemindKit
+1. Builds an `MCPServer` instance with the lifespan that owns the RemindKit
    bridge.
 2. Imports the per-category tool modules — each module decorates its tools
    with `@mcp.tool()`, registering them at import time.
@@ -14,12 +14,26 @@ helpers (datetime + priority parsing) live in `formatting.py`. The single
 
 from __future__ import annotations
 
-from mcp.server.fastmcp import FastMCP
+from importlib.metadata import version
+
+from mcp import MCPError
+from mcp.server import MCPServer
 
 from .lifespan import app_lifespan
 
-mcp = FastMCP(
+
+class ProtocolServer(MCPServer):
+    """Unknown tool names are protocol errors, not execution results."""
+
+    async def call_tool(self, name, arguments, context=None):
+        if name not in {tool.name for tool in await self.list_tools()}:
+            raise MCPError(-32602, f"unknown tool: {name}")
+        return await super().call_tool(name, arguments, context)
+
+
+mcp = ProtocolServer(
     "mcp-apple-reminders",
+    version=version("mcp-apple-reminders"),
     instructions=(
         "Access Apple Reminders on macOS. Use list_calendars to discover "
         "lists, get_reminders / search_reminders / get_today_reminders / "
@@ -97,7 +111,7 @@ def cli_main() -> int:
     ::server.transport` field > `stdio` default.
     """
     transport_raw = _resolve_transport()
-    # FastMCP's `run()` is typed against a Literal of valid transport names.
+    # MCPServer's `run()` is typed against a Literal of valid transport names.
     # Normalize and narrow with explicit branches so mypy is happy and
     # unknown values fall through to stdio rather than crashing the client
     # startup path.

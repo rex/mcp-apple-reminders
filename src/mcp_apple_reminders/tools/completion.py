@@ -8,7 +8,7 @@ EventKit write path so they stay in sync with the canonical update.
 
 from __future__ import annotations
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from ..lifespan import bridge_from_ctx as _bridge_from_ctx
 from ..models import Reminder, native_reminder_to_pydantic

@@ -22,6 +22,15 @@ Spec 002 is fully shipped (41 tools, phases 0–5). This session runs the CL-1 c
 Before code: read `AGENTS.md` → this file §0/§2/§3 → the audit synthesis `docs/audits/2026-05-29-post-spec-002-cleanup-audit/05-verify-and-expert-review-synthesis.md`. Prior session history (spec-002 build) lives in `CHANGELOG.md` + git log. Session memories worth reading: `mem:core`, `mem:suggested_commands`, `mem:task_completion`, `mem:global/agent_model_policy`.
 
 
+## [0.5.0] — 2026-11-17 — Agent: Codex
+### Changed
+- Migrate all 58 tools, eight resources and five prompts to MCP SDK 2.3, preserving both protocol eras and structured results.
+- Return triage items and instructions when client sampling is unavailable.
+- Synchronize package/server versions and correct the PyObjC Cocoa dependency.
+### Fixed
+- Return protocol errors for unknown tools.
+- Use the SDK resolver for bulk-delete confirmation; decline, cancellation and missing client capability cannot fall through to deletion.
+
 ## [0.4.0] — 2026-09-06 — Agent: Claude Sonnet 5
 ### Changed
 - synced skeleton-owned scripts (check_architecture.py, check_module_rules.py) to agentic-skeleton 0.48.0; removed VIBE.yaml.bak stray backup

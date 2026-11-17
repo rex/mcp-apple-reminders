@@ -63,7 +63,7 @@ class TestStore:
             await c.call_raw("delete_template", {"template_id": tid})
         if self.list_name:
             res = await c.call_raw("delete_calendar", {"name": self.list_name, "force": True})
-            c.r.check("fixture teardown: list deleted", not res.isError)
+            c.r.check("fixture teardown: list deleted", not res.is_error)
         if self.group_id:
             res = await c.call_raw("delete_group", {"group_id": self.group_id})
-            c.r.check("fixture teardown: group deleted", not res.isError)
+            c.r.check("fixture teardown: group deleted", not res.is_error)

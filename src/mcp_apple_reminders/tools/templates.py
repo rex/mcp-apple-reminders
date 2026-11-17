@@ -8,7 +8,7 @@ the Obj-C ReminderKit helper (private API).
 
 from __future__ import annotations
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from .._native.reminderkit import ReminderKitHelperError, ReminderKitHelperUnavailable
 from .._native.reminderkit_content import (

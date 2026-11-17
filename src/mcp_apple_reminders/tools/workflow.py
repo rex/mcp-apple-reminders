@@ -16,7 +16,7 @@ delivered in Slice 1.2).
 
 from __future__ import annotations
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from ..lifespan import bridge_from_ctx as _bridge_from_ctx
 from ..models import Calendar, Reminder, native_calendar_to_pydantic, native_reminder_to_pydantic

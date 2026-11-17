@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Annotated, Optional
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 from pydantic import Field
 
 from .._native.eventkit_readback import summarize_alarms, summarize_recurrence

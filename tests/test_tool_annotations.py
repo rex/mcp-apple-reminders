@@ -32,8 +32,8 @@ def test_every_tool_has_title_and_annotations() -> None:
 def test_closed_world_everywhere() -> None:
     # Apple Reminders is a closed local domain — no tool is open-world.
     tools = _tools()
-    open_world = [t.name for t in tools if t.annotations.openWorldHint is not False]
-    assert not open_world, f"tools with openWorldHint != False: {open_world}"
+    open_world = [t.name for t in tools if t.annotations.open_world_hint is not False]
+    assert not open_world, f"tools with open_world_hint != False: {open_world}"
 
 
 def test_hint_coherence() -> None:
@@ -43,9 +43,9 @@ def test_hint_coherence() -> None:
     tools = _tools()
     for t in tools:
         a = t.annotations
-        if a.readOnlyHint:
-            assert a.destructiveHint is None, f"{t.name}: read-only tool sets destructiveHint"
-            assert a.idempotentHint is None, f"{t.name}: read-only tool sets idempotentHint"
+        if a.read_only_hint:
+            assert a.destructive_hint is None, f"{t.name}: read-only tool sets destructive_hint"
+            assert a.idempotent_hint is None, f"{t.name}: read-only tool sets idempotent_hint"
         else:
-            assert a.destructiveHint is not None, f"{t.name}: write tool missing destructiveHint"
-            assert a.idempotentHint is not None, f"{t.name}: write tool missing idempotentHint"
+            assert a.destructive_hint is not None, f"{t.name}: write tool missing destructive_hint"
+            assert a.idempotent_hint is not None, f"{t.name}: write tool missing idempotent_hint"

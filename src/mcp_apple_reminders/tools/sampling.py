@@ -19,8 +19,8 @@ from typing import Optional
 # `CreateMessageRequestParams` / `SamplingMessage` live under mcp.types in
 # the SDK; we import lazily so server start doesn't fail if the SDK version
 # drops or renames them.
-from mcp import types as mcp_types
-from mcp.server.fastmcp import Context
+import mcp_types
+from mcp.server.mcpserver import Context
 
 from .._native.sqlite import Reader, RemindersDBUnavailable
 from ..lifespan import app_context as _app_context
@@ -93,7 +93,8 @@ def _parse_routing(response_text: str, valid_ids: set[str]) -> dict[str, str]:
         "Triage the brain-dump list using the client's LLM via MCP Sampling. "
         "Reads every incomplete item from `from_list` (default Claude-Brain-Dump), "
         "asks the client to classify each as Active / On-Deck / Waiting / Done / delete, "
-        "and returns the proposed routing. This tool does NOT move anything — "
+        "and returns the proposed routing. Without sampling, returns the items and "
+        "classification prompt for the calling agent. This tool does NOT move anything — "
         "the caller applies the routing with `move_reminder_*` tools afterwards."
     ),
 )
@@ -128,6 +129,14 @@ async def triage_brain_dump(
         return TriageResult(from_list=from_list)
 
     prompt = _build_triage_prompt(items)
+    caps = ctx.client_capabilities
+    if caps is None or caps.sampling is None or ctx.protocol_version == "2026-07-28":
+        return TriageResult(
+            from_list=from_list,
+            items=items,
+            valid_destinations=list(_VALID_ROUTES),
+            model_response="Client sampling unavailable. Classify these items directly:\n\n" + prompt,
+        )
     await ctx.debug(f"triage_brain_dump: prompting LLM for {len(items)} item(s) via sampling.")
 
     # Sampling call. Older SDKs expose `ctx.session.create_message`.

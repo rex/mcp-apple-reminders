@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import AsyncIterator, Iterable, TypeVar
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 T = TypeVar("T")
 

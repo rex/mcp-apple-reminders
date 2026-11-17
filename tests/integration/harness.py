@@ -72,9 +72,9 @@ class WireClient:
     async def call_ok(self, name: str, args: Optional[dict] = None, *, label: str = "") -> Optional[dict]:
         """Call a tool, assert ``not isError``, return its structuredContent."""
         res = await self.s.call_tool(name, args or {})
-        ok = not res.isError
+        ok = not res.is_error
         self.r.check(label or f"call {name}", ok, "" if ok else _err_text(res))
-        return res.structuredContent if ok else None
+        return res.structured_content if ok else None
 
     async def call_value(self, name: str, args: Optional[dict] = None, *, label: str = "") -> Any:
         """Call a tool whose structuredContent wraps a list / Optional in ``result``."""
@@ -86,7 +86,7 @@ class WireClient:
     async def call_expect_error(self, name: str, args: Optional[dict] = None, *, label: str = "") -> str:
         """Call a tool expecting ``isError`` (negative test). Returns the error text."""
         res = await self.s.call_tool(name, args or {})
-        self.r.check(label or f"{name} rejects bad input", res.isError, "expected isError=True")
+        self.r.check(label or f"{name} rejects bad input", res.is_error, "expected isError=True")
         return _err_text(res)
 
     async def read_json(self, uri: str) -> Optional[dict]:

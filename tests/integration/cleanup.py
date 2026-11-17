@@ -26,10 +26,10 @@ async def main() -> int:
         groups = [x for x in items if x.get("is_group") and x.get("name") == GROUP_NAME]
         for cal in lists:  # lists first — delete cascades their reminders
             res = await c.call_raw("delete_calendar", {"name": cal["name"], "force": True})
-            r.check(f"deleted list {cal['name']}", not res.isError)
+            r.check(f"deleted list {cal['name']}", not res.is_error)
         for grp in groups:
             res = await c.call_raw("delete_group", {"group_id": grp.get("id")})
-            r.check(f"deleted group {grp.get('name')}", not res.isError)
+            r.check(f"deleted group {grp.get('name')}", not res.is_error)
         if not lists and not groups:
             r.check("nothing to sweep (already clean)", True)
     print(f"\n=== {r.summary()} ===\n", flush=True)

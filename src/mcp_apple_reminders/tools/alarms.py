@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from .._native.eventkit import (
     EventKitHelperError,

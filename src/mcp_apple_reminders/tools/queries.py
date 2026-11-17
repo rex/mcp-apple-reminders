@@ -18,7 +18,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Optional
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 from pydantic import Field
 
 from .._native import Priority

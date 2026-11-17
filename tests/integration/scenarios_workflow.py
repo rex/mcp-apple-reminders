@@ -48,8 +48,8 @@ async def run(c: WireClient, store: TestStore, r: Reporter) -> None:
     if brid:
         for tool in ("move_reminder_on_deck", "move_reminder_active", "move_reminder_done", "move_reminder_blocked"):
             res = await c.call_raw(tool, {"reminder_id": brid})
-            err = "" if not res.isError else _err(res)
-            ok = (not res.isError) or "not found" in err.lower() or "does not exist" in err.lower()
+            err = "" if not res.is_error else _err(res)
+            ok = (not res.is_error) or "not found" in err.lower() or "does not exist" in err.lower()
             r.check(f"{tool} (moved or board absent)", ok, err[:100])
         await c.call_ok("delete_reminder", {"reminder_id": brid}, label="delete wf board reminder")
         if brid in store.reminder_ids:

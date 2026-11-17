@@ -61,8 +61,8 @@ async def run(c: WireClient, store: TestStore, r: Reporter) -> None:
         assigned = None
         for _ in range(8):  # the section row may lag SQLite after add_section_and_assign
             res = await c.call_raw("assign_section", {"reminder_id": r2, "section_name": section})
-            if not res.isError:
-                assigned = res.structuredContent
+            if not res.is_error:
+                assigned = res.structured_content
                 break
             await asyncio.sleep(1.0)
         r.check("assign_section -> section_name set", bool(assigned) and assigned.get("section_name") == section)
