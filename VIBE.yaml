@@ -49,7 +49,8 @@ workflow:
   # continue-until-blocked = run autonomously until hitting a stop condition.
   default_autonomy_mode: interactive
   validation_command: make validate
-  final_verification_command: make check-if-the-agent-can-consider-this-task-completed
+  final_verification_command: make
+    check-if-the-agent-can-consider-this-task-completed
   # Brownfield repos usually have an existing Dockerfile. Default = ask
   # before generating a new one.
   ask_before_dockerizing: true
@@ -67,11 +68,11 @@ quality_gates:
     # Brownfield default = deferred. Flip to `required` after PR3 lands
     # the standards layer and tests are actually present + passing.
     mode: deferred
-    command: null
+    command:
     required_suites: []
     coverage:
       enabled: false
-      minimum_percentage: null
+      minimum_percentage:
   clean_worktree_required_on_completion: true
 
 architecture:
@@ -132,6 +133,6 @@ skills:
     applied: 2026-05-28
     source: transcript-backfill
   - id: agentic-skeleton
-    version: "0.48.0"
-    applied: '2026-09-06'
+    version: "0.56.0"
+    applied: '2026-11-17'
     source: sync

@@ -22,6 +22,10 @@ Spec 002 is fully shipped (41 tools, phases 0–5). This session runs the CL-1 c
 Before code: read `AGENTS.md` → this file §0/§2/§3 → the audit synthesis `docs/audits/2026-05-29-post-spec-002-cleanup-audit/05-verify-and-expert-review-synthesis.md`. Prior session history (spec-002 build) lives in `CHANGELOG.md` + git log. Session memories worth reading: `mem:core`, `mem:suggested_commands`, `mem:task_completion`, `mem:global/agent_model_policy`.
 
 
+## [0.6.0] — 2026-11-17 — Agent: Claude Opus 5.5
+### Changed
+- Adopt agentic-skeleton 0.56.0's include-based Makefile: the gates live in the skeleton-owned make/agentic-skeleton.mk and the Makefile keeps this repo's own recipes, so make check-skeleton stops failing on them. Verified against make's rule database; repo targets, variables and the default goal are unchanged.
+
 ## [0.5.0] — 2026-11-17 — Agent: Codex
 ### Changed
 - Migrate all 58 tools, eight resources and five prompts to MCP SDK 2.3, preserving both protocol eras and structured results.
